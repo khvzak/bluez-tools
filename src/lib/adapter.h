@@ -24,10 +24,38 @@
 #ifndef __ADAPTER_H
 #define __ADAPTER_H
 
+#include <glib-object.h>
+
 #include "dbus-common.h"
 
 #define BLUEZ_DBUS_ADAPTER_INTERFACE "org.bluez.Adapter"
 
-typedef DBusGProxy Adapter;
+/*
+ * Type macros
+ */
+#define ADAPTER_TYPE				(adapter_get_type())
+#define ADAPTER(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), ADAPTER_TYPE, Adapter))
+#define ADAPTER_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), ADAPTER_TYPE))
+#define ADAPTER_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), ADAPTER_TYPE, AdapterClass))
+#define ADAPTER_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), ADAPTER_TYPE))
+#define ADAPTER_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), ADAPTER_TYPE, AdapterClass))
+
+typedef struct _Adapter Adapter;
+typedef struct _AdapterClass AdapterClass;
+typedef struct _AdapterPrivate AdapterPrivate;
+
+struct _Adapter {
+	GObject parent_instance;
+
+	/*< private >*/
+	AdapterPrivate *priv;
+};
+
+struct _AdapterClass {
+	GObjectClass parent_class;
+
+	/* class members */
+	// ...
+};
 
 #endif /* __ADAPTER_H */

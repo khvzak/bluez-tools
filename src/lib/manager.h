@@ -34,15 +34,16 @@
 /*
  * Type macros
  */
-#define MANAGER_TYPE			(manager_get_type())
-#define MANAGER(obj)			(G_TYPE_CHECK_INSTANCE_CAST((obj), MANAGER_TYPE, Manager))
-#define MANAGER_IS(obj)			(G_TYPE_CHECK_INSTANCE_TYPE((obj), MANAGER_TYPE))
+#define MANAGER_TYPE				(manager_get_type())
+#define MANAGER(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), MANAGER_TYPE, Manager))
+#define MANAGER_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), MANAGER_TYPE))
 #define MANAGER_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), MANAGER_TYPE, ManagerClass))
 #define MANAGER_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), MANAGER_TYPE))
 #define MANAGER_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), MANAGER_TYPE, ManagerClass))
 
-typedef struct _Manager		Manager;
-typedef struct _ManagerClass	ManagerClass;
+typedef struct _Manager Manager;
+typedef struct _ManagerClass ManagerClass;
+typedef struct _ManagerPrivate ManagerPrivate;
 
 struct _Manager {
 	GObject parent_instance;
@@ -51,17 +52,17 @@ struct _Manager {
 	ManagerPrivate *priv;
 };
 
-struct _ManagerClass
+struct _ManagerClass {
 	GObjectClass parent_class;
 
 	/* class members */
+	// ...
 };
-
-/* used by MANAGER_TYPE */
-GType manager_get_type(void);
 
 /*
  * Method definitions
  */
+gboolean manager_get_default_adapter(Manager *self, GError **error, Adapter **adapter);
+gboolean manager_find_adapter(Manager *self, const gchar *adapter_name, GError **error, Adapter **adapter);
 
 #endif /* __MANAGER_H */

@@ -27,26 +27,26 @@
 
 #include <stdlib.h>
 #include <glib.h>
-#include <dbus/dbus-glib.h>
 
-#include "dbus.h"
+#include "lib/dbus-common.h"
+#include "lib/adapter.h"
+#include "lib/manager.h"
 #include "monitor.h"
 
-static gchar *adapter = NULL; // TODO: g_free() ?
+static gchar *adapter = NULL;
 
 static GOptionEntry entries[] = {
-	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter, "Adapter name or MAC", NULL },
-	{ NULL }
+	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter, "Adapter name or MAC", NULL},
+	{ NULL}
 };
 
 int main(int argc, char *argv[])
 {
-	GError *error; // TODO: g_error_free()
-	GOptionContext *context; // TODO: g_option_context_free()
-	DBusGConnection *conn;
-	
+	GError *error = NULL;
+	GOptionContext *context;
+
 	g_type_init();
-	
+
 	context = g_option_context_new("- a bluetooth monitor");
 	g_option_context_add_main_entries(context, entries, NULL);
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
@@ -58,53 +58,24 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	g_option_context_free(context);
-	
-	conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
-	if (!conn) {
-		g_printerr("Couldn't connect to system bus: %s", error->message);
+
+	if (!dbus_connect(&error)) {
+		g_printerr("Couldn't connect to dbus: %s", error->message);
 		g_error_free(error);
 		exit(EXIT_FAILURE);
 	}
-	
+
 	if (!adapter) {
 		// Listen for all events
 	} else {
 		// Listen for an adapter events
+		//Adapter *adapter_obj;
+		//if (!find_adapter(adapter, &error, &adapter_obj)) {
+		//	g_printerr("Couldn't find adapter '%s': %s\n", adapter, error->message);
+		//	g_error_free(error);
+		//	exit(EXIT_FAILURE);
+		//}
 	}
-	
+
 	exit(EXIT_SUCCESS);
-}
-
-// --------------------------------
-// Some functions -- temporary here
-// --------------------------------
-
-#define BLUEZ_DBUS_NAME "org.bluez"
-#define BLUEZ_DBUS_MANAGER_PATH "/"
-#define BLUEZ_DBUS_MANAGER_INTERFACE "org.bluez.Manager"
-#define BLUEZ_DBUS_ADAPTER_INTERFACE "org.bluez.Adapter"
-
-gboolean find_adapter(const gchar *adapter, GError **error, DBusGProxy **adapter_obj)
-{
-	if (adapter == NULL) {
-		return default_adapter(error, adapter_obj);
-	}
-	
-	DBusGProxy *manager_obj;
-	manager_obj = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_MANAGER_PATH, BLUEZ_DBUS_MANAGER_INTERFACE);
-	
-}
-
-gboolean default_adapter(GError **error, DBusGProxy **adapter_obj)
-{
-	DBusGProxy *manager_obj;
-	manager_obj = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_MANAGER_PATH, BLUEZ_DBUS_MANAGER_INTERFACE);
-	
-	if (!dbus_g_proxy_call(manager_obj, "DefaultAdapter", &error, G_TYPE_INVALID, DBUS_TYPE_G_PROXY, adapter_obj, G_TYPE_INVALID)) {
-		return false;
-	} else {
-		dbus_g_proxy_set_interface(adapter_obj, "org.bluez.Adapter");
-	}
-	
-	return true;
 }

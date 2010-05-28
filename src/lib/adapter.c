@@ -25,4 +25,45 @@
 #include <config.h>
 #endif
 
+#include "dbus-common.h"
 #include "adapter.h"
+
+#define ADAPTER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), ADAPTER_TYPE, AdapterPrivate))
+
+struct _AdapterPrivate {
+	DBusGProxy *dbus_g_proxy;
+};
+
+G_DEFINE_TYPE(Adapter, adapter, G_TYPE_OBJECT);
+
+enum {
+	PROP_0,
+
+	PROP_DBUS_G_PROXY
+};
+
+static void adapter_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+{
+	Adapter *self = ADAPTER(object);
+
+	switch (property_id) {
+	case PROP_DBUS_G_PROXY:
+		self->priv->dbus_g_proxy = g_value_get_object(value);
+		break;
+	}
+}
+
+static void adapter_class_init(AdapterClass *klass)
+{
+	g_type_class_add_private(klass, sizeof(AdapterPrivate));
+}
+
+static void adapter_init(Adapter *self)
+{
+	AdapterPrivate *priv;
+
+	self->priv = priv = ADAPTER_GET_PRIVATE(self);
+
+	// TODO: Assert for conn
+	// g_assert(!conn);
+}
