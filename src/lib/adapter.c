@@ -42,20 +42,21 @@ enum {
 	PROP_DBUS_G_PROXY
 };
 
-static void adapter_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
-{
-	Adapter *self = ADAPTER(object);
-
-	switch (property_id) {
-	case PROP_DBUS_G_PROXY:
-		self->priv->dbus_g_proxy = g_value_get_object(value);
-		break;
-	}
-}
+static void adapter_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+static void adapter_get_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
 static void adapter_class_init(AdapterClass *klass)
 {
 	g_type_class_add_private(klass, sizeof(AdapterPrivate));
+
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+	GParamSpec *pspec;
+
+	gobject_class->set_property = adapter_set_property;
+	gobject_class->get_property = adapter_get_property;
+
+	pspec = g_param_spec_string("adapter_dbus_g_proxy", "adapter_dbus_g_proxy", "Adapter DBUS GProxy", NULL, G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE);
+	g_object_class_install_property(gobject_class, PROP_DBUS_G_PROXY, pspec);
 }
 
 static void adapter_init(Adapter *self)
@@ -67,3 +68,34 @@ static void adapter_init(Adapter *self)
 	// TODO: Assert for conn
 	// g_assert(!conn);
 }
+
+static void adapter_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+{
+	Adapter *self = ADAPTER(object);
+
+	switch (property_id) {
+	case PROP_DBUS_G_PROXY:
+		self->priv->dbus_g_proxy = g_value_get_object(value);
+		break;
+
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+		break;
+	}
+}
+
+static void adapter_get_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+{
+	Adapter *self = ADAPTER(object);
+
+	switch (property_id) {
+	case PROP_DBUS_G_PROXY:
+		g_value_set_object(value, self->priv->dbus_g_proxy);
+		break;
+
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+		break;
+	}
+}
+

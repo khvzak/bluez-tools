@@ -37,15 +37,33 @@ struct _ManagerPrivate {
 
 G_DEFINE_TYPE(Manager, manager, G_TYPE_OBJECT);
 
+enum {
+	PROP_0,
+
+	PROP_ADAPTERS
+};
+
+static void manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+static void manager_get_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+
 static void manager_class_init(ManagerClass *klass)
 {
 	g_type_class_add_private(klass, sizeof(ManagerPrivate));
+
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+	GParamSpec *pspec;
+
+	gobject_class->set_property = manager_set_property;
+	gobject_class->get_property = manager_get_property;
+
+	pspec = g_param_spec_string("Adapters", "adapters", "List of adapters", NULL, G_PARAM_READABLE);
+	g_object_class_install_property(gobject_class, PROP_ADAPTERS, pspec);
 }
 
 static void manager_init(Manager *self)
 {
 	ManagerPrivate *priv;
-	
+
 	self->priv = priv = MANAGER_GET_PRIVATE(self);
 
 	// TODO: Assert for conn
@@ -54,7 +72,35 @@ static void manager_init(Manager *self)
 	priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_MANAGER_PATH, BLUEZ_DBUS_MANAGER_INTERFACE);
 }
 
-gboolean manager_get_default_adapter(Manager *self, GError **error, Adapter **adapter) {
+static void manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+{
+	Manager *self = MANAGER(object);
+
+	switch (property_id) {
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+		break;
+	}
+}
+
+static void manager_get_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+{
+	Manager *self = MANAGER(object);
+
+	switch (property_id) {
+	case PROP_ADAPTERS:
+		
+		g_value_set_object(value, self->priv->dbus_g_proxy);
+		break;
+
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+		break;
+	}
+}
+
+gboolean manager_get_default_adapter(Manager *self, GError **error, Adapter **adapter)
+{
 	DBusGProxy *adapter_proxy = NULL;
 
 	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "DefaultAdapter", error, G_TYPE_INVALID, DBUS_TYPE_G_PROXY, &adapter_proxy, G_TYPE_INVALID)) {
@@ -76,3 +122,4 @@ gboolean manager_find_adapter(Manager *self, const gchar *adapter_name, GError *
 
 	return TRUE;
 }
+
