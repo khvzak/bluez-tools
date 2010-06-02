@@ -32,5 +32,6 @@
 extern DBusGConnection *conn;
 
 gboolean dbus_connect(GError **error);
+void dbus_disconnect();
 
 #endif /* __DBUS_COMMON_H */

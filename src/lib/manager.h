@@ -26,11 +26,6 @@
 
 #include <glib-object.h>
 
-#include "dbus-common.h"
-
-#define BLUEZ_DBUS_MANAGER_PATH "/"
-#define BLUEZ_DBUS_MANAGER_INTERFACE "org.bluez.Manager"
-
 /*
  * Type macros
  */
@@ -54,15 +49,13 @@ struct _Manager {
 
 struct _ManagerClass {
 	GObjectClass parent_class;
-
-	/* class members */
-	// ...
 };
 
 /*
  * Method definitions
  */
-gboolean manager_get_default_adapter(Manager *self, GError **error, Adapter **adapter);
-gboolean manager_find_adapter(Manager *self, const gchar *adapter_name, GError **error, Adapter **adapter);
+gboolean manager_get_properties(Manager *self, GError **error, GHashTable **properties);
+gboolean manager_get_default_adapter(Manager *self, GError **error, gchar **adapter_path);
+gboolean manager_find_adapter(Manager *self, const gchar *adapter_name, GError **error, gchar **adapter_path);
 
 #endif /* __MANAGER_H */

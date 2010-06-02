@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include "marshallers.h"
 #include "dbus-common.h"
 
 DBusGConnection *conn = NULL;
@@ -36,5 +37,13 @@ gboolean dbus_connect(GError **error)
 		return FALSE;
 	}
 
+	/* Marshallers registration */
+	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__STRING_BOXED, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
+
 	return TRUE;
+}
+
+void dbus_disconnect()
+{
+	dbus_g_connection_unref(conn);
 }

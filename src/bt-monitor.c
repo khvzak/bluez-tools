@@ -31,12 +31,31 @@
 #include "lib/dbus-common.h"
 #include "lib/adapter.h"
 #include "lib/manager.h"
-#include "monitor.h"
 
-static gchar *adapter = NULL;
+static gchar *adapter_name = NULL;
+
+static void property_changed_handler(Manager *manager, const gchar *name, const GValue *value, gpointer data)
+{
+	g_print("property changed: %s\n", name);
+}
+
+static void adapter_added_handler(Manager *manager, const gchar *adapter_path, gpointer data)
+{
+	g_print("adapter added: %s\n", adapter_path);
+}
+
+static void adapter_removed_handler(Manager *manager, const gchar *adapter_path, gpointer data)
+{
+	g_print("adapter removed: %s\n", adapter_path);
+}
+
+static void default_adapter_changed_handler(Manager *manager, const gchar *adapter_path, gpointer data)
+{
+	g_print("default adapter changed: %s\n", adapter_path);
+}
 
 static GOptionEntry entries[] = {
-	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter, "Adapter name or MAC", NULL},
+	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_name, "Adapter name or MAC", NULL},
 	{ NULL}
 };
 
@@ -65,7 +84,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (!adapter) {
+	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
+
+	if (!adapter_name) {
 		// Listen for all events
 	} else {
 		// Listen for an adapter events
@@ -76,6 +97,15 @@ int main(int argc, char *argv[])
 		//	exit(EXIT_FAILURE);
 		//}
 	}
+
+	g_signal_connect(manager, "PropertyChanged", G_CALLBACK(property_changed_handler), NULL);
+	g_signal_connect(manager, "AdapterAdded", G_CALLBACK(adapter_added_handler), NULL);
+	g_signal_connect(manager, "AdapterRemoved", G_CALLBACK(adapter_removed_handler), NULL);
+	g_signal_connect(manager, "DefaultAdapterChanged", G_CALLBACK(default_adapter_changed_handler), NULL);
+
+	GMainLoop *mainloop;
+	mainloop = g_main_loop_new(NULL, FALSE);
+	g_main_loop_run(mainloop);
 
 	exit(EXIT_SUCCESS);
 }
