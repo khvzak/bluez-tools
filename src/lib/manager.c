@@ -43,7 +43,7 @@ G_DEFINE_TYPE(Manager, manager, G_TYPE_OBJECT);
 enum {
 	PROP_0,
 
-	PROP_ADAPTERS
+	PROP_ADAPTERS /* readonly */
 };
 
 enum {
@@ -76,9 +76,11 @@ static void manager_class_init(ManagerClass *klass)
 	gobject_class->set_property = manager_set_property;
 	gobject_class->get_property = manager_get_property;
 
+	/* array{object} Adapters [readonly] */
 	pspec = g_param_spec_boxed("Adapters", "adapters", "List of adapters", G_TYPE_PTR_ARRAY, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_ADAPTERS, pspec);
 
+	/* Signals registation */
 	signals[PROPERTY_CHANGED] = g_signal_new("PropertyChanged",
 			G_TYPE_FROM_CLASS(gobject_class),
 			G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
@@ -200,7 +202,7 @@ gboolean manager_get_default_adapter(Manager *self, GError **error, gchar **adap
 }
 
 /* object FindAdapter(string pattern) */
-gboolean manager_find_adapter(Manager *self, const gchar *adapter_name, GError **error, gchar **adapter_path)
+gboolean manager_find_adapter(Manager *self, GError **error, const gchar *adapter_name, gchar **adapter_path)
 {
 	g_assert(self != NULL);
 

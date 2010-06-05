@@ -56,6 +56,6 @@ struct _ManagerClass {
  */
 gboolean manager_get_properties(Manager *self, GError **error, GHashTable **properties);
 gboolean manager_get_default_adapter(Manager *self, GError **error, gchar **adapter_path);
-gboolean manager_find_adapter(Manager *self, const gchar *adapter_name, GError **error, gchar **adapter_path);
+gboolean manager_find_adapter(Manager *self, GError **error, const gchar *adapter_name, gchar **adapter_path);
 
 #endif /* __MANAGER_H */

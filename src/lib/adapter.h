@@ -26,10 +26,6 @@
 
 #include <glib-object.h>
 
-#include "dbus-common.h"
-
-#define BLUEZ_DBUS_ADAPTER_INTERFACE "org.bluez.Adapter"
-
 /*
  * Type macros
  */
@@ -53,9 +49,22 @@ struct _Adapter {
 
 struct _AdapterClass {
 	GObjectClass parent_class;
-
-	/* class members */
-	// ...
 };
+
+/*
+ * Method definitions
+ */
+gboolean adapter_get_properties(Adapter *self, GError **error, GHashTable **properties);
+gboolean adapter_request_session(Adapter *self, GError **error);
+gboolean adapter_release_session(Adapter *self, GError **error);
+gboolean adapter_start_discovery(Adapter *self, GError **error);
+gboolean adapter_stop_discovery(Adapter *self, GError **error);
+gboolean adapter_find_device(Adapter *self, GError **error, const gchar *device_address, gchar **device_path);
+gboolean adapter_create_device(Adapter *self, GError **error, const gchar *device_address, gchar **device_path);
+gboolean adapter_create_paired_device(Adapter *self, GError **error, const gchar *device_address, const gchar *agent_path, const gchar *agent_capability, gchar **device_path);
+gboolean adapter_cancel_device_creation(Adapter *self, GError **error, const gchar *device_address);
+gboolean adapter_remove_device(Adapter *self, GError **error, const gchar *device_path);
+gboolean adapter_register_agent(Adapter *self, GError **error, const gchar *agent_path, const gchar *agent_capability);
+gboolean adapter_unregister_agent(Adapter *self, GError **error, const gchar *agent_path);
 
 #endif /* __ADAPTER_H */

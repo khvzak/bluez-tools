@@ -86,22 +86,28 @@ int main(int argc, char *argv[])
 
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
 
-	if (!adapter_name) {
-		// Listen for all events
-	} else {
-		// Listen for an adapter events
-		//Adapter *adapter_obj;
-		//if (!find_adapter(adapter, &error, &adapter_obj)) {
-		//	g_printerr("Couldn't find adapter '%s': %s\n", adapter, error->message);
-		//	g_error_free(error);
-		//	exit(EXIT_FAILURE);
-		//}
-	}
+	//if (!adapter_name) {
+	// Listen for all events
+	//} else {
+	// Listen for an adapter events
+	//Adapter *adapter_obj;
+	//if (!find_adapter(adapter, &error, &adapter_obj)) {
+	//	g_printerr("Couldn't find adapter '%s': %s\n", adapter, error->message);
+	//	g_error_free(error);
+	//	exit(EXIT_FAILURE);
+	//}
+	//}
 
 	g_signal_connect(manager, "PropertyChanged", G_CALLBACK(property_changed_handler), NULL);
 	g_signal_connect(manager, "AdapterAdded", G_CALLBACK(adapter_added_handler), NULL);
 	g_signal_connect(manager, "AdapterRemoved", G_CALLBACK(adapter_removed_handler), NULL);
 	g_signal_connect(manager, "DefaultAdapterChanged", G_CALLBACK(default_adapter_changed_handler), NULL);
+
+	gchar *adapter_path;
+	manager_get_default_adapter(manager, &error, &adapter_path);
+
+	//Adapter *adapter = g_object_new(ADAPTER_TYPE, "dbus_object_path", adapter_path, NULL);
+	Adapter *adapter = g_object_new(ADAPTER_TYPE, NULL);
 
 	GMainLoop *mainloop;
 	mainloop = g_main_loop_new(NULL, FALSE);
