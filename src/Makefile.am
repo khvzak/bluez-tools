@@ -16,7 +16,12 @@ lib/marshallers.c: lib/marshallers.list
 lib_sources = lib/marshallers.c lib/marshallers.h \
               lib/dbus-common.c lib/dbus-common.h \
               lib/adapter.c lib/adapter.h \
-              lib/manager.c lib/manager.h
+              lib/audio.c lib/audio.h \
+              lib/device.c lib/device.h \
+              lib/input.c lib/input.h \
+              lib/manager.c lib/manager.h \
+              lib/network.c lib/network.h \
+              lib/serial.c lib/serial.h
 
 bin_PROGRAMS = bt-monitor
 bt_monitor_SOURCES = $(lib_sources) bt-monitor.c

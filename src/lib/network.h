@@ -21,42 +21,42 @@
  *
  */
 
-#ifndef __MANAGER_H
-#define __MANAGER_H
+#ifndef __NETWORK_H
+#define __NETWORK_H
 
 #include <glib-object.h>
 
 /*
  * Type macros
  */
-#define MANAGER_TYPE				(manager_get_type())
-#define MANAGER(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), MANAGER_TYPE, Manager))
-#define MANAGER_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), MANAGER_TYPE))
-#define MANAGER_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), MANAGER_TYPE, ManagerClass))
-#define MANAGER_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), MANAGER_TYPE))
-#define MANAGER_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), MANAGER_TYPE, ManagerClass))
+#define NETWORK_TYPE				(network_get_type())
+#define NETWORK(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), NETWORK_TYPE, Network))
+#define NETWORK_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), NETWORK_TYPE))
+#define NETWORK_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), NETWORK_TYPE, NetworkClass))
+#define NETWORK_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), NETWORK_TYPE))
+#define NETWORK_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), NETWORK_TYPE, NetworkClass))
 
-typedef struct _Manager Manager;
-typedef struct _ManagerClass ManagerClass;
-typedef struct _ManagerPrivate ManagerPrivate;
+typedef struct _Network Network;
+typedef struct _NetworkClass NetworkClass;
+typedef struct _NetworkPrivate NetworkPrivate;
 
-struct _Manager {
+struct _Network {
 	GObject parent_instance;
 
 	/*< private >*/
-	ManagerPrivate *priv;
+	NetworkPrivate *priv;
 };
 
-struct _ManagerClass {
+struct _NetworkClass {
 	GObjectClass parent_class;
 };
 
 /*
  * Method definitions
  */
-gchar *manager_default_adapter(Manager *self, GError **error);
-gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error);
-GHashTable *manager_get_properties(Manager *self, GError **error);
+gchar *network_connect(Network *self, const gchar *uuid, GError **error);
+void network_disconnect(Network *self, GError **error);
+GHashTable *network_get_properties(Network *self, GError **error);
 
-#endif /* __MANAGER_H */
+#endif /* __NETWORK_H */
 

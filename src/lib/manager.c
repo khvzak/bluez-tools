@@ -47,23 +47,23 @@ enum {
 };
 
 enum {
-	PROPERTY_CHANGED,
 	ADAPTER_ADDED,
 	ADAPTER_REMOVED,
 	DEFAULT_ADAPTER_CHANGED,
+	PROPERTY_CHANGED,
 
 	LAST_SIGNAL
 };
 
 static guint signals[LAST_SIGNAL] = {0};
 
-static void manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
-static void manager_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _manager_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
-static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *property, const GValue *value, gpointer data);
-static void adapter_added_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter_path, gpointer data);
-static void adapter_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter_path, gpointer data);
-static void default_adapter_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter_path, gpointer data);
+static void adapter_added_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data);
+static void adapter_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data);
+static void default_adapter_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data);
+static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data);
 
 static void manager_class_init(ManagerClass *klass)
 {
@@ -73,21 +73,14 @@ static void manager_class_init(ManagerClass *klass)
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 	GParamSpec *pspec;
 
-	gobject_class->set_property = manager_set_property;
-	gobject_class->get_property = manager_get_property;
+	gobject_class->get_property = _manager_get_property;
+	gobject_class->set_property = _manager_set_property;
 
 	/* array{object} Adapters [readonly] */
-	pspec = g_param_spec_boxed("Adapters", "adapters", "List of adapters", G_TYPE_PTR_ARRAY, G_PARAM_READABLE);
+	pspec = g_param_spec_boxed("Adapters", NULL, NULL, G_TYPE_PTR_ARRAY, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_ADAPTERS, pspec);
 
 	/* Signals registation */
-	signals[PROPERTY_CHANGED] = g_signal_new("PropertyChanged",
-			G_TYPE_FROM_CLASS(gobject_class),
-			G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
-			0, NULL, NULL,
-			g_cclosure_bluez_marshal_VOID__STRING_BOXED,
-			G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_VALUE);
-
 	signals[ADAPTER_ADDED] = g_signal_new("AdapterAdded",
 			G_TYPE_FROM_CLASS(gobject_class),
 			G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
@@ -108,6 +101,13 @@ static void manager_class_init(ManagerClass *klass)
 			0, NULL, NULL,
 			g_cclosure_marshal_VOID__STRING,
 			G_TYPE_NONE, 1, G_TYPE_STRING);
+
+	signals[PROPERTY_CHANGED] = g_signal_new("PropertyChanged",
+			G_TYPE_FROM_CLASS(gobject_class),
+			G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
+			0, NULL, NULL,
+			g_cclosure_bluez_marshal_VOID__STRING_BOXED,
+			G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_VALUE);
 }
 
 static void manager_init(Manager *self)
@@ -118,11 +118,9 @@ static void manager_init(Manager *self)
 
 	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_MANAGER_PATH, BLUEZ_DBUS_MANAGER_INTERFACE);
 
-	/* DBUS signals connection */
+	g_assert(self->priv->dbus_g_proxy != NULL);
 
-	/* PropertyChanged(string name, variant value)  */
-	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
-	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
+	/* DBUS signals connection */
 
 	/* AdapterAdded(object adapter) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "AdapterAdded", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
@@ -135,25 +133,18 @@ static void manager_init(Manager *self)
 	/* DefaultAdapterChanged(object adapter) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "DefaultAdapterChanged", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
 	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "DefaultAdapterChanged", G_CALLBACK(default_adapter_changed_handler), self, NULL);
+
+	/* PropertyChanged(string name, variant value) */
+	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
 }
 
-static void manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+static void _manager_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
 {
 	Manager *self = MANAGER(object);
 
-	switch (property_id) {
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
-		break;
-	}
-}
-
-static void manager_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
-{
-	Manager *self = MANAGER(object);
-
-	GHashTable *properties;
-	if (!manager_get_properties(self, NULL, &properties)) {
+	GHashTable *properties = manager_get_properties(self, NULL);
+	if (properties == NULL) {
 		return;
 	}
 
@@ -170,74 +161,83 @@ static void manager_get_property(GObject *object, guint property_id, GValue *val
 	g_hash_table_unref(properties);
 }
 
-/* Methods */
-
-/* dict GetProperties()
- *
- * Properties:
- * 	array{object} Adapters
- *
- */
-gboolean manager_get_properties(Manager *self, GError **error, GHashTable **properties)
+static void _manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
-	g_assert(self != NULL);
+	Manager *self = MANAGER(object);
 
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, dbus_g_type_get_map("GHashTable", G_TYPE_STRING, G_TYPE_VALUE), properties, G_TYPE_INVALID)) {
-		return FALSE;
+	switch (property_id) {
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+		break;
 	}
-
-	return TRUE;
 }
 
+/* Methods */
+
 /* object DefaultAdapter() */
-gboolean manager_get_default_adapter(Manager *self, GError **error, gchar **adapter_path)
+gchar *manager_default_adapter(Manager *self, GError **error)
 {
 	g_assert(self != NULL);
 
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "DefaultAdapter", error, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, adapter_path, G_TYPE_INVALID)) {
-		return FALSE;
+	gchar *ret;
+
+	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "DefaultAdapter", error, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
+		return NULL;
 	}
 
-	return TRUE;
+	return ret;
 }
 
 /* object FindAdapter(string pattern) */
-gboolean manager_find_adapter(Manager *self, GError **error, const gchar *adapter_name, gchar **adapter_path)
+gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error)
 {
 	g_assert(self != NULL);
 
-	if (adapter_name == NULL) {
-		return manager_get_default_adapter(self, error, adapter_path);
+	gchar *ret;
+
+	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "FindAdapter", error, G_TYPE_STRING, pattern, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
+		return NULL;
 	}
 
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "FindAdapter", error, G_TYPE_STRING, adapter_name, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, adapter_path, G_TYPE_INVALID)) {
-		return FALSE;
+	return ret;
+}
+
+/* dict GetProperties() */
+GHashTable *manager_get_properties(Manager *self, GError **error)
+{
+	g_assert(self != NULL);
+
+	GHashTable *ret;
+
+	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID)) {
+		return NULL;
 	}
 
-	return TRUE;
+	return ret;
 }
 
 /* Signals handlers */
+static void adapter_added_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data)
+{
+	Manager *self = MANAGER(data);
+	g_signal_emit(self, signals[ADAPTER_ADDED], 0, adapter);
+}
+
+static void adapter_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data)
+{
+	Manager *self = MANAGER(data);
+	g_signal_emit(self, signals[ADAPTER_REMOVED], 0, adapter);
+}
+
+static void default_adapter_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data)
+{
+	Manager *self = MANAGER(data);
+	g_signal_emit(self, signals[DEFAULT_ADAPTER_CHANGED], 0, adapter);
+}
+
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data)
 {
 	Manager *self = MANAGER(data);
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);
 }
 
-static void adapter_added_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter_path, gpointer data)
-{
-	Manager *self = MANAGER(data);
-	g_signal_emit(self, signals[ADAPTER_ADDED], 0, adapter_path);
-}
-
-static void adapter_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter_path, gpointer data)
-{
-	Manager *self = MANAGER(data);
-	g_signal_emit(self, signals[ADAPTER_REMOVED], 0, adapter_path);
-}
-
-static void default_adapter_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter_path, gpointer data)
-{
-	Manager *self = MANAGER(data);
-	g_signal_emit(self, signals[DEFAULT_ADAPTER_CHANGED], 0, adapter_path);
-}

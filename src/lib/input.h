@@ -21,42 +21,42 @@
  *
  */
 
-#ifndef __MANAGER_H
-#define __MANAGER_H
+#ifndef __INPUT_H
+#define __INPUT_H
 
 #include <glib-object.h>
 
 /*
  * Type macros
  */
-#define MANAGER_TYPE				(manager_get_type())
-#define MANAGER(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), MANAGER_TYPE, Manager))
-#define MANAGER_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), MANAGER_TYPE))
-#define MANAGER_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), MANAGER_TYPE, ManagerClass))
-#define MANAGER_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), MANAGER_TYPE))
-#define MANAGER_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), MANAGER_TYPE, ManagerClass))
+#define INPUT_TYPE				(input_get_type())
+#define INPUT(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), INPUT_TYPE, Input))
+#define INPUT_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), INPUT_TYPE))
+#define INPUT_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), INPUT_TYPE, InputClass))
+#define INPUT_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), INPUT_TYPE))
+#define INPUT_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), INPUT_TYPE, InputClass))
 
-typedef struct _Manager Manager;
-typedef struct _ManagerClass ManagerClass;
-typedef struct _ManagerPrivate ManagerPrivate;
+typedef struct _Input Input;
+typedef struct _InputClass InputClass;
+typedef struct _InputPrivate InputPrivate;
 
-struct _Manager {
+struct _Input {
 	GObject parent_instance;
 
 	/*< private >*/
-	ManagerPrivate *priv;
+	InputPrivate *priv;
 };
 
-struct _ManagerClass {
+struct _InputClass {
 	GObjectClass parent_class;
 };
 
 /*
  * Method definitions
  */
-gchar *manager_default_adapter(Manager *self, GError **error);
-gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error);
-GHashTable *manager_get_properties(Manager *self, GError **error);
+void input_connect(Input *self, GError **error);
+void input_disconnect(Input *self, GError **error);
+GHashTable *input_get_properties(Input *self, GError **error);
 
-#endif /* __MANAGER_H */
+#endif /* __INPUT_H */
 

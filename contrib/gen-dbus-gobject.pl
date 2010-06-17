@@ -245,7 +245,7 @@ EOT
 	my $in_args = join ', ', (map "const ".get_g_type($_->{'type'}).$_->{'name'}, @{$m{'args'}});
         $method_defs .=
 	get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."($obj *self, ".
-        ($in_args eq '' ? "" : "$in_args, ")."GError **error = NULL);\n";
+        ($in_args eq '' ? "" : "$in_args, ")."GError **error);\n";
     }
     chomp $method_defs;
     
@@ -296,8 +296,8 @@ enum {
 static guint signals[LAST_SIGNAL] = {0};
 {FI_SIGNALS}
 
-static void {\$object}_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
-static void {\$object}_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+static void _{\$object}_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _{\$object}_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
 {IF_SIGNALS}
 {SIGNALS_HANDLERS_DEF}
@@ -311,8 +311,8 @@ static void {\$object}_class_init({\$Object}Class *klass)
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 	GParamSpec *pspec;
 
-	gobject_class->get_property = {\$object}_get_property;
-	gobject_class->set_property = {\$object}_set_property;
+	gobject_class->get_property = _{\$object}_get_property;
+	gobject_class->set_property = _{\$object}_set_property;
 
 	{PROPERTIES_REGISTRATION}
 
@@ -324,7 +324,7 @@ static void {\$object}_class_init({\$Object}Class *klass)
 
 static void {\$object}_init({\$Object} *self)
 {
-	self->priv = MANAGER_GET_PRIVATE(self);
+	self->priv = {\$OBJECT}_GET_PRIVATE(self);
 
 	g_assert(conn != NULL);
 
@@ -354,7 +354,7 @@ static void {\$object}_post_init({\$Object} *self)
 }
 {FI_POST_INIT}
 
-static void {\$object}_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
+static void _{\$object}_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
 {
 	{\$Object} *self = {\$OBJECT}(object);
 
@@ -378,13 +378,13 @@ static void {\$object}_get_property(GObject *object, guint property_id, GValue *
 	{FI_PROPERTIES}
 }
 
-static void {\$object}_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+static void _{\$object}_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
 	{\$Object} *self = {\$OBJECT}(object);
 
 	switch (property_id) {
 	{SET_PROPERTIES}
-	
+
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
 		break;
@@ -426,11 +426,15 @@ EOT
 	"$method_def\n".
 	"{\n".
 	"\tg_assert(self != NULL);\n\n".
-	($m{'ret'} eq 'void' ? "" : "\t".get_g_type($m{'ret'})."ret;\n\n").
-	"\tif (!dbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID)) {\n".
-	"\t\treturn NULL;\n".
-	"\t}\n\n".
-	"\treturn ret;\n".
+	($m{'ret'} eq 'void' ?
+	 "\tdbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, G_TYPE_INVALID);\n"
+	 :
+	 "\t".get_g_type($m{'ret'})."ret;\n\n".
+	 "\tif (!dbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID)) {\n".
+	 "\t\treturn NULL;\n".
+	 "\t}\n\n".
+	 "\treturn ret;\n"
+	).
 	"}\n\n";
     }
     $methods =~ s/\s+$//s;
@@ -446,7 +450,8 @@ EOT
         
         my $enum = join '_', (map uc $_, @a);
         my $handler_name = (join '_', (map lc $_, @a))."_handler";
-        my $handler = "static void $handler_name(DBusGProxy *dbus_g_proxy, ".(join ', ', map("const ".get_g_type($_->{'type'}).$_->{'name'}, @{$s{'args'}})).", gpointer data)";
+	my $in_args = join ', ', map("const ".get_g_type($_->{'type'}).$_->{'name'}, @{$s{'args'}});
+        my $handler = "static void $handler_name(DBusGProxy *dbus_g_proxy, ".($in_args eq '' ? "" : "$in_args, ")."gpointer data)";
         
         $signals_registration .=
         "\tsignals[$enum] = g_signal_new(\"$signal\",\n".
@@ -471,9 +476,10 @@ EOT
             die "unknown signal arguments: $arg_t\n";
         }
         
+	my $in_args2 = join ', ', (map get_g_type_name($_->{'type'}), @{$s{'args'}});
         $signals_connection .=
         "\t/* $s{'decl'} */\n".
-        "\tdbus_g_proxy_add_signal(self->priv->dbus_g_proxy, \"$signal\", ".(join ', ', (map get_g_type_name($_->{'type'}), @{$s{'args'}})).", G_TYPE_INVALID);\n".
+        "\tdbus_g_proxy_add_signal(self->priv->dbus_g_proxy, \"$signal\", ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID);\n".
         "\tdbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, \"$signal\", G_CALLBACK($handler_name), self, NULL);\n\n";
         
         my $args = join ', ', map($_->{'name'}, @{$s{'args'}});
@@ -535,7 +541,7 @@ EOT
             $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_PTR_ARRAY, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $get_properties .= "\t\tg_value_set_boxed(value, g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\")));\n";
         } elsif ($p{'type'} eq 'uint32') {
-            $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 4294967295, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
+            $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 65535, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $get_properties .= "\t\tg_value_set_uint(value, g_value_get_uint(g_hash_table_lookup(properties, \"$property\")));\n";
         } elsif ($p{'type'} eq 'boolean') {
             $properties_registration .= "\tpspec = g_param_spec_boolean(\"$property\", NULL, NULL, FALSE, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
@@ -560,7 +566,7 @@ EOT
 	    "\t\tbreak;\n\n";
 	}
     }
-    $enum_properties =~ s/^\t(.+?), (\/\* .+? \*\/)\s+$/$1 $2/s;
+    $enum_properties =~ s/^\t(.+), (\/\* .+? \*\/)\s+$/$1 $2/s;
     $properties_registration =~ s/^\t(.+?)\s+$/$1/s;
     $get_properties =~ s/^\t(.+?)\s+$/$1/s;
     $set_properties =~ s/^\t(.+?)\s+$/$1/s;
@@ -576,12 +582,12 @@ EOT
     if (scalar keys %{$node->{$intf}{'signals'}} > 0) {
         $output =~ s/\{IF_SIGNALS\}\s+(.+?)\s+\{FI_SIGNALS\}/$1/gs;
     } else {
-        $output =~ s/\s+\{IF_SIGNALS\}.+?\{FI_SIGNALS\}\s+/\n\n/gs;
+        $output =~ s/\s+\{IF_SIGNALS\}.+?\{FI_SIGNALS\}//gs;
     }
     if (scalar keys %{$node->{$intf}{'properties'}} > 0) {
 	$output =~ s/\{IF_PROPERTIES\}\s+(.+?)\s+\{FI_PROPERTIES\}/$1/gs;
     } else {
-	$output =~ s/\s+\{IF_PROPERTIES\}.+?\{FI_PROPERTIES\}\s+/\n\n/gs;
+	$output =~ s/\s+\{IF_PROPERTIES\}.+?\{FI_PROPERTIES\}//gs;
     }
     $output =~ s/{BLUEZ_DBUS_OBJECT_DEFS}/$bluez_dbus_object_defs/;
     $output =~ s/{ENUM_SIGNALS}/$enum_signals/;
@@ -601,7 +607,7 @@ EOT
     # Some formatting fixes
     $output =~ s/\s+?(\t*\})/\n$1/g;
     $output =~ s/(switch \(\w+\) \{\n)\s+?(\t+default:)/$1$2/s;
-    $output =~ s/\s+$/\n\n/;
+    $output =~ s/\s+$/\n\n/s;
     
     return $output;
 }

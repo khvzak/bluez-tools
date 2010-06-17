@@ -21,42 +21,42 @@
  *
  */
 
-#ifndef __MANAGER_H
-#define __MANAGER_H
+#ifndef __AUDIO_H
+#define __AUDIO_H
 
 #include <glib-object.h>
 
 /*
  * Type macros
  */
-#define MANAGER_TYPE				(manager_get_type())
-#define MANAGER(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), MANAGER_TYPE, Manager))
-#define MANAGER_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), MANAGER_TYPE))
-#define MANAGER_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), MANAGER_TYPE, ManagerClass))
-#define MANAGER_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), MANAGER_TYPE))
-#define MANAGER_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), MANAGER_TYPE, ManagerClass))
+#define AUDIO_TYPE				(audio_get_type())
+#define AUDIO(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), AUDIO_TYPE, Audio))
+#define AUDIO_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), AUDIO_TYPE))
+#define AUDIO_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), AUDIO_TYPE, AudioClass))
+#define AUDIO_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), AUDIO_TYPE))
+#define AUDIO_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), AUDIO_TYPE, AudioClass))
 
-typedef struct _Manager Manager;
-typedef struct _ManagerClass ManagerClass;
-typedef struct _ManagerPrivate ManagerPrivate;
+typedef struct _Audio Audio;
+typedef struct _AudioClass AudioClass;
+typedef struct _AudioPrivate AudioPrivate;
 
-struct _Manager {
+struct _Audio {
 	GObject parent_instance;
 
 	/*< private >*/
-	ManagerPrivate *priv;
+	AudioPrivate *priv;
 };
 
-struct _ManagerClass {
+struct _AudioClass {
 	GObjectClass parent_class;
 };
 
 /*
  * Method definitions
  */
-gchar *manager_default_adapter(Manager *self, GError **error);
-gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error);
-GHashTable *manager_get_properties(Manager *self, GError **error);
+void audio_connect(Audio *self, GError **error);
+void audio_disconnect(Audio *self, GError **error);
+GHashTable *audio_get_properties(Audio *self, GError **error);
 
-#endif /* __MANAGER_H */
+#endif /* __AUDIO_H */
 

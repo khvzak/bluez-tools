@@ -21,42 +21,41 @@
  *
  */
 
-#ifndef __MANAGER_H
-#define __MANAGER_H
+#ifndef __SERIAL_H
+#define __SERIAL_H
 
 #include <glib-object.h>
 
 /*
  * Type macros
  */
-#define MANAGER_TYPE				(manager_get_type())
-#define MANAGER(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), MANAGER_TYPE, Manager))
-#define MANAGER_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), MANAGER_TYPE))
-#define MANAGER_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), MANAGER_TYPE, ManagerClass))
-#define MANAGER_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), MANAGER_TYPE))
-#define MANAGER_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), MANAGER_TYPE, ManagerClass))
+#define SERIAL_TYPE				(serial_get_type())
+#define SERIAL(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), SERIAL_TYPE, Serial))
+#define SERIAL_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), SERIAL_TYPE))
+#define SERIAL_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), SERIAL_TYPE, SerialClass))
+#define SERIAL_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), SERIAL_TYPE))
+#define SERIAL_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), SERIAL_TYPE, SerialClass))
 
-typedef struct _Manager Manager;
-typedef struct _ManagerClass ManagerClass;
-typedef struct _ManagerPrivate ManagerPrivate;
+typedef struct _Serial Serial;
+typedef struct _SerialClass SerialClass;
+typedef struct _SerialPrivate SerialPrivate;
 
-struct _Manager {
+struct _Serial {
 	GObject parent_instance;
 
 	/*< private >*/
-	ManagerPrivate *priv;
+	SerialPrivate *priv;
 };
 
-struct _ManagerClass {
+struct _SerialClass {
 	GObjectClass parent_class;
 };
 
 /*
  * Method definitions
  */
-gchar *manager_default_adapter(Manager *self, GError **error);
-gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error);
-GHashTable *manager_get_properties(Manager *self, GError **error);
+gchar *serial_connect(Serial *self, const gchar *pattern, GError **error);
+void serial_disconnect(Serial *self, const gchar *device, GError **error);
 
-#endif /* __MANAGER_H */
+#endif /* __SERIAL_H */
 
