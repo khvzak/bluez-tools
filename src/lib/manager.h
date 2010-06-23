@@ -51,12 +51,17 @@ struct _ManagerClass {
 	GObjectClass parent_class;
 };
 
+/* used by MANAGER_TYPE */
+GType manager_get_type(void) G_GNUC_CONST;
+
 /*
  * Method definitions
  */
 gchar *manager_default_adapter(Manager *self, GError **error);
 gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error);
 GHashTable *manager_get_properties(Manager *self, GError **error);
+
+GPtrArray *manager_get_adapters(Manager *self, GError **error);
 
 #endif /* __MANAGER_H */
 

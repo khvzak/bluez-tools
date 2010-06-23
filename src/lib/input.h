@@ -51,12 +51,18 @@ struct _InputClass {
 	GObjectClass parent_class;
 };
 
+/* used by INPUT_TYPE */
+GType input_get_type(void) G_GNUC_CONST;
+
 /*
  * Method definitions
  */
 void input_connect(Input *self, GError **error);
 void input_disconnect(Input *self, GError **error);
 GHashTable *input_get_properties(Input *self, GError **error);
+
+const gchar *input_get_dbus_object_path(Input *self);
+gboolean input_get_connected(Input *self, GError **error);
 
 #endif /* __INPUT_H */
 

@@ -29,29 +29,110 @@
 #include <glib.h>
 
 #include "lib/dbus-common.h"
+#include "lib/helpers.h"
 #include "lib/adapter.h"
+#include "lib/device.h"
 #include "lib/manager.h"
 
 static gchar *adapter_name = NULL;
+static GPtrArray *captured_adapters = NULL;
+static GPtrArray *captured_devices = NULL;
 
-static void property_changed_handler(Manager *manager, const gchar *name, const GValue *value, gpointer data)
+/*
+ *  Manager signals
+ */
+static void manager_adapter_added(Manager *manager, const gchar *adapter_path, gpointer data)
 {
-	g_print("property changed: %s\n", name);
+	g_print("[MANAGER] adapter added: %s\n", adapter_path);
+
+	if (adapter_name == NULL) {
+		Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
+		g_ptr_array_add(captured_adapters, adapter);
+	}
 }
 
-static void adapter_added_handler(Manager *manager, const gchar *adapter_path, gpointer data)
+static void manager_adapter_removed(Manager *manager, const gchar *adapter_path, gpointer data)
 {
-	g_print("adapter added: %s\n", adapter_path);
+	g_print("[MANAGER] adapter removed: %s\n", adapter_path);
 }
 
-static void adapter_removed_handler(Manager *manager, const gchar *adapter_path, gpointer data)
+static void manager_default_adapter_changed(Manager *manager, const gchar *adapter_path, gpointer data)
 {
-	g_print("adapter removed: %s\n", adapter_path);
+	g_print("[MANAGER] default adapter changed: %s\n", adapter_path);
 }
 
-static void default_adapter_changed_handler(Manager *manager, const gchar *adapter_path, gpointer data)
+static void manager_property_changed(Manager *manager, const gchar *name, const GValue *value, gpointer data)
 {
-	g_print("default adapter changed: %s\n", adapter_path);
+	g_print("[MANAGER] property changed: %s -> %s\n", name, g_strdup_value_contents(value));
+}
+
+/*
+ * Adapter signals
+ */
+static void adapter_device_created(Adapter *adapter, const gchar *device_path, gpointer data)
+{
+	g_print("[ADAPTER] device created: %s\n", device);
+}
+
+static void adapter_device_disappeared(Adapter *adapter, const gchar *address, gpointer data)
+{
+	g_print("[ADAPTER] device disappeared: %s\n", address);
+}
+
+static void adapter_device_found(Adapter *adapter, const gchar *address, gpointer data)
+{
+	g_print("[ADAPTER] device found: %s\n", address);
+}
+
+static void adapter_device_removed(Adapter *adapter, const gchar *device_path, gpointer data)
+{
+	g_print("[ADAPTER] device removed: %s\n", device);
+}
+
+static void adapter_property_changed(Adapter *adapter, const gchar *name, const GValue *value, gpointer data)
+{
+	g_print("[ADAPTER] property changed: %s -> %s\n", name, g_strdup_value_contents(value));
+}
+
+/*
+ * Device signals
+ */
+static void device_disconnect_requested(Device *device, gpointer data)
+{
+	g_print("[DEVICE] disconnect requested\n");
+}
+
+static void device_node_created(Device *device, const gchar *node, gpointer data)
+{
+	g_print("[DEVICE] node created: %s\n", node);
+}
+
+static void device_node_removed(Device *device, const gchar *node, gpointer data)
+{
+	g_print("[DEVICE] node removed: %s\n", node);
+}
+
+static void device_property_changed(Device *device, const gchar *name, const GValue *value, gpointer data)
+{
+	g_print("[DEVICE] property changed: %s -> %s\n", name, g_strdup_value_contents(value));
+}
+
+/*
+ * Service signals
+ */
+static void audio_property_changed()
+{
+
+}
+
+static void input_property_changed()
+{
+
+}
+
+static void network_property_changed()
+{
+
 }
 
 static GOptionEntry entries[] = {
@@ -71,9 +152,6 @@ int main(int argc, char *argv[])
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("%s: %s\n", g_get_prgname(), error->message);
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
-		// ME: should I call this functions?
-		g_error_free(error);
-		g_option_context_free(context);
 		exit(EXIT_FAILURE);
 	}
 	g_option_context_free(context);
@@ -84,30 +162,61 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	captured_adapters = g_ptr_array_new();
+	captured_devices = g_ptr_array_new();
+
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
 
-	//if (!adapter_name) {
-	// Listen for all events
-	//} else {
-	// Listen for an adapter events
-	//Adapter *adapter_obj;
-	//if (!find_adapter(adapter, &error, &adapter_obj)) {
-	//	g_printerr("Couldn't find adapter '%s': %s\n", adapter, error->message);
-	//	g_error_free(error);
-	//	exit(EXIT_FAILURE);
-	//}
-	//}
+	if (adapter_name != NULL) {
+		gchar *adapter_path = find_adapter_by_name(adapter_name, &error);
+		if (error != NULL) {
+			g_printerr("%s\n", error->message);
+			exit(EXIT_FAILURE);
+		}
 
-	g_signal_connect(manager, "PropertyChanged", G_CALLBACK(property_changed_handler), NULL);
-	g_signal_connect(manager, "AdapterAdded", G_CALLBACK(adapter_added_handler), NULL);
-	g_signal_connect(manager, "AdapterRemoved", G_CALLBACK(adapter_removed_handler), NULL);
-	g_signal_connect(manager, "DefaultAdapterChanged", G_CALLBACK(default_adapter_changed_handler), NULL);
+		g_print("found adapter: %s\n", adapter_path);
 
-	gchar *adapter_path;
-	manager_get_default_adapter(manager, &error, &adapter_path);
+		Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
+		g_ptr_array_add(captured_adapters, adapter);
+		g_free(adapter_path);
+	} else {
 
-	//Adapter *adapter = g_object_new(ADAPTER_TYPE, "dbus_object_path", adapter_path, NULL);
-	Adapter *adapter = g_object_new(ADAPTER_TYPE, NULL);
+	}
+
+	g_signal_connect(manager, "AdapterAdded", G_CALLBACK(manager_adapter_added), NULL);
+	g_signal_connect(manager, "AdapterRemoved", G_CALLBACK(manager_adapter_removed), NULL);
+	g_signal_connect(manager, "DefaultAdapterChanged", G_CALLBACK(manager_default_adapter_changed), NULL);
+	g_signal_connect(manager, "PropertyChanged", G_CALLBACK(manager_property_changed), NULL);
+
+	// Capturing signals from adapters
+	for (int i = 0; i < captured_adapters->len; i++) {
+		Adapter *adapter = ADAPTER(g_ptr_array_index(captured_adapters, i));
+
+		g_signal_connect(adapter, "DeviceCreated", G_CALLBACK(adapter_device_created), NULL);
+		g_signal_connect(adapter, "DeviceDisappeared", G_CALLBACK(adapter_device_disappeared), NULL);
+		g_signal_connect(adapter, "DeviceFound", G_CALLBACK(adapter_device_found), NULL);
+		g_signal_connect(adapter, "DeviceRemoved", G_CALLBACK(adapter_device_removed), NULL);
+		g_signal_connect(adapter, "PropertyChanged", G_CALLBACK(adapter_property_changed), NULL);
+
+		// Capturing signals from devices
+		GValue adapter_prop_devices = {0};
+		g_value_init(&adapter_prop_devices, G_TYPE_PTR_ARRAY);
+		g_object_get_property(G_OBJECT(adapter), "Devices", &adapter_prop_devices);
+
+		GPtrArray *devices_list = g_value_get_boxed(&adapter_prop_devices);
+		for (int i = 0; i < devices_list->len; i++) {
+			gchar *device_path = g_ptr_array_index(devices_list, i);
+			Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
+			g_ptr_array_add(captured_devices, device);
+
+			g_signal_connect(device, "DisconnectRequested", G_CALLBACK(device_disconnect_requested), NULL);
+			g_signal_connect(device, "NodeCreated", G_CALLBACK(device_node_created), NULL);
+			g_signal_connect(device, "NodeRemoved", G_CALLBACK(device_node_removed), NULL);
+			g_signal_connect(device, "PropertyChanged", G_CALLBACK(device_property_changed), NULL);
+		}
+
+		g_value_unset(&adapter_prop_devices);
+	}
 
 	GMainLoop *mainloop;
 	mainloop = g_main_loop_new(NULL, FALSE);
@@ -115,3 +224,4 @@ int main(int argc, char *argv[])
 
 	exit(EXIT_SUCCESS);
 }
+

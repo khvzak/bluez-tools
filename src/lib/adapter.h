@@ -51,6 +51,9 @@ struct _AdapterClass {
 	GObjectClass parent_class;
 };
 
+/* used by ADAPTER_TYPE */
+GType adapter_get_type(void) G_GNUC_CONST;
+
 /*
  * Method definitions
  */
@@ -67,6 +70,25 @@ void adapter_set_property(Adapter *self, const gchar *name, const GValue *value,
 void adapter_start_discovery(Adapter *self, GError **error);
 void adapter_stop_discovery(Adapter *self, GError **error);
 void adapter_unregister_agent(Adapter *self, const gchar *agent, GError **error);
+
+const gchar *adapter_get_dbus_object_path(Adapter *self);
+gchar *adapter_get_address(Adapter *self, GError **error);
+guint32 adapter_get_class(Adapter *self, GError **error);
+GPtrArray *adapter_get_devices(Adapter *self, GError **error);
+gboolean adapter_get_discoverable(Adapter *self, GError **error);
+void adapter_set_discoverable(Adapter *self, const gboolean value, GError **error);
+guint32 adapter_get_discoverable_timeout(Adapter *self, GError **error);
+void adapter_set_discoverable_timeout(Adapter *self, const guint32 value, GError **error);
+gboolean adapter_get_discovering(Adapter *self, GError **error);
+gchar *adapter_get_name(Adapter *self, GError **error);
+void adapter_set_name(Adapter *self, const gchar *value, GError **error);
+gboolean adapter_get_pairable(Adapter *self, GError **error);
+void adapter_set_pairable(Adapter *self, const gboolean value, GError **error);
+guint32 adapter_get_paireable_timeout(Adapter *self, GError **error);
+void adapter_set_paireable_timeout(Adapter *self, const guint32 value, GError **error);
+gboolean adapter_get_powered(Adapter *self, GError **error);
+void adapter_set_powered(Adapter *self, const gboolean value, GError **error);
+GPtrArray *adapter_get_uuids(Adapter *self, GError **error);
 
 #endif /* __ADAPTER_H */
 

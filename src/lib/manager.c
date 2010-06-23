@@ -143,22 +143,22 @@ static void _manager_get_property(GObject *object, guint property_id, GValue *va
 {
 	Manager *self = MANAGER(object);
 
-	GHashTable *properties = manager_get_properties(self, NULL);
-	if (properties == NULL) {
-		return;
-	}
-
 	switch (property_id) {
 	case PROP_ADAPTERS:
-		g_value_set_boxed(value, g_value_dup_boxed(g_hash_table_lookup(properties, "Adapters")));
+	{
+		GError *error = NULL;
+		g_value_set_boxed(value, manager_get_adapters(self, &error));
+		if (error != NULL) {
+			g_print("%s: %s\n", g_get_prgname(), error->message);
+			g_error_free(error);
+		}
+	}
 		break;
 
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
 		break;
 	}
-
-	g_hash_table_unref(properties);
 }
 
 static void _manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
@@ -177,10 +177,9 @@ static void _manager_set_property(GObject *object, guint property_id, const GVal
 /* object DefaultAdapter() */
 gchar *manager_default_adapter(Manager *self, GError **error)
 {
-	g_assert(self != NULL);
+	g_assert(MANAGER_IS(self));
 
 	gchar *ret;
-
 	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "DefaultAdapter", error, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
 		return NULL;
 	}
@@ -191,10 +190,9 @@ gchar *manager_default_adapter(Manager *self, GError **error)
 /* object FindAdapter(string pattern) */
 gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error)
 {
-	g_assert(self != NULL);
+	g_assert(MANAGER_IS(self));
 
 	gchar *ret;
-
 	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "FindAdapter", error, G_TYPE_STRING, pattern, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
 		return NULL;
 	}
@@ -205,13 +203,25 @@ gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error)
 /* dict GetProperties() */
 GHashTable *manager_get_properties(Manager *self, GError **error)
 {
-	g_assert(self != NULL);
+	g_assert(MANAGER_IS(self));
 
 	GHashTable *ret;
-
 	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID)) {
 		return NULL;
 	}
+
+	return ret;
+}
+
+/* Properties access methods */
+GPtrArray *manager_get_adapters(Manager *self, GError **error)
+{
+	g_assert(MANAGER_IS(self));
+
+	GHashTable *properties = manager_get_properties(self, error);
+	g_return_val_if_fail(properties != NULL, NULL);
+	GPtrArray *ret = g_value_dup_boxed(g_hash_table_lookup(properties, "Adapters"));
+	g_hash_table_unref(properties);
 
 	return ret;
 }

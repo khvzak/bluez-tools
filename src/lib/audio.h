@@ -51,12 +51,18 @@ struct _AudioClass {
 	GObjectClass parent_class;
 };
 
+/* used by AUDIO_TYPE */
+GType audio_get_type(void) G_GNUC_CONST;
+
 /*
  * Method definitions
  */
 void audio_connect(Audio *self, GError **error);
 void audio_disconnect(Audio *self, GError **error);
 GHashTable *audio_get_properties(Audio *self, GError **error);
+
+const gchar *audio_get_dbus_object_path(Audio *self);
+gchar *audio_get_state(Audio *self, GError **error);
 
 #endif /* __AUDIO_H */
 

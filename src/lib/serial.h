@@ -51,11 +51,16 @@ struct _SerialClass {
 	GObjectClass parent_class;
 };
 
+/* used by SERIAL_TYPE */
+GType serial_get_type(void) G_GNUC_CONST;
+
 /*
  * Method definitions
  */
 gchar *serial_connect(Serial *self, const gchar *pattern, GError **error);
 void serial_disconnect(Serial *self, const gchar *device, GError **error);
+
+const gchar *serial_get_dbus_object_path(Serial *self);
 
 #endif /* __SERIAL_H */
 

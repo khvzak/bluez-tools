@@ -51,12 +51,20 @@ struct _NetworkClass {
 	GObjectClass parent_class;
 };
 
+/* used by NETWORK_TYPE */
+GType network_get_type(void) G_GNUC_CONST;
+
 /*
  * Method definitions
  */
 gchar *network_connect(Network *self, const gchar *uuid, GError **error);
 void network_disconnect(Network *self, GError **error);
 GHashTable *network_get_properties(Network *self, GError **error);
+
+const gchar *network_get_dbus_object_path(Network *self);
+gboolean network_get_connected(Network *self, GError **error);
+gchar *network_get_interface(Network *self, GError **error);
+gchar *network_get_uuid(Network *self, GError **error);
 
 #endif /* __NETWORK_H */
 

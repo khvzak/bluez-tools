@@ -82,7 +82,7 @@ static void _serial_get_property(GObject *object, guint property_id, GValue *val
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		g_value_set_string(value, g_strdup(dbus_g_proxy_get_path(self->priv->dbus_g_proxy)));
+		g_value_set_string(value, g_strdup(serial_get_dbus_object_path(self)));
 		break;
 
 	default:
@@ -117,10 +117,9 @@ static void _serial_set_property(GObject *object, guint property_id, const GValu
 /* string Connect(string pattern) */
 gchar *serial_connect(Serial *self, const gchar *pattern, GError **error)
 {
-	g_assert(self != NULL);
+	g_assert(SERIAL_IS(self));
 
 	gchar *ret;
-
 	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "Connect", error, G_TYPE_STRING, pattern, G_TYPE_INVALID, G_TYPE_STRING, &ret, G_TYPE_INVALID)) {
 		return NULL;
 	}
@@ -131,8 +130,16 @@ gchar *serial_connect(Serial *self, const gchar *pattern, GError **error)
 /* void Disconnect(string device) */
 void serial_disconnect(Serial *self, const gchar *device, GError **error)
 {
-	g_assert(self != NULL);
+	g_assert(SERIAL_IS(self));
 
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Disconnect", error, G_TYPE_STRING, device, G_TYPE_INVALID, G_TYPE_INVALID);
+}
+
+/* Properties access methods */
+const gchar *serial_get_dbus_object_path(Serial *self)
+{
+	g_assert(SERIAL_IS(self));
+
+	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
 }
 

@@ -51,6 +51,9 @@ struct _DeviceClass {
 	GObjectClass parent_class;
 };
 
+/* used by DEVICE_TYPE */
+GType device_get_type(void) G_GNUC_CONST;
+
 /*
  * Method definitions
  */
@@ -62,6 +65,24 @@ GHashTable *device_get_properties(Device *self, GError **error);
 GPtrArray *device_list_nodes(Device *self, GError **error);
 void device_remove_node(Device *self, const gchar *node, GError **error);
 void device_set_property(Device *self, const gchar *name, const GValue *value, GError **error);
+
+const gchar *device_get_dbus_object_path(Device *self);
+gchar *device_get_adapter(Device *self, GError **error);
+gchar *device_get_address(Device *self, GError **error);
+gchar *device_get_alias(Device *self, GError **error);
+void device_set_alias(Device *self, const gchar *value, GError **error);
+gboolean device_get_blocked(Device *self, GError **error);
+void device_set_blocked(Device *self, const gboolean value, GError **error);
+guint32 device_get_class(Device *self, GError **error);
+gboolean device_get_connected(Device *self, GError **error);
+gchar *device_get_icon(Device *self, GError **error);
+gboolean device_get_legacy_pairing(Device *self, GError **error);
+gchar *device_get_name(Device *self, GError **error);
+GPtrArray *device_get_nodes(Device *self, GError **error);
+gboolean device_get_paired(Device *self, GError **error);
+gboolean device_get_trusted(Device *self, GError **error);
+void device_set_trusted(Device *self, const gboolean value, GError **error);
+GPtrArray *device_get_uuids(Device *self, GError **error);
 
 #endif /* __DEVICE_H */
 
