@@ -45,10 +45,10 @@ static void manager_adapter_added(Manager *manager, const gchar *adapter_path, g
 {
 	g_print("[MANAGER] adapter added: %s\n", adapter_path);
 
-	if (adapter_name == NULL) {
-		Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
-		g_ptr_array_add(captured_adapters, adapter);
-	}
+	//if (adapter_name == NULL) {
+	//	Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
+	//	g_ptr_array_add(captured_adapters, adapter);
+	//}
 }
 
 static void manager_adapter_removed(Manager *manager, const gchar *adapter_path, gpointer data)
@@ -71,7 +71,7 @@ static void manager_property_changed(Manager *manager, const gchar *name, const 
  */
 static void adapter_device_created(Adapter *adapter, const gchar *device_path, gpointer data)
 {
-	g_print("[ADAPTER] device created: %s\n", device);
+	g_print("[ADAPTER] device created: %s\n", device_path);
 }
 
 static void adapter_device_disappeared(Adapter *adapter, const gchar *address, gpointer data)
@@ -86,7 +86,7 @@ static void adapter_device_found(Adapter *adapter, const gchar *address, gpointe
 
 static void adapter_device_removed(Adapter *adapter, const gchar *device_path, gpointer data)
 {
-	g_print("[ADAPTER] device removed: %s\n", device);
+	g_print("[ADAPTER] device removed: %s\n", device_path);
 }
 
 static void adapter_property_changed(Adapter *adapter, const gchar *name, const GValue *value, gpointer data)
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 		g_ptr_array_add(captured_adapters, adapter);
 		g_free(adapter_path);
 	} else {
-
+		exit(EXIT_FAILURE);
 	}
 
 	g_signal_connect(manager, "AdapterAdded", G_CALLBACK(manager_adapter_added), NULL);
@@ -199,11 +199,7 @@ int main(int argc, char *argv[])
 		g_signal_connect(adapter, "PropertyChanged", G_CALLBACK(adapter_property_changed), NULL);
 
 		// Capturing signals from devices
-		GValue adapter_prop_devices = {0};
-		g_value_init(&adapter_prop_devices, G_TYPE_PTR_ARRAY);
-		g_object_get_property(G_OBJECT(adapter), "Devices", &adapter_prop_devices);
-
-		GPtrArray *devices_list = g_value_get_boxed(&adapter_prop_devices);
+		GPtrArray *devices_list = adapter_get_devices(adapter, NULL);
 		for (int i = 0; i < devices_list->len; i++) {
 			gchar *device_path = g_ptr_array_index(devices_list, i);
 			Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
@@ -215,7 +211,7 @@ int main(int argc, char *argv[])
 			g_signal_connect(device, "PropertyChanged", G_CALLBACK(device_property_changed), NULL);
 		}
 
-		g_value_unset(&adapter_prop_devices);
+		g_ptr_array_unref(devices_list);
 	}
 
 	GMainLoop *mainloop;

@@ -77,12 +77,30 @@ static void device_found_handler(DBusGProxy *dbus_g_proxy, const gchar *address,
 static void device_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *device, gpointer data);
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data);
 
+static void adapter_dispose(GObject *gobject)
+{
+	Adapter *self = ADAPTER(gobject);
+
+	/* DBus signals disconnection */
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "DeviceCreated", G_CALLBACK(device_created_handler), self);
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "DeviceDisappeared", G_CALLBACK(device_disappeared_handler), self);
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "DeviceFound", G_CALLBACK(device_found_handler), self);
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "DeviceRemoved", G_CALLBACK(device_removed_handler), self);
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
+
+	/* Chain up to the parent class */
+	G_OBJECT_CLASS(adapter_parent_class)->dispose(gobject);
+}
+
 static void adapter_class_init(AdapterClass *klass)
 {
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+	gobject_class->dispose = adapter_dispose;
+
 	g_type_class_add_private(klass, sizeof(AdapterPrivate));
 
 	/* Properties registration */
-	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 	GParamSpec *pspec;
 
 	gobject_class->get_property = _adapter_get_property;
@@ -184,7 +202,7 @@ static void adapter_post_init(Adapter *self)
 {
 	g_assert(self->priv->dbus_g_proxy != NULL);
 
-	/* DBUS signals connection */
+	/* DBus signals connection */
 
 	/* DeviceCreated(object device) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "DeviceCreated", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);

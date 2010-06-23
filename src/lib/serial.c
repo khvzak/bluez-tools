@@ -48,12 +48,23 @@ enum {
 static void _serial_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
 static void _serial_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
+static void serial_dispose(GObject *gobject)
+{
+	Serial *self = SERIAL(gobject);
+
+	/* Chain up to the parent class */
+	G_OBJECT_CLASS(serial_parent_class)->dispose(gobject);
+}
+
 static void serial_class_init(SerialClass *klass)
 {
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+	gobject_class->dispose = serial_dispose;
+
 	g_type_class_add_private(klass, sizeof(SerialPrivate));
 
 	/* Properties registration */
-	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 	GParamSpec *pspec;
 
 	gobject_class->get_property = _serial_get_property;

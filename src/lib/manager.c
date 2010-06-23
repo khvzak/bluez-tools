@@ -65,12 +65,29 @@ static void adapter_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapt
 static void default_adapter_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data);
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data);
 
+static void manager_dispose(GObject *gobject)
+{
+	Manager *self = MANAGER(gobject);
+
+	/* DBus signals disconnection */
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "AdapterAdded", G_CALLBACK(adapter_added_handler), self);
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "AdapterRemoved", G_CALLBACK(adapter_removed_handler), self);
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "DefaultAdapterChanged", G_CALLBACK(default_adapter_changed_handler), self);
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
+
+	/* Chain up to the parent class */
+	G_OBJECT_CLASS(manager_parent_class)->dispose(gobject);
+}
+
 static void manager_class_init(ManagerClass *klass)
 {
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+	gobject_class->dispose = manager_dispose;
+
 	g_type_class_add_private(klass, sizeof(ManagerPrivate));
 
 	/* Properties registration */
-	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 	GParamSpec *pspec;
 
 	gobject_class->get_property = _manager_get_property;

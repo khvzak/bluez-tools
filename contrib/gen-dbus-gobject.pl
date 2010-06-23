@@ -321,12 +321,28 @@ static void _{\$object}_set_property(GObject *object, guint property_id, const G
 {SIGNALS_HANDLERS_DEF}
 {FI_SIGNALS}
 
+static void {\$object}_dispose(GObject *gobject)
+{
+	{\$Object} *self = {\$OBJECT}(gobject);
+
+	{IF_SIGNALS}
+	/* DBus signals disconnection */
+	{SIGNALS_DISCONNECTION}
+	{FI_SIGNALS}
+
+	/* Chain up to the parent class */
+	G_OBJECT_CLASS({\$object}_parent_class)->dispose(gobject);
+}
+
 static void {\$object}_class_init({\$Object}Class *klass)
 {
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+	gobject_class->dispose = {\$object}_dispose;
+
 	g_type_class_add_private(klass, sizeof({\$Object}Private));
 
 	/* Properties registration */
-	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 	GParamSpec *pspec;
 
 	gobject_class->get_property = _{\$object}_get_property;
@@ -365,7 +381,7 @@ static void {\$object}_post_init({\$Object} *self)
 	g_assert(self->priv->dbus_g_proxy != NULL);
 
 	{IF_SIGNALS}
-	/* DBUS signals connection */
+	/* DBus signals connection */
 
 	{SIGNALS_CONNECTION}
 	{FI_SIGNALS}
@@ -453,6 +469,7 @@ EOT
     my $signals_handlers_def = "";
     my $signals_registration = "";
     my $signals_connection = "";
+    my $signals_disconnection = "";
     my $signals_handlers = "";
     for my $signal (sort keys %{$node->{$intf}{'signals'}}) {
         my @a = $signal =~ /([A-Z]+[a-z]*)/g;
@@ -492,6 +509,9 @@ EOT
         "\tdbus_g_proxy_add_signal(self->priv->dbus_g_proxy, \"$signal\", ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID);\n".
         "\tdbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, \"$signal\", G_CALLBACK($handler_name), self, NULL);\n\n";
         
+        $signals_disconnection .=
+        "\tdbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, \"$signal\", G_CALLBACK($handler_name), self);\n";
+        
         my $args = join ', ', map($_->{'name'}, @{$s{'args'}});
         $signals_handlers .= "$handler\n".
         "{\n".
@@ -506,6 +526,7 @@ EOT
     $signals_handlers_def =~ s/\s+$//s;
     $signals_registration =~ s/^\t(.+?)\s+$/$1/s;
     $signals_connection =~ s/^\t(.+?)\s+$/$1/s;
+    $signals_disconnection =~ s/^\t(.+?)\s+$/$1/s;
     $signals_handlers =~ s/\s+$//s;
     
     my $enum_properties = "";
@@ -659,6 +680,7 @@ EOT
     $output =~ s/{SIGNALS_HANDLERS_DEF}/$signals_handlers_def/;
     $output =~ s/{SIGNALS_REGISTRATION}/$signals_registration/;
     $output =~ s/{SIGNALS_CONNECTION}/$signals_connection/;
+    $output =~ s/{SIGNALS_DISCONNECTION}/$signals_disconnection/;
     $output =~ s/{SIGNALS_HANDLERS}/$signals_handlers/;
     $output =~ s/{ENUM_PROPERTIES}/$enum_properties/;
     $output =~ s/{PROPERTIES_REGISTRATION}/$properties_registration/;

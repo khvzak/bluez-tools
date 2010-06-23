@@ -61,12 +61,26 @@ static void _network_set_property(GObject *object, guint property_id, const GVal
 
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data);
 
+static void network_dispose(GObject *gobject)
+{
+	Network *self = NETWORK(gobject);
+
+	/* DBus signals disconnection */
+	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
+
+	/* Chain up to the parent class */
+	G_OBJECT_CLASS(network_parent_class)->dispose(gobject);
+}
+
 static void network_class_init(NetworkClass *klass)
 {
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+	gobject_class->dispose = network_dispose;
+
 	g_type_class_add_private(klass, sizeof(NetworkPrivate));
 
 	/* Properties registration */
-	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 	GParamSpec *pspec;
 
 	gobject_class->get_property = _network_get_property;
@@ -108,7 +122,7 @@ static void network_post_init(Network *self)
 {
 	g_assert(self->priv->dbus_g_proxy != NULL);
 
-	/* DBUS signals connection */
+	/* DBus signals connection */
 
 	/* PropertyChanged(string name, variant value) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);

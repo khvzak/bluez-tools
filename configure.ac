@@ -8,16 +8,11 @@ AC_PROG_CC_C99
 AC_PROG_INSTALL
 AM_PROG_CC_C_O
 
-dnl 1.2.24
-PKG_CHECK_MODULES([DBUS], [dbus-1 >= 1.2.16])
+PKG_CHECK_MODULES([DBUS], [dbus-1 >= 1.2.24])
+PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.1])
+PKG_CHECK_MODULES([DBUS_GLIB], [dbus-glib-1 >= 0.86])
 
-dnl 2.24.1
-PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.22.4])
-PKG_CHECK_MODULES([GOBJECT], [gobject-2.0 >= 2.22.4])
-#PKG_CHECK_MODULES([GIO], [gio-2.0 >= 2.22.4])
-
-dnl 0.86
-PKG_CHECK_MODULES([DBUS_GLIB], [dbus-glib-1 >= 0.82])
+CFLAGS="$CFLAGS -Wall -g3"
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
