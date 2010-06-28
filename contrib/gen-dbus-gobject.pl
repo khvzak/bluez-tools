@@ -619,7 +619,7 @@ EOT
         
         $properties_changed_handler .= "\"$property\") == 0) {\n";
         $get_properties .= "\tcase $enum:\n";
-        if ($p{'type'} eq 'string' || $p{'type'} eq 'object') {
+        if ($p{'type'} eq 'string') {
             $properties_registration .= "\tpspec = g_param_spec_string(\"$property\", NULL, NULL, NULL, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
@@ -632,6 +632,19 @@ EOT
             $properties_changed_handler .=
             "\t\tg_free(self->priv->$property_var);\n".
             "\t\tself->priv->$property_var = g_value_dup_string(value);\n";
+        } elsif ($p{'type'} eq 'object') {
+            $properties_registration .= "\tpspec = g_param_spec_string(\"$property\", NULL, NULL, NULL, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
+	    $properties_init .=
+            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
+            "\t\tself->priv->$property_var = (gchar *)g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
+            "\t} else {\n".
+            "\t\tself->priv->$property_var = g_strdup(\"undefined\");\n".
+            "\t}\n";
+            $get_properties .= "\t\tg_value_set_string(value, $property_get_method(self));\n";
+            $properties_free .= "\tg_free(self->priv->$property_var);\n";
+            $properties_changed_handler .=
+            "\t\tg_free(self->priv->$property_var);\n".
+            "\t\tself->priv->$property_var = (gchar *)g_value_dup_boxed(value);\n";
         } elsif ($p{'type'} eq 'array{object}' || $p{'type'} eq 'array{string}') {
             $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_PTR_ARRAY, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $properties_init .=

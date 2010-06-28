@@ -38,6 +38,9 @@ static gchar *capture_adapter_name = NULL;
 static GPtrArray *captured_adapters = NULL;
 static GPtrArray *captured_devices = NULL;
 
+static void capture_adapter(Adapter *adapter);
+static void release_adapter(Adapter *adapter);
+
 /*
  *  Manager signals
  */
@@ -45,9 +48,9 @@ static void manager_adapter_added(Manager *manager, const gchar *adapter_path, g
 {
 	Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
 
-	if (capture_adapter_name == NULL || (g_strcmp0(capture_adapter_name, adapter_get_name(adapter)) == 0 && captured_adapters->len == 0)) {
-		g_ptr_array_add(captured_adapters, adapter);
+	if (capture_adapter_name == NULL) {
 		g_print("[MANAGER] adapter added: %s (%s)\n", adapter_get_name(adapter), adapter_path);
+		capture_adapter(adapter);
 	} else {
 		g_object_unref(adapter);
 	}
@@ -59,9 +62,8 @@ static void manager_adapter_removed(Manager *manager, const gchar *adapter_path,
 		Adapter *adapter = ADAPTER(g_ptr_array_index(captured_adapters, i));
 
 		if (g_strcmp0(adapter_path, adapter_get_dbus_object_path(adapter)) == 0) {
-			g_ptr_array_remove_index(captured_adapters, i);
 			g_print("[MANAGER] adapter removed: %s (%s)\n", adapter_get_name(adapter), adapter_path);
-			g_object_unref(adapter);
+			release_adapter(adapter);
 			break;
 		}
 	}
@@ -146,6 +148,68 @@ static void device_property_changed(Device *device, const gchar *name, const GVa
 //
 //}
 
+static void capture_adapter(Adapter *adapter)
+{
+	g_assert(ADAPTER_IS(adapter));
+
+	g_print("capture adapter: %s (%s)\n", adapter_get_name(adapter), adapter_get_dbus_object_path(adapter));
+
+	g_signal_connect(adapter, "DeviceCreated", G_CALLBACK(adapter_device_created), NULL);
+	g_signal_connect(adapter, "DeviceDisappeared", G_CALLBACK(adapter_device_disappeared), NULL);
+	g_signal_connect(adapter, "DeviceFound", G_CALLBACK(adapter_device_found), NULL);
+	g_signal_connect(adapter, "DeviceRemoved", G_CALLBACK(adapter_device_removed), NULL);
+	g_signal_connect(adapter, "PropertyChanged", G_CALLBACK(adapter_property_changed), NULL);
+
+	// Capturing signals from devices
+	const GPtrArray *devices_list = adapter_get_devices(adapter);
+	g_assert(devices_list != NULL);
+	for (int i = 0; i < devices_list->len; i++) {
+		Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", g_ptr_array_index(devices_list, i), NULL);
+
+		g_print("capture device: %s (%s)\n", device_get_name(device), device_get_dbus_object_path(device));
+
+		g_signal_connect(device, "DisconnectRequested", G_CALLBACK(device_disconnect_requested), NULL);
+		g_signal_connect(device, "NodeCreated", G_CALLBACK(device_node_created), NULL);
+		g_signal_connect(device, "NodeRemoved", G_CALLBACK(device_node_removed), NULL);
+		g_signal_connect(device, "PropertyChanged", G_CALLBACK(device_property_changed), NULL);
+
+		g_ptr_array_add(captured_devices, device);
+	}
+
+	g_ptr_array_add(captured_adapters, adapter);
+}
+
+static void release_adapter(Adapter *adapter)
+{
+	g_assert(ADAPTER_IS(adapter));
+
+	for (int i = 0; i < captured_adapters->len; i++) {
+		Adapter *adapter_t = ADAPTER(g_ptr_array_index(captured_adapters, i));
+		if (adapter == adapter_t) {
+			GPtrArray *devices_to_remove = g_ptr_array_new();
+			for (int j = 0; j < captured_devices->len; j++) {
+				Device *device_t = DEVICE(g_ptr_array_index(captured_devices, j));
+				if (g_strcmp0(adapter_get_dbus_object_path(adapter_t), device_get_adapter(device_t)) == 0) {
+					int *p = g_new(int, 1);
+					*p = j;
+					g_ptr_array_add(devices_to_remove, p);
+					g_print("release device: %s (%s)\n", device_get_name(device_t), device_get_dbus_object_path(device_t));
+					g_object_unref(device_t);
+				}
+			}
+			for (int j = 0; j < devices_to_remove->len; j++) {
+				int *p = g_ptr_array_index(devices_to_remove, j);
+				g_ptr_array_remove_index(captured_devices, *p);
+			}
+			g_ptr_array_unref(devices_to_remove);
+			g_print("release adapter: %s (%s)\n", adapter_get_name(adapter_t), adapter_get_dbus_object_path(adapter_t));
+			g_object_unref(adapter_t);
+			g_ptr_array_remove_index(captured_adapters, i);
+			break;
+		}
+	}
+}
+
 static GOptionEntry entries[] = {
 	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &capture_adapter_name, "Adapter name or MAC", NULL},
 	{ NULL}
@@ -180,8 +244,7 @@ int main(int argc, char *argv[])
 	if (capture_adapter_name != NULL) {
 		Adapter *adapter = find_adapter_by_name(capture_adapter_name, &error);
 		exit_if_error(error);
-		g_print("capturing adapter: %s (%s)\n", capture_adapter_name, adapter_get_dbus_object_path(adapter));
-		g_ptr_array_add(captured_adapters, adapter);
+		capture_adapter(adapter);
 	} else {
 		const GPtrArray *adapters_list = manager_get_adapters(manager);
 		g_return_val_if_fail(adapters_list != NULL, EXIT_FAILURE);
@@ -192,8 +255,7 @@ int main(int argc, char *argv[])
 
 		for (int i = 0; i < adapters_list->len; i++) {
 			Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", g_ptr_array_index(adapters_list, i), NULL);
-			g_print("capturing adapter: %s (%s)\n", adapter_get_name(adapter), adapter_get_dbus_object_path(adapter));
-			g_ptr_array_add(captured_adapters, adapter);
+			capture_adapter(adapter);
 		}
 	}
 
@@ -201,31 +263,6 @@ int main(int argc, char *argv[])
 	g_signal_connect(manager, "AdapterRemoved", G_CALLBACK(manager_adapter_removed), NULL);
 	g_signal_connect(manager, "DefaultAdapterChanged", G_CALLBACK(manager_default_adapter_changed), NULL);
 	g_signal_connect(manager, "PropertyChanged", G_CALLBACK(manager_property_changed), NULL);
-
-	// Capturing signals from adapters
-	for (int i = 0; i < captured_adapters->len; i++) {
-		Adapter *adapter = ADAPTER(g_ptr_array_index(captured_adapters, i));
-
-		g_signal_connect(adapter, "DeviceCreated", G_CALLBACK(adapter_device_created), NULL);
-		g_signal_connect(adapter, "DeviceDisappeared", G_CALLBACK(adapter_device_disappeared), NULL);
-		g_signal_connect(adapter, "DeviceFound", G_CALLBACK(adapter_device_found), NULL);
-		g_signal_connect(adapter, "DeviceRemoved", G_CALLBACK(adapter_device_removed), NULL);
-		g_signal_connect(adapter, "PropertyChanged", G_CALLBACK(adapter_property_changed), NULL);
-
-		// Capturing signals from devices
-		const GPtrArray *devices_list = adapter_get_devices(adapter);
-		g_return_val_if_fail(devices_list != NULL, EXIT_FAILURE);
-
-		for (int i = 0; i < devices_list->len; i++) {
-			Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", g_ptr_array_index(devices_list, i), NULL);
-			g_ptr_array_add(captured_devices, device);
-
-			g_signal_connect(device, "DisconnectRequested", G_CALLBACK(device_disconnect_requested), NULL);
-			g_signal_connect(device, "NodeCreated", G_CALLBACK(device_node_created), NULL);
-			g_signal_connect(device, "NodeRemoved", G_CALLBACK(device_node_removed), NULL);
-			g_signal_connect(device, "PropertyChanged", G_CALLBACK(device_property_changed), NULL);
-		}
-	}
 
 	GMainLoop *mainloop;
 	mainloop = g_main_loop_new(NULL, FALSE);
