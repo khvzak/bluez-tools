@@ -35,6 +35,21 @@
 
 struct _DevicePrivate {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Properties */
+	gchar *adapter;
+	gchar *address;
+	gchar *alias;
+	gboolean blocked;
+	guint32 class;
+	gboolean connected;
+	gchar *icon;
+	gboolean legacy_pairing;
+	gchar *name;
+	GPtrArray *nodes;
+	gboolean paired;
+	gboolean trusted;
+	GPtrArray *uuids;
 };
 
 G_DEFINE_TYPE(Device, device, G_TYPE_OBJECT);
@@ -86,6 +101,15 @@ static void device_dispose(GObject *gobject)
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "NodeCreated", G_CALLBACK(node_created_handler), self);
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "NodeRemoved", G_CALLBACK(node_removed_handler), self);
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
+
+	/* Properties free */
+	g_free(self->priv->adapter);
+	g_free(self->priv->address);
+	g_free(self->priv->alias);
+	g_free(self->priv->icon);
+	g_free(self->priv->name);
+	g_ptr_array_unref(self->priv->nodes);
+	g_ptr_array_unref(self->priv->uuids);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(device_parent_class)->dispose(gobject);
@@ -219,6 +243,53 @@ static void device_post_init(Device *self)
 	/* PropertyChanged(string name, variant value) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
 	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
+
+	/* Properties init */
+	GError *error = NULL;
+	GHashTable *properties = device_get_properties(self, &error);
+	g_assert(error == NULL);
+	g_assert(properties != NULL);
+
+	/* object Adapter [readonly] */
+	self->priv->adapter = g_value_dup_string(g_hash_table_lookup(properties, "Adapter"));
+
+	/* string Address [readonly] */
+	self->priv->address = g_value_dup_string(g_hash_table_lookup(properties, "Address"));
+
+	/* string Alias [readwrite] */
+	self->priv->alias = g_value_dup_string(g_hash_table_lookup(properties, "Alias"));
+
+	/* boolean Blocked [readwrite] */
+	self->priv->blocked = g_value_get_boolean(g_hash_table_lookup(properties, "Blocked"));
+
+	/* uint32 Class [readonly] */
+	self->priv->class = g_value_get_uint(g_hash_table_lookup(properties, "Class"));
+
+	/* boolean Connected [readonly] */
+	self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
+
+	/* string Icon [readonly] */
+	self->priv->icon = g_value_dup_string(g_hash_table_lookup(properties, "Icon"));
+
+	/* boolean LegacyPairing [readonly] */
+	self->priv->legacy_pairing = g_value_get_boolean(g_hash_table_lookup(properties, "LegacyPairing"));
+
+	/* string Name [readonly] */
+	self->priv->name = g_value_dup_string(g_hash_table_lookup(properties, "Name"));
+
+	/* array{object} Nodes [readonly] */
+	self->priv->nodes = g_value_dup_boxed(g_hash_table_lookup(properties, "Nodes"));
+
+	/* boolean Paired [readonly] */
+	self->priv->paired = g_value_get_boolean(g_hash_table_lookup(properties, "Paired"));
+
+	/* boolean Trusted [readwrite] */
+	self->priv->trusted = g_value_get_boolean(g_hash_table_lookup(properties, "Trusted"));
+
+	/* array{string} UUIDs [readonly] */
+	self->priv->uuids = g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
+
+	g_hash_table_unref(properties);
 }
 
 static void _device_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
@@ -227,150 +298,59 @@ static void _device_get_property(GObject *object, guint property_id, GValue *val
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		g_value_set_string(value, g_strdup(device_get_dbus_object_path(self)));
+		g_value_set_string(value, device_get_dbus_object_path(self));
 		break;
 
 	case PROP_ADAPTER:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, device_get_adapter(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, device_get_adapter(self));
 		break;
 
 	case PROP_ADDRESS:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, device_get_address(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, device_get_address(self));
 		break;
 
 	case PROP_ALIAS:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, device_get_alias(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, device_get_alias(self));
 		break;
 
 	case PROP_BLOCKED:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, device_get_blocked(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, device_get_blocked(self));
 		break;
 
 	case PROP_CLASS:
-	{
-		GError *error = NULL;
-		g_value_set_uint(value, device_get_class(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_uint(value, device_get_class(self));
 		break;
 
 	case PROP_CONNECTED:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, device_get_connected(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, device_get_connected(self));
 		break;
 
 	case PROP_ICON:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, device_get_icon(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, device_get_icon(self));
 		break;
 
 	case PROP_LEGACY_PAIRING:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, device_get_legacy_pairing(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, device_get_legacy_pairing(self));
 		break;
 
 	case PROP_NAME:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, device_get_name(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, device_get_name(self));
 		break;
 
 	case PROP_NODES:
-	{
-		GError *error = NULL;
-		g_value_set_boxed(value, device_get_nodes(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boxed(value, device_get_nodes(self));
 		break;
 
 	case PROP_PAIRED:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, device_get_paired(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, device_get_paired(self));
 		break;
 
 	case PROP_TRUSTED:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, device_get_trusted(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, device_get_trusted(self));
 		break;
 
 	case PROP_UUIDS:
-	{
-		GError *error = NULL;
-		g_value_set_boxed(value, device_get_uuids(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boxed(value, device_get_uuids(self));
 		break;
 
 	default:
@@ -398,10 +378,7 @@ static void _device_set_property(GObject *object, guint property_id, const GValu
 	{
 		GError *error = NULL;
 		device_set_property(self, "Alias", value, &error);
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
+		g_assert(error == NULL);
 	}
 		break;
 
@@ -409,10 +386,7 @@ static void _device_set_property(GObject *object, guint property_id, const GValu
 	{
 		GError *error = NULL;
 		device_set_property(self, "Blocked", value, &error);
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
+		g_assert(error == NULL);
 	}
 		break;
 
@@ -420,10 +394,7 @@ static void _device_set_property(GObject *object, guint property_id, const GValu
 	{
 		GError *error = NULL;
 		device_set_property(self, "Trusted", value, &error);
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
+		g_assert(error == NULL);
 	}
 		break;
 
@@ -527,217 +498,203 @@ const gchar *device_get_dbus_object_path(Device *self)
 	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
 }
 
-gchar *device_get_adapter(Device *self, GError **error)
+const gchar *device_get_adapter(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "Adapter"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->adapter;
 }
 
-gchar *device_get_address(Device *self, GError **error)
+const gchar *device_get_address(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "Address"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->address;
 }
 
-gchar *device_get_alias(Device *self, GError **error)
+const gchar *device_get_alias(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "Alias"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->alias;
 }
 
-void device_set_alias(Device *self, const gchar *value, GError **error)
+void device_set_alias(Device *self, const gchar *value)
 {
-	g_return_if_fail(DEVICE_IS(self));
+	g_assert(DEVICE_IS(self));
+
+	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_STRING);
 	g_value_set_string(&t, value);
-	device_set_property(self, "Alias", &t, error);
+	device_set_property(self, "Alias", &t, &error);
 	g_value_unset(&t);
+
+	g_assert(error == NULL);
 }
 
-gboolean device_get_blocked(Device *self, GError **error)
+const gboolean device_get_blocked(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Blocked"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->blocked;
 }
 
-void device_set_blocked(Device *self, const gboolean value, GError **error)
+void device_set_blocked(Device *self, const gboolean value)
 {
-	g_return_if_fail(DEVICE_IS(self));
+	g_assert(DEVICE_IS(self));
+
+	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_BOOLEAN);
 	g_value_set_boolean(&t, value);
-	device_set_property(self, "Blocked", &t, error);
+	device_set_property(self, "Blocked", &t, &error);
 	g_value_unset(&t);
+
+	g_assert(error == NULL);
 }
 
-guint32 device_get_class(Device *self, GError **error)
+const guint32 device_get_class(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	guint32 ret = g_value_get_uint(g_hash_table_lookup(properties, "Class"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->class;
 }
 
-gboolean device_get_connected(Device *self, GError **error)
+const gboolean device_get_connected(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->connected;
 }
 
-gchar *device_get_icon(Device *self, GError **error)
+const gchar *device_get_icon(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "Icon"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->icon;
 }
 
-gboolean device_get_legacy_pairing(Device *self, GError **error)
+const gboolean device_get_legacy_pairing(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "LegacyPairing"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->legacy_pairing;
 }
 
-gchar *device_get_name(Device *self, GError **error)
+const gchar *device_get_name(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "Name"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->name;
 }
 
-GPtrArray *device_get_nodes(Device *self, GError **error)
+const GPtrArray *device_get_nodes(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	GPtrArray *ret = g_value_dup_boxed(g_hash_table_lookup(properties, "Nodes"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->nodes;
 }
 
-gboolean device_get_paired(Device *self, GError **error)
+const gboolean device_get_paired(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Paired"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->paired;
 }
 
-gboolean device_get_trusted(Device *self, GError **error)
+const gboolean device_get_trusted(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Trusted"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->trusted;
 }
 
-void device_set_trusted(Device *self, const gboolean value, GError **error)
+void device_set_trusted(Device *self, const gboolean value)
 {
-	g_return_if_fail(DEVICE_IS(self));
+	g_assert(DEVICE_IS(self));
+
+	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_BOOLEAN);
 	g_value_set_boolean(&t, value);
-	device_set_property(self, "Trusted", &t, error);
+	device_set_property(self, "Trusted", &t, &error);
 	g_value_unset(&t);
+
+	g_assert(error == NULL);
 }
 
-GPtrArray *device_get_uuids(Device *self, GError **error)
+const GPtrArray *device_get_uuids(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *properties = device_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	GPtrArray *ret = g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->uuids;
 }
 
 /* Signals handlers */
 static void disconnect_requested_handler(DBusGProxy *dbus_g_proxy, gpointer data)
 {
 	Device *self = DEVICE(data);
+
 	g_signal_emit(self, signals[DISCONNECT_REQUESTED], 0);
 }
 
 static void node_created_handler(DBusGProxy *dbus_g_proxy, const gchar *node, gpointer data)
 {
 	Device *self = DEVICE(data);
+
 	g_signal_emit(self, signals[NODE_CREATED], 0, node);
 }
 
 static void node_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *node, gpointer data)
 {
 	Device *self = DEVICE(data);
+
 	g_signal_emit(self, signals[NODE_REMOVED], 0, node);
 }
 
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data)
 {
 	Device *self = DEVICE(data);
+
+	if (g_strcmp0(name, "Adapter") == 0) {
+		g_free(self->priv->adapter);
+		self->priv->adapter = g_value_dup_string(value);
+	} else if (g_strcmp0(name, "Address") == 0) {
+		g_free(self->priv->address);
+		self->priv->address = g_value_dup_string(value);
+	} else if (g_strcmp0(name, "Alias") == 0) {
+		g_free(self->priv->alias);
+		self->priv->alias = g_value_dup_string(value);
+	} else if (g_strcmp0(name, "Blocked") == 0) {
+		self->priv->blocked = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "Class") == 0) {
+		self->priv->class = g_value_get_uint(value);
+	} else if (g_strcmp0(name, "Connected") == 0) {
+		self->priv->connected = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "Icon") == 0) {
+		g_free(self->priv->icon);
+		self->priv->icon = g_value_dup_string(value);
+	} else if (g_strcmp0(name, "LegacyPairing") == 0) {
+		self->priv->legacy_pairing = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "Name") == 0) {
+		g_free(self->priv->name);
+		self->priv->name = g_value_dup_string(value);
+	} else if (g_strcmp0(name, "Nodes") == 0) {
+		g_ptr_array_unref(self->priv->nodes);
+		self->priv->nodes = g_value_dup_boxed(value);
+	} else if (g_strcmp0(name, "Paired") == 0) {
+		self->priv->paired = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "Trusted") == 0) {
+		self->priv->trusted = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "UUIDs") == 0) {
+		g_ptr_array_unref(self->priv->uuids);
+		self->priv->uuids = g_value_dup_boxed(value);
+	}
+
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);
 }
 

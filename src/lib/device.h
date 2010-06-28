@@ -67,22 +67,22 @@ void device_remove_node(Device *self, const gchar *node, GError **error);
 void device_set_property(Device *self, const gchar *name, const GValue *value, GError **error);
 
 const gchar *device_get_dbus_object_path(Device *self);
-gchar *device_get_adapter(Device *self, GError **error);
-gchar *device_get_address(Device *self, GError **error);
-gchar *device_get_alias(Device *self, GError **error);
-void device_set_alias(Device *self, const gchar *value, GError **error);
-gboolean device_get_blocked(Device *self, GError **error);
-void device_set_blocked(Device *self, const gboolean value, GError **error);
-guint32 device_get_class(Device *self, GError **error);
-gboolean device_get_connected(Device *self, GError **error);
-gchar *device_get_icon(Device *self, GError **error);
-gboolean device_get_legacy_pairing(Device *self, GError **error);
-gchar *device_get_name(Device *self, GError **error);
-GPtrArray *device_get_nodes(Device *self, GError **error);
-gboolean device_get_paired(Device *self, GError **error);
-gboolean device_get_trusted(Device *self, GError **error);
-void device_set_trusted(Device *self, const gboolean value, GError **error);
-GPtrArray *device_get_uuids(Device *self, GError **error);
+const gchar *device_get_adapter(Device *self);
+const gchar *device_get_address(Device *self);
+const gchar *device_get_alias(Device *self);
+void device_set_alias(Device *self, const gchar *value);
+const gboolean device_get_blocked(Device *self);
+void device_set_blocked(Device *self, const gboolean value);
+const guint32 device_get_class(Device *self);
+const gboolean device_get_connected(Device *self);
+const gchar *device_get_icon(Device *self);
+const gboolean device_get_legacy_pairing(Device *self);
+const gchar *device_get_name(Device *self);
+const GPtrArray *device_get_nodes(Device *self);
+const gboolean device_get_paired(Device *self);
+const gboolean device_get_trusted(Device *self);
+void device_set_trusted(Device *self, const gboolean value);
+const GPtrArray *device_get_uuids(Device *self);
 
 #endif /* __DEVICE_H */
 

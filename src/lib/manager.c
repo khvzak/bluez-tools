@@ -36,6 +36,9 @@
 
 struct _ManagerPrivate {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Properties */
+	GPtrArray *adapters;
 };
 
 G_DEFINE_TYPE(Manager, manager, G_TYPE_OBJECT);
@@ -74,6 +77,9 @@ static void manager_dispose(GObject *gobject)
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "AdapterRemoved", G_CALLBACK(adapter_removed_handler), self);
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "DefaultAdapterChanged", G_CALLBACK(default_adapter_changed_handler), self);
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
+
+	/* Properties free */
+	g_ptr_array_unref(self->priv->adapters);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(manager_parent_class)->dispose(gobject);
@@ -137,7 +143,7 @@ static void manager_init(Manager *self)
 
 	g_assert(self->priv->dbus_g_proxy != NULL);
 
-	/* DBUS signals connection */
+	/* DBus signals connection */
 
 	/* AdapterAdded(object adapter) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "AdapterAdded", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
@@ -154,6 +160,17 @@ static void manager_init(Manager *self)
 	/* PropertyChanged(string name, variant value) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
 	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
+
+	/* Properties init */
+	GError *error = NULL;
+	GHashTable *properties = manager_get_properties(self, &error);
+	g_assert(error == NULL);
+	g_assert(properties != NULL);
+
+	/* array{object} Adapters [readonly] */
+	self->priv->adapters = g_value_dup_boxed(g_hash_table_lookup(properties, "Adapters"));
+
+	g_hash_table_unref(properties);
 }
 
 static void _manager_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
@@ -162,14 +179,7 @@ static void _manager_get_property(GObject *object, guint property_id, GValue *va
 
 	switch (property_id) {
 	case PROP_ADAPTERS:
-	{
-		GError *error = NULL;
-		g_value_set_boxed(value, manager_get_adapters(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boxed(value, manager_get_adapters(self));
 		break;
 
 	default:
@@ -231,40 +241,44 @@ GHashTable *manager_get_properties(Manager *self, GError **error)
 }
 
 /* Properties access methods */
-GPtrArray *manager_get_adapters(Manager *self, GError **error)
+const GPtrArray *manager_get_adapters(Manager *self)
 {
 	g_assert(MANAGER_IS(self));
 
-	GHashTable *properties = manager_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	GPtrArray *ret = g_value_dup_boxed(g_hash_table_lookup(properties, "Adapters"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->adapters;
 }
 
 /* Signals handlers */
 static void adapter_added_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data)
 {
 	Manager *self = MANAGER(data);
+
 	g_signal_emit(self, signals[ADAPTER_ADDED], 0, adapter);
 }
 
 static void adapter_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data)
 {
 	Manager *self = MANAGER(data);
+
 	g_signal_emit(self, signals[ADAPTER_REMOVED], 0, adapter);
 }
 
 static void default_adapter_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data)
 {
 	Manager *self = MANAGER(data);
+
 	g_signal_emit(self, signals[DEFAULT_ADAPTER_CHANGED], 0, adapter);
 }
 
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data)
 {
 	Manager *self = MANAGER(data);
+
+	if (g_strcmp0(name, "Adapters") == 0) {
+		g_ptr_array_unref(self->priv->adapters);
+		self->priv->adapters = g_value_dup_boxed(value);
+	}
+
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);
 }
 

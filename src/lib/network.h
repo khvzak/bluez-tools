@@ -62,9 +62,9 @@ void network_disconnect(Network *self, GError **error);
 GHashTable *network_get_properties(Network *self, GError **error);
 
 const gchar *network_get_dbus_object_path(Network *self);
-gboolean network_get_connected(Network *self, GError **error);
-gchar *network_get_interface(Network *self, GError **error);
-gchar *network_get_uuid(Network *self, GError **error);
+const gboolean network_get_connected(Network *self);
+const gchar *network_get_interface(Network *self);
+const gchar *network_get_uuid(Network *self);
 
 #endif /* __NETWORK_H */
 

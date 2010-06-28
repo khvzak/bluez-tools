@@ -72,23 +72,23 @@ void adapter_stop_discovery(Adapter *self, GError **error);
 void adapter_unregister_agent(Adapter *self, const gchar *agent, GError **error);
 
 const gchar *adapter_get_dbus_object_path(Adapter *self);
-gchar *adapter_get_address(Adapter *self, GError **error);
-guint32 adapter_get_class(Adapter *self, GError **error);
-GPtrArray *adapter_get_devices(Adapter *self, GError **error);
-gboolean adapter_get_discoverable(Adapter *self, GError **error);
-void adapter_set_discoverable(Adapter *self, const gboolean value, GError **error);
-guint32 adapter_get_discoverable_timeout(Adapter *self, GError **error);
-void adapter_set_discoverable_timeout(Adapter *self, const guint32 value, GError **error);
-gboolean adapter_get_discovering(Adapter *self, GError **error);
-gchar *adapter_get_name(Adapter *self, GError **error);
-void adapter_set_name(Adapter *self, const gchar *value, GError **error);
-gboolean adapter_get_pairable(Adapter *self, GError **error);
-void adapter_set_pairable(Adapter *self, const gboolean value, GError **error);
-guint32 adapter_get_paireable_timeout(Adapter *self, GError **error);
-void adapter_set_paireable_timeout(Adapter *self, const guint32 value, GError **error);
-gboolean adapter_get_powered(Adapter *self, GError **error);
-void adapter_set_powered(Adapter *self, const gboolean value, GError **error);
-GPtrArray *adapter_get_uuids(Adapter *self, GError **error);
+const gchar *adapter_get_address(Adapter *self);
+const guint32 adapter_get_class(Adapter *self);
+const GPtrArray *adapter_get_devices(Adapter *self);
+const gboolean adapter_get_discoverable(Adapter *self);
+void adapter_set_discoverable(Adapter *self, const gboolean value);
+const guint32 adapter_get_discoverable_timeout(Adapter *self);
+void adapter_set_discoverable_timeout(Adapter *self, const guint32 value);
+const gboolean adapter_get_discovering(Adapter *self);
+const gchar *adapter_get_name(Adapter *self);
+void adapter_set_name(Adapter *self, const gchar *value);
+const gboolean adapter_get_pairable(Adapter *self);
+void adapter_set_pairable(Adapter *self, const gboolean value);
+const guint32 adapter_get_paireable_timeout(Adapter *self);
+void adapter_set_paireable_timeout(Adapter *self, const guint32 value);
+const gboolean adapter_get_powered(Adapter *self);
+void adapter_set_powered(Adapter *self, const gboolean value);
+const GPtrArray *adapter_get_uuids(Adapter *self);
 
 #endif /* __ADAPTER_H */
 

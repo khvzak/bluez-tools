@@ -261,8 +261,8 @@ EOT
         my @a = $property =~ /([A-Z]+[a-z]*)/g;
         my %p = %{$node->{$intf}{'properties'}{$property}};
         
-        $method_defs .= get_g_type($p{'type'})."{\$object}_get_".(join '_', (map lc $_, @a))."({\$Object} *self, GError **error);\n";
-        $method_defs .= "void {\$object}_set_".(join '_', (map lc $_, @a))."({\$Object} *self, const ".get_g_type($p{'type'})."value, GError **error);\n" if $p{'mode'} eq 'readwrite';
+        $method_defs .= "const ".get_g_type($p{'type'})."{\$object}_get_".(join '_', (map lc $_, @a))."({\$Object} *self);\n";
+        $method_defs .= "void {\$object}_set_".(join '_', (map lc $_, @a))."({\$Object} *self, const ".get_g_type($p{'type'})."value);\n" if $p{'mode'} eq 'readwrite';
     }
     
     $method_defs =~ s/\s+$//s;
@@ -294,6 +294,11 @@ sub generate_source {
 
 struct _{\$Object}Private {
 	DBusGProxy *dbus_g_proxy;
+
+	{IF_PROPERTIES}
+	/* Properties */
+	{PRIV_PROPERTIES}
+	{FI_PROPERTIES}
 };
 
 G_DEFINE_TYPE({\$Object}, {\$object}, G_TYPE_OBJECT);
@@ -329,6 +334,11 @@ static void {\$object}_dispose(GObject *gobject)
 	/* DBus signals disconnection */
 	{SIGNALS_DISCONNECTION}
 	{FI_SIGNALS}
+
+	{IF_PROPERTIES}
+	/* Properties free */
+	{PROPERTIES_FREE}
+	{FI_PROPERTIES}
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS({\$object}_parent_class)->dispose(gobject);
@@ -368,10 +378,15 @@ static void {\$object}_init({\$Object} *self)
 	g_assert(self->priv->dbus_g_proxy != NULL);
 
 	{IF_SIGNALS}
-	/* DBUS signals connection */
+	/* DBus signals connection */
 
 	{SIGNALS_CONNECTION}
 	{FI_SIGNALS}
+
+	{IF_PROPERTIES}
+	/* Properties init */
+	{PROPERTIES_INIT}
+	{FI_PROPERTIES}
 	{FI_INIT}
 }
 
@@ -385,6 +400,11 @@ static void {\$object}_post_init({\$Object} *self)
 
 	{SIGNALS_CONNECTION}
 	{FI_SIGNALS}
+
+	{IF_PROPERTIES}
+	/* Properties init */
+	{PROPERTIES_INIT}
+	{FI_PROPERTIES}
 }
 {FI_POST_INIT}
 
@@ -515,7 +535,8 @@ EOT
         my $args = join ', ', map($_->{'name'}, @{$s{'args'}});
         $signals_handlers .= "$handler\n".
         "{\n".
-        "\t{\$Object} *self = {\$OBJECT}(data);\n".
+        "\t{\$Object} *self = {\$OBJECT}(data);\n\n".
+        ($handler_name eq 'property_changed_handler' ? "\t{PROPERTIES_CHANGED_HANDLER}\n\n" : "").
         "\tg_signal_emit(self, signals[$enum], 0".($args eq '' ? "" : ", $args").");\n".
         "}\n\n";
         
@@ -529,11 +550,19 @@ EOT
     $signals_disconnection =~ s/^\t(.+?)\s+$/$1/s;
     $signals_handlers =~ s/\s+$//s;
     
+    my $priv_properties = "";
     my $enum_properties = "";
     my $properties_registration = "";
     my $get_properties = "";
     my $set_properties = "";
     my $properties_access_methods = "";
+    my $properties_init =
+    "\tGError *error = NULL;\n".
+    "\tGHashTable *properties = {\$object}_get_properties(self, &error);\n".
+    "\tg_assert(error == NULL);\n".
+    "\tg_assert(properties != NULL);\n\n";
+    my $properties_free = "";
+    my $properties_changed_handler = "\tif (g_strcmp0(name, ";
     unless (defined $node->{'objectPath'}) {
         $enum_properties .= "\tPROP_DBUS_OBJECT_PATH, /* readwrite, construct only */\n";
         $properties_registration .=
@@ -543,7 +572,7 @@ EOT
         
         $get_properties .=
         "\tcase PROP_DBUS_OBJECT_PATH:\n".
-        "\t\tg_value_set_string(value, g_strdup({\$object}_get_dbus_object_path(self)));\n".
+        "\t\tg_value_set_string(value, {\$object}_get_dbus_object_path(self));\n".
         "\t\tbreak;\n\n";
         
         $set_properties .=
@@ -568,54 +597,59 @@ EOT
         my @a = $property =~ /([A-Z]+[a-z]*)/g;
         my %p = %{$node->{$intf}{'properties'}{$property}};
         
+        my $property_var = join '_', (map lc $_, @a);
         my $enum = "PROP_".(join '_', (map uc $_, @a));
-        my $property_get_method = "{\$object}_get_".(join '_', (map lc $_, @a));
-        my $property_set_method = "{\$object}_set_".(join '_', (map lc $_, @a));
+        my $property_get_method = "{\$object}_get_$property_var";
+        my $property_set_method = "{\$object}_set_$property_var";
         
+        $priv_properties .= "\t".get_g_type($p{'type'})."$property_var;\n";
         $enum_properties .= "\t$enum, /* $p{'mode'} */\n";
         $properties_registration .= "\t/* $p{'decl'} */\n";
-	$get_properties .=
-        "\tcase $enum:\n".
-        "\t{\n".
-        "\t\tGError *error = NULL;\n";
+        $properties_init .=
+        "\t/* $p{'decl'} */\n".
+        "\tself->priv->$property_var = ";
         $properties_access_methods .=
-        get_g_type($p{'type'})."$property_get_method({\$Object} *self, GError **error)\n".
+        "const ".get_g_type($p{'type'})."$property_get_method({\$Object} *self)\n".
         "{\n".
         "\tg_assert({\$OBJECT}_IS(self));\n\n".
-        "\tGHashTable *properties = {\$object}_get_properties(self, error);\n".
-        "\tg_return_val_if_fail(properties != NULL, ".(get_g_type($p{'type'}) =~ /\*$/ ? "NULL" : 0).");\n".
-        "\t".get_g_type($p{'type'})."ret = ";
+        "\treturn self->priv->$property_var;\n".
+        "}\n\n";
+        
+        $properties_changed_handler .= "\"$property\") == 0) {\n";
+        $get_properties .= "\tcase $enum:\n";
         if ($p{'type'} eq 'string' || $p{'type'} eq 'object') {
             $properties_registration .= "\tpspec = g_param_spec_string(\"$property\", NULL, NULL, NULL, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $get_properties .= "\t\tg_value_set_string(value, $property_get_method(self, &error));\n";
-            $properties_access_methods .= "g_value_dup_string(g_hash_table_lookup(properties, \"$property\"));\n";
+	    $properties_init .= "g_value_dup_string(g_hash_table_lookup(properties, \"$property\"));\n";
+            $get_properties .= "\t\tg_value_set_string(value, $property_get_method(self));\n";
+            $properties_free .= "\tg_free(self->priv->$property_var);\n";
+            $properties_changed_handler .=
+            "\t\tg_free(self->priv->$property_var);\n".
+            "\t\tself->priv->$property_var = g_value_dup_string(value);\n";
         } elsif ($p{'type'} eq 'array{object}' || $p{'type'} eq 'array{string}') {
             $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_PTR_ARRAY, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $get_properties .= "\t\tg_value_set_boxed(value, $property_get_method(self, &error));\n";
-            $properties_access_methods .= "g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n";
+	    $properties_init .= "g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n";
+            $get_properties .= "\t\tg_value_set_boxed(value, $property_get_method(self));\n";
+            $properties_free .= "\tg_ptr_array_unref(self->priv->$property_var);\n";
+            $properties_changed_handler .=
+            "\t\tg_ptr_array_unref(self->priv->$property_var);\n".
+            "\t\tself->priv->$property_var = g_value_dup_boxed(value);\n";
         } elsif ($p{'type'} eq 'uint32') {
             $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 65535, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $get_properties .= "\t\tg_value_set_uint(value, $property_get_method(self, &error));\n";
-            $properties_access_methods .= "g_value_get_uint(g_hash_table_lookup(properties, \"$property\"));\n";
+	    $properties_init .= "g_value_get_uint(g_hash_table_lookup(properties, \"$property\"));\n";
+            $get_properties .= "\t\tg_value_set_uint(value, $property_get_method(self));\n";
+            $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uint(value);\n";
         } elsif ($p{'type'} eq 'boolean') {
             $properties_registration .= "\tpspec = g_param_spec_boolean(\"$property\", NULL, NULL, FALSE, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $get_properties .= "\t\tg_value_set_boolean(value, $property_get_method(self, &error));\n";
-            $properties_access_methods .= "g_value_get_boolean(g_hash_table_lookup(properties, \"$property\"));\n";
+	    $properties_init .= "g_value_get_boolean(g_hash_table_lookup(properties, \"$property\"));\n";
+            $get_properties .= "\t\tg_value_set_boolean(value, $property_get_method(self));\n";
+            $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_boolean(value);\n";
         } else {
             die "unknown property type: $p{'type'}\n";
         }
         $properties_registration .= "\tg_object_class_install_property(gobject_class, $enum, pspec);\n\n";
-        $get_properties .=
-        "\t\tif (error != NULL) {\n".
-        "\t\t\tg_print(\"%s: %s\\n\", g_get_prgname(), error->message);\n".
-        "\t\t\tg_error_free(error);\n".
-        "\t\t}\n".
-        "\t}\n".
-        "\t\tbreak;\n\n";
-        $properties_access_methods .=
-        "\tg_hash_table_unref(properties);\n\n".
-        "\treturn ret;\n".
-        "}\n\n";
+        $properties_init .= "\n";
+        $get_properties .= "\t\tbreak;\n\n";
+        $properties_changed_handler .= "\t} else if (g_strcmp0(name, ";
 	
 	if ($p{'mode'} eq 'readwrite') {
 	    $set_properties .=
@@ -623,17 +657,15 @@ EOT
 	    "\t{\n".
 	    "\t\tGError *error = NULL;\n".
 	    "\t\t{\$object}_set_property(self, \"$property\", value, &error);\n".
-	    "\t\tif (error != NULL) {\n".
-	    "\t\t\tg_print(\"%s: %s\\n\", g_get_prgname(), error->message);\n".
-	    "\t\t\tg_error_free(error);\n".
-	    "\t\t}\n".
+            "\t\tg_assert(error == NULL);\n".
 	    "\t}\n".
 	    "\t\tbreak;\n\n";
             
             $properties_access_methods .=
-            "void $property_set_method({\$Object} *self, const ".get_g_type($p{'type'})."value, GError **error)\n".
+            "void $property_set_method({\$Object} *self, const ".get_g_type($p{'type'})."value)\n".
             "{\n".
-            "\tg_return_if_fail({\$OBJECT}_IS(self));\n\n".
+            "\tg_assert({\$OBJECT}_IS(self));\n\n".
+            "\tGError *error = NULL;\n\n".
             "\tGValue t = {0};\n".
             "\tg_value_init(&t, ".get_g_type_name($p{'type'}).");\n".
             "\tg_value_set_".
@@ -646,16 +678,26 @@ EOT
              die "unknown setter type: $p{'type'}\n"
              )
              ))."(&t, value);\n".
-            "\t{\$object}_set_property(self, \"$property\", &t, error);\n".
-            "\tg_value_unset(&t);\n".
+            "\t{\$object}_set_property(self, \"$property\", &t, &error);\n".
+            "\tg_value_unset(&t);\n\n".
+            "\tg_assert(error == NULL);\n".
             "}\n\n";
 	}
     }
+    $properties_init .=
+    "\tg_hash_table_unref(properties);\n\n";
+    
+    $priv_properties =~ s/^\t(.+?)\s+$/$1/s;
     $enum_properties =~ s/^\t(.+), (\/\* .+? \*\/)\s+$/$1 $2/s;
     $properties_registration =~ s/^\t(.+?)\s+$/$1/s;
+    $properties_init =~ s/^\t(.+?)\s+$/$1/s;
     $get_properties =~ s/^\t(.+?)\s+$/$1/s;
     $set_properties =~ s/^\t(.+?)\s+$/$1/s;
     $properties_access_methods =~ s/\s+$//s;
+    $properties_free =~ s/^\t(.+?)\s+$/$1/s;
+    $properties_changed_handler =~ s/^\t(.+?) else if \(g_strcmp0\(name, $/$1/s;
+    
+    $properties_free ="/* none */" if $properties_free eq '';
     
     my $output = "$HEADER\n$SOURCE_TEMPLATE";
     if (defined $node->{'objectPath'}) {
@@ -682,11 +724,15 @@ EOT
     $output =~ s/{SIGNALS_CONNECTION}/$signals_connection/;
     $output =~ s/{SIGNALS_DISCONNECTION}/$signals_disconnection/;
     $output =~ s/{SIGNALS_HANDLERS}/$signals_handlers/;
+    $output =~ s/{PRIV_PROPERTIES}/$priv_properties/;
     $output =~ s/{ENUM_PROPERTIES}/$enum_properties/;
     $output =~ s/{PROPERTIES_REGISTRATION}/$properties_registration/;
+    $output =~ s/{PROPERTIES_INIT}/$properties_init/;
+    $output =~ s/{PROPERTIES_FREE}/$properties_free/;
     $output =~ s/{GET_PROPERTIES}/$get_properties/;
     $output =~ s/{SET_PROPERTIES}/$set_properties/;
     $output =~ s/{PROPERTIES_ACCESS_METHODS}/$properties_access_methods/;
+    $output =~ s/{PROPERTIES_CHANGED_HANDLER}/$properties_changed_handler/;
     $output =~ s/{METHODS}/$methods/;
     $output =~ s/{\$OBJECT}/$obj_uc/g;
     $output =~ s/{\$Object}/$obj/g;

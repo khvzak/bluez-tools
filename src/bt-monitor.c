@@ -34,7 +34,7 @@
 #include "lib/device.h"
 #include "lib/manager.h"
 
-static gchar *adapter_name = NULL;
+static gchar *capture_adapter_name = NULL;
 static GPtrArray *captured_adapters = NULL;
 static GPtrArray *captured_devices = NULL;
 
@@ -43,17 +43,35 @@ static GPtrArray *captured_devices = NULL;
  */
 static void manager_adapter_added(Manager *manager, const gchar *adapter_path, gpointer data)
 {
-	g_print("[MANAGER] adapter added: %s\n", adapter_path);
+	Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
+	gchar *adapter_name = adapter_get_name(adapter, NULL);
 
-	//if (adapter_name == NULL) {
-	//	Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
-	//	g_ptr_array_add(captured_adapters, adapter);
-	//}
+	if (capture_adapter_name == NULL || (g_strcmp0(capture_adapter_name, adapter_name) == 0 && captured_adapters->len == 0)) {
+		g_ptr_array_add(captured_adapters, adapter);
+		g_print("[MANAGER] adapter added: %s (%s)\n", adapter_name, adapter_path);
+	} else {
+		g_object_unref(adapter);
+	}
+
+	g_free(adapter_name);
 }
 
 static void manager_adapter_removed(Manager *manager, const gchar *adapter_path, gpointer data)
 {
-	g_print("[MANAGER] adapter removed: %s\n", adapter_path);
+	for (int i = 0; i < captured_adapters->len; i++) {
+		Adapter *adapter = ADAPTER(g_ptr_array_index(captured_adapters, i));
+		gchar *adapter_name = adapter_get_name(adapter, NULL);
+
+		if (g_strcmp0(adapter_path, adapter_get_dbus_object_path(adapter)) == 0) {
+			g_ptr_array_remove_index(captured_adapters, i);
+			g_print("[MANAGER] adapter removed: %s (%s)\n", adapter_name, adapter_path);
+			g_object_unref(adapter);
+			g_free(adapter_name);
+			break;
+		}
+
+		g_free(adapter_name);
+	}
 }
 
 static void manager_default_adapter_changed(Manager *manager, const gchar *adapter_path, gpointer data)
@@ -120,23 +138,23 @@ static void device_property_changed(Device *device, const gchar *name, const GVa
 /*
  * Service signals
  */
-static void audio_property_changed()
-{
+//static void audio_property_changed()
+//{
+//
+//}
 
-}
+//static void input_property_changed()
+//{
+//
+//}
 
-static void input_property_changed()
-{
-
-}
-
-static void network_property_changed()
-{
-
-}
+//static void network_property_changed()
+//{
+//
+//}
 
 static GOptionEntry entries[] = {
-	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_name, "Adapter name or MAC", NULL},
+	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &capture_adapter_name, "Adapter name or MAC", NULL},
 	{ NULL}
 };
 
@@ -158,7 +176,6 @@ int main(int argc, char *argv[])
 
 	if (!dbus_connect(&error)) {
 		g_printerr("Couldn't connect to dbus: %s", error->message);
-		g_error_free(error);
 		exit(EXIT_FAILURE);
 	}
 
@@ -167,20 +184,37 @@ int main(int argc, char *argv[])
 
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
 
-	if (adapter_name != NULL) {
-		gchar *adapter_path = find_adapter_by_name(adapter_name, &error);
-		if (error != NULL) {
-			g_printerr("%s\n", error->message);
-			exit(EXIT_FAILURE);
-		}
+	if (capture_adapter_name != NULL) {
+		gchar *adapter_path = find_adapter_by_name(capture_adapter_name, &error);
+		exit_if_error(error);
 
-		g_print("found adapter: %s\n", adapter_path);
+		g_print("capturing adapter: %s (%s)\n", capture_adapter_name, adapter_path);
 
 		Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
 		g_ptr_array_add(captured_adapters, adapter);
 		g_free(adapter_path);
 	} else {
-		exit(EXIT_FAILURE);
+		GPtrArray *adapters_list = manager_get_adapters(manager, &error);
+		g_return_val_if_fail(adapters_list != NULL, NULL);
+		exit_if_error(error);
+
+		if (adapters_list->len == 0) {
+			g_print("no adapters found\n");
+		}
+
+		for (int i = 0; i < adapters_list->len; i++) {
+			gchar *adapter_path = g_ptr_array_index(adapters_list, i);
+			Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
+			gchar *adapter_name = adapter_get_name(adapter, &error);
+			exit_if_error(error);
+
+			g_print("capturing adapter: %s (%s)\n", adapter_name, adapter_path);
+
+			g_ptr_array_add(captured_adapters, adapter);
+			g_free(adapter_name);
+		}
+
+		g_ptr_array_unref(adapters_list);
 	}
 
 	g_signal_connect(manager, "AdapterAdded", G_CALLBACK(manager_adapter_added), NULL);

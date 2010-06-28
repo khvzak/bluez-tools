@@ -62,7 +62,7 @@ void audio_disconnect(Audio *self, GError **error);
 GHashTable *audio_get_properties(Audio *self, GError **error);
 
 const gchar *audio_get_dbus_object_path(Audio *self);
-gchar *audio_get_state(Audio *self, GError **error);
+const gchar *audio_get_state(Audio *self);
 
 #endif /* __AUDIO_H */
 

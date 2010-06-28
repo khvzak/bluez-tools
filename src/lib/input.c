@@ -35,6 +35,9 @@
 
 struct _InputPrivate {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Properties */
+	gboolean connected;
 };
 
 G_DEFINE_TYPE(Input, input, G_TYPE_OBJECT);
@@ -65,6 +68,9 @@ static void input_dispose(GObject *gobject)
 
 	/* DBus signals disconnection */
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
+
+	/* Properties free */
+	/* none */
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(input_parent_class)->dispose(gobject);
@@ -117,6 +123,17 @@ static void input_post_init(Input *self)
 	/* PropertyChanged(string name, variant value) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
 	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
+
+	/* Properties init */
+	GError *error = NULL;
+	GHashTable *properties = input_get_properties(self, &error);
+	g_assert(error == NULL);
+	g_assert(properties != NULL);
+
+	/* boolean Connected [readonly] */
+	self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
+
+	g_hash_table_unref(properties);
 }
 
 static void _input_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
@@ -125,18 +142,11 @@ static void _input_get_property(GObject *object, guint property_id, GValue *valu
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		g_value_set_string(value, g_strdup(input_get_dbus_object_path(self)));
+		g_value_set_string(value, input_get_dbus_object_path(self));
 		break;
 
 	case PROP_CONNECTED:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, input_get_connected(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, input_get_connected(self));
 		break;
 
 	default:
@@ -205,22 +215,22 @@ const gchar *input_get_dbus_object_path(Input *self)
 	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
 }
 
-gboolean input_get_connected(Input *self, GError **error)
+const gboolean input_get_connected(Input *self)
 {
 	g_assert(INPUT_IS(self));
 
-	GHashTable *properties = input_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->connected;
 }
 
 /* Signals handlers */
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data)
 {
 	Input *self = INPUT(data);
+
+	if (g_strcmp0(name, "Connected") == 0) {
+		self->priv->connected = g_value_get_boolean(value);
+	}
+
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);
 }
 

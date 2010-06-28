@@ -35,6 +35,9 @@
 
 struct _AudioPrivate {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Properties */
+	gchar *state;
 };
 
 G_DEFINE_TYPE(Audio, audio, G_TYPE_OBJECT);
@@ -65,6 +68,9 @@ static void audio_dispose(GObject *gobject)
 
 	/* DBus signals disconnection */
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
+
+	/* Properties free */
+	g_free(self->priv->state);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(audio_parent_class)->dispose(gobject);
@@ -117,6 +123,17 @@ static void audio_post_init(Audio *self)
 	/* PropertyChanged(string name, variant value) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
 	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
+
+	/* Properties init */
+	GError *error = NULL;
+	GHashTable *properties = audio_get_properties(self, &error);
+	g_assert(error == NULL);
+	g_assert(properties != NULL);
+
+	/* string State [readonly] */
+	self->priv->state = g_value_dup_string(g_hash_table_lookup(properties, "State"));
+
+	g_hash_table_unref(properties);
 }
 
 static void _audio_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
@@ -125,18 +142,11 @@ static void _audio_get_property(GObject *object, guint property_id, GValue *valu
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		g_value_set_string(value, g_strdup(audio_get_dbus_object_path(self)));
+		g_value_set_string(value, audio_get_dbus_object_path(self));
 		break;
 
 	case PROP_STATE:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, audio_get_state(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, audio_get_state(self));
 		break;
 
 	default:
@@ -205,22 +215,23 @@ const gchar *audio_get_dbus_object_path(Audio *self)
 	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
 }
 
-gchar *audio_get_state(Audio *self, GError **error)
+const gchar *audio_get_state(Audio *self)
 {
 	g_assert(AUDIO_IS(self));
 
-	GHashTable *properties = audio_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "State"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->state;
 }
 
 /* Signals handlers */
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data)
 {
 	Audio *self = AUDIO(data);
+
+	if (g_strcmp0(name, "State") == 0) {
+		g_free(self->priv->state);
+		self->priv->state = g_value_dup_string(value);
+	}
+
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);
 }
 

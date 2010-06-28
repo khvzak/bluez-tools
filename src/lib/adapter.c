@@ -35,6 +35,19 @@
 
 struct _AdapterPrivate {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Properties */
+	gchar *address;
+	guint32 class;
+	GPtrArray *devices;
+	gboolean discoverable;
+	guint32 discoverable_timeout;
+	gboolean discovering;
+	gchar *name;
+	gboolean pairable;
+	guint32 paireable_timeout;
+	gboolean powered;
+	GPtrArray *uuids;
 };
 
 G_DEFINE_TYPE(Adapter, adapter, G_TYPE_OBJECT);
@@ -87,6 +100,12 @@ static void adapter_dispose(GObject *gobject)
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "DeviceFound", G_CALLBACK(device_found_handler), self);
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "DeviceRemoved", G_CALLBACK(device_removed_handler), self);
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
+
+	/* Properties free */
+	g_free(self->priv->address);
+	g_ptr_array_unref(self->priv->devices);
+	g_free(self->priv->name);
+	g_ptr_array_unref(self->priv->uuids);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(adapter_parent_class)->dispose(gobject);
@@ -223,6 +242,47 @@ static void adapter_post_init(Adapter *self)
 	/* PropertyChanged(string name, variant value) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
 	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
+
+	/* Properties init */
+	GError *error = NULL;
+	GHashTable *properties = adapter_get_properties(self, &error);
+	g_assert(error == NULL);
+	g_assert(properties != NULL);
+
+	/* string Address [readonly] */
+	self->priv->address = g_value_dup_string(g_hash_table_lookup(properties, "Address"));
+
+	/* uint32 Class [readonly] */
+	self->priv->class = g_value_get_uint(g_hash_table_lookup(properties, "Class"));
+
+	/* array{object} Devices [readonly] */
+	self->priv->devices = g_value_dup_boxed(g_hash_table_lookup(properties, "Devices"));
+
+	/* boolean Discoverable [readwrite] */
+	self->priv->discoverable = g_value_get_boolean(g_hash_table_lookup(properties, "Discoverable"));
+
+	/* uint32 DiscoverableTimeout [readwrite] */
+	self->priv->discoverable_timeout = g_value_get_uint(g_hash_table_lookup(properties, "DiscoverableTimeout"));
+
+	/* boolean Discovering [readonly] */
+	self->priv->discovering = g_value_get_boolean(g_hash_table_lookup(properties, "Discovering"));
+
+	/* string Name [readwrite] */
+	self->priv->name = g_value_dup_string(g_hash_table_lookup(properties, "Name"));
+
+	/* boolean Pairable [readwrite] */
+	self->priv->pairable = g_value_get_boolean(g_hash_table_lookup(properties, "Pairable"));
+
+	/* uint32 PaireableTimeout [readwrite] */
+	self->priv->paireable_timeout = g_value_get_uint(g_hash_table_lookup(properties, "PaireableTimeout"));
+
+	/* boolean Powered [readwrite] */
+	self->priv->powered = g_value_get_boolean(g_hash_table_lookup(properties, "Powered"));
+
+	/* array{string} UUIDs [readonly] */
+	self->priv->uuids = g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
+
+	g_hash_table_unref(properties);
 }
 
 static void _adapter_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
@@ -231,128 +291,51 @@ static void _adapter_get_property(GObject *object, guint property_id, GValue *va
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		g_value_set_string(value, g_strdup(adapter_get_dbus_object_path(self)));
+		g_value_set_string(value, adapter_get_dbus_object_path(self));
 		break;
 
 	case PROP_ADDRESS:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, adapter_get_address(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, adapter_get_address(self));
 		break;
 
 	case PROP_CLASS:
-	{
-		GError *error = NULL;
-		g_value_set_uint(value, adapter_get_class(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_uint(value, adapter_get_class(self));
 		break;
 
 	case PROP_DEVICES:
-	{
-		GError *error = NULL;
-		g_value_set_boxed(value, adapter_get_devices(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boxed(value, adapter_get_devices(self));
 		break;
 
 	case PROP_DISCOVERABLE:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, adapter_get_discoverable(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, adapter_get_discoverable(self));
 		break;
 
 	case PROP_DISCOVERABLE_TIMEOUT:
-	{
-		GError *error = NULL;
-		g_value_set_uint(value, adapter_get_discoverable_timeout(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_uint(value, adapter_get_discoverable_timeout(self));
 		break;
 
 	case PROP_DISCOVERING:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, adapter_get_discovering(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, adapter_get_discovering(self));
 		break;
 
 	case PROP_NAME:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, adapter_get_name(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, adapter_get_name(self));
 		break;
 
 	case PROP_PAIRABLE:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, adapter_get_pairable(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, adapter_get_pairable(self));
 		break;
 
 	case PROP_PAIREABLE_TIMEOUT:
-	{
-		GError *error = NULL;
-		g_value_set_uint(value, adapter_get_paireable_timeout(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_uint(value, adapter_get_paireable_timeout(self));
 		break;
 
 	case PROP_POWERED:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, adapter_get_powered(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, adapter_get_powered(self));
 		break;
 
 	case PROP_UUIDS:
-	{
-		GError *error = NULL;
-		g_value_set_boxed(value, adapter_get_uuids(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boxed(value, adapter_get_uuids(self));
 		break;
 
 	default:
@@ -380,10 +363,7 @@ static void _adapter_set_property(GObject *object, guint property_id, const GVal
 	{
 		GError *error = NULL;
 		adapter_set_property(self, "Discoverable", value, &error);
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
+		g_assert(error == NULL);
 	}
 		break;
 
@@ -391,10 +371,7 @@ static void _adapter_set_property(GObject *object, guint property_id, const GVal
 	{
 		GError *error = NULL;
 		adapter_set_property(self, "DiscoverableTimeout", value, &error);
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
+		g_assert(error == NULL);
 	}
 		break;
 
@@ -402,10 +379,7 @@ static void _adapter_set_property(GObject *object, guint property_id, const GVal
 	{
 		GError *error = NULL;
 		adapter_set_property(self, "Name", value, &error);
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
+		g_assert(error == NULL);
 	}
 		break;
 
@@ -413,10 +387,7 @@ static void _adapter_set_property(GObject *object, guint property_id, const GVal
 	{
 		GError *error = NULL;
 		adapter_set_property(self, "Pairable", value, &error);
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
+		g_assert(error == NULL);
 	}
 		break;
 
@@ -424,10 +395,7 @@ static void _adapter_set_property(GObject *object, guint property_id, const GVal
 	{
 		GError *error = NULL;
 		adapter_set_property(self, "PaireableTimeout", value, &error);
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
+		g_assert(error == NULL);
 	}
 		break;
 
@@ -435,10 +403,7 @@ static void _adapter_set_property(GObject *object, guint property_id, const GVal
 	{
 		GError *error = NULL;
 		adapter_set_property(self, "Powered", value, &error);
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
+		g_assert(error == NULL);
 	}
 		break;
 
@@ -582,232 +547,234 @@ const gchar *adapter_get_dbus_object_path(Adapter *self)
 	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
 }
 
-gchar *adapter_get_address(Adapter *self, GError **error)
+const gchar *adapter_get_address(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "Address"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->address;
 }
 
-guint32 adapter_get_class(Adapter *self, GError **error)
+const guint32 adapter_get_class(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	guint32 ret = g_value_get_uint(g_hash_table_lookup(properties, "Class"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->class;
 }
 
-GPtrArray *adapter_get_devices(Adapter *self, GError **error)
+const GPtrArray *adapter_get_devices(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	GPtrArray *ret = g_value_dup_boxed(g_hash_table_lookup(properties, "Devices"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->devices;
 }
 
-gboolean adapter_get_discoverable(Adapter *self, GError **error)
+const gboolean adapter_get_discoverable(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Discoverable"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->discoverable;
 }
 
-void adapter_set_discoverable(Adapter *self, const gboolean value, GError **error)
+void adapter_set_discoverable(Adapter *self, const gboolean value)
 {
-	g_return_if_fail(ADAPTER_IS(self));
+	g_assert(ADAPTER_IS(self));
+
+	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_BOOLEAN);
 	g_value_set_boolean(&t, value);
-	adapter_set_property(self, "Discoverable", &t, error);
+	adapter_set_property(self, "Discoverable", &t, &error);
 	g_value_unset(&t);
+
+	g_assert(error == NULL);
 }
 
-guint32 adapter_get_discoverable_timeout(Adapter *self, GError **error)
+const guint32 adapter_get_discoverable_timeout(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	guint32 ret = g_value_get_uint(g_hash_table_lookup(properties, "DiscoverableTimeout"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->discoverable_timeout;
 }
 
-void adapter_set_discoverable_timeout(Adapter *self, const guint32 value, GError **error)
+void adapter_set_discoverable_timeout(Adapter *self, const guint32 value)
 {
-	g_return_if_fail(ADAPTER_IS(self));
+	g_assert(ADAPTER_IS(self));
+
+	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_UINT);
 	g_value_set_uint(&t, value);
-	adapter_set_property(self, "DiscoverableTimeout", &t, error);
+	adapter_set_property(self, "DiscoverableTimeout", &t, &error);
 	g_value_unset(&t);
+
+	g_assert(error == NULL);
 }
 
-gboolean adapter_get_discovering(Adapter *self, GError **error)
+const gboolean adapter_get_discovering(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Discovering"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->discovering;
 }
 
-gchar *adapter_get_name(Adapter *self, GError **error)
+const gchar *adapter_get_name(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "Name"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->name;
 }
 
-void adapter_set_name(Adapter *self, const gchar *value, GError **error)
+void adapter_set_name(Adapter *self, const gchar *value)
 {
-	g_return_if_fail(ADAPTER_IS(self));
+	g_assert(ADAPTER_IS(self));
+
+	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_STRING);
 	g_value_set_string(&t, value);
-	adapter_set_property(self, "Name", &t, error);
+	adapter_set_property(self, "Name", &t, &error);
 	g_value_unset(&t);
+
+	g_assert(error == NULL);
 }
 
-gboolean adapter_get_pairable(Adapter *self, GError **error)
+const gboolean adapter_get_pairable(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Pairable"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->pairable;
 }
 
-void adapter_set_pairable(Adapter *self, const gboolean value, GError **error)
+void adapter_set_pairable(Adapter *self, const gboolean value)
 {
-	g_return_if_fail(ADAPTER_IS(self));
+	g_assert(ADAPTER_IS(self));
+
+	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_BOOLEAN);
 	g_value_set_boolean(&t, value);
-	adapter_set_property(self, "Pairable", &t, error);
+	adapter_set_property(self, "Pairable", &t, &error);
 	g_value_unset(&t);
+
+	g_assert(error == NULL);
 }
 
-guint32 adapter_get_paireable_timeout(Adapter *self, GError **error)
+const guint32 adapter_get_paireable_timeout(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	guint32 ret = g_value_get_uint(g_hash_table_lookup(properties, "PaireableTimeout"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->paireable_timeout;
 }
 
-void adapter_set_paireable_timeout(Adapter *self, const guint32 value, GError **error)
+void adapter_set_paireable_timeout(Adapter *self, const guint32 value)
 {
-	g_return_if_fail(ADAPTER_IS(self));
+	g_assert(ADAPTER_IS(self));
+
+	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_UINT);
 	g_value_set_uint(&t, value);
-	adapter_set_property(self, "PaireableTimeout", &t, error);
+	adapter_set_property(self, "PaireableTimeout", &t, &error);
 	g_value_unset(&t);
+
+	g_assert(error == NULL);
 }
 
-gboolean adapter_get_powered(Adapter *self, GError **error)
+const gboolean adapter_get_powered(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Powered"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->powered;
 }
 
-void adapter_set_powered(Adapter *self, const gboolean value, GError **error)
+void adapter_set_powered(Adapter *self, const gboolean value)
 {
-	g_return_if_fail(ADAPTER_IS(self));
+	g_assert(ADAPTER_IS(self));
+
+	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_BOOLEAN);
 	g_value_set_boolean(&t, value);
-	adapter_set_property(self, "Powered", &t, error);
+	adapter_set_property(self, "Powered", &t, &error);
 	g_value_unset(&t);
+
+	g_assert(error == NULL);
 }
 
-GPtrArray *adapter_get_uuids(Adapter *self, GError **error)
+const GPtrArray *adapter_get_uuids(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *properties = adapter_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	GPtrArray *ret = g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->uuids;
 }
 
 /* Signals handlers */
 static void device_created_handler(DBusGProxy *dbus_g_proxy, const gchar *device, gpointer data)
 {
 	Adapter *self = ADAPTER(data);
+
 	g_signal_emit(self, signals[DEVICE_CREATED], 0, device);
 }
 
 static void device_disappeared_handler(DBusGProxy *dbus_g_proxy, const gchar *address, gpointer data)
 {
 	Adapter *self = ADAPTER(data);
+
 	g_signal_emit(self, signals[DEVICE_DISAPPEARED], 0, address);
 }
 
 static void device_found_handler(DBusGProxy *dbus_g_proxy, const gchar *address, const GHashTable *values, gpointer data)
 {
 	Adapter *self = ADAPTER(data);
+
 	g_signal_emit(self, signals[DEVICE_FOUND], 0, address, values);
 }
 
 static void device_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *device, gpointer data)
 {
 	Adapter *self = ADAPTER(data);
+
 	g_signal_emit(self, signals[DEVICE_REMOVED], 0, device);
 }
 
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data)
 {
 	Adapter *self = ADAPTER(data);
+
+	if (g_strcmp0(name, "Address") == 0) {
+		g_free(self->priv->address);
+		self->priv->address = g_value_dup_string(value);
+	} else if (g_strcmp0(name, "Class") == 0) {
+		self->priv->class = g_value_get_uint(value);
+	} else if (g_strcmp0(name, "Devices") == 0) {
+		g_ptr_array_unref(self->priv->devices);
+		self->priv->devices = g_value_dup_boxed(value);
+	} else if (g_strcmp0(name, "Discoverable") == 0) {
+		self->priv->discoverable = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "DiscoverableTimeout") == 0) {
+		self->priv->discoverable_timeout = g_value_get_uint(value);
+	} else if (g_strcmp0(name, "Discovering") == 0) {
+		self->priv->discovering = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "Name") == 0) {
+		g_free(self->priv->name);
+		self->priv->name = g_value_dup_string(value);
+	} else if (g_strcmp0(name, "Pairable") == 0) {
+		self->priv->pairable = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "PaireableTimeout") == 0) {
+		self->priv->paireable_timeout = g_value_get_uint(value);
+	} else if (g_strcmp0(name, "Powered") == 0) {
+		self->priv->powered = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "UUIDs") == 0) {
+		g_ptr_array_unref(self->priv->uuids);
+		self->priv->uuids = g_value_dup_boxed(value);
+	}
+
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);
 }
 

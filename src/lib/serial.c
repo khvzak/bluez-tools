@@ -93,7 +93,7 @@ static void _serial_get_property(GObject *object, guint property_id, GValue *val
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		g_value_set_string(value, g_strdup(serial_get_dbus_object_path(self)));
+		g_value_set_string(value, serial_get_dbus_object_path(self));
 		break;
 
 	default:

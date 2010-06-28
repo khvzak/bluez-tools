@@ -62,7 +62,7 @@ void input_disconnect(Input *self, GError **error);
 GHashTable *input_get_properties(Input *self, GError **error);
 
 const gchar *input_get_dbus_object_path(Input *self);
-gboolean input_get_connected(Input *self, GError **error);
+const gboolean input_get_connected(Input *self);
 
 #endif /* __INPUT_H */
 

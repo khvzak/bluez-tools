@@ -35,6 +35,11 @@
 
 struct _NetworkPrivate {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Properties */
+	gboolean connected;
+	gchar *interface;
+	gchar *uuid;
 };
 
 G_DEFINE_TYPE(Network, network, G_TYPE_OBJECT);
@@ -67,6 +72,10 @@ static void network_dispose(GObject *gobject)
 
 	/* DBus signals disconnection */
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
+
+	/* Properties free */
+	g_free(self->priv->interface);
+	g_free(self->priv->uuid);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(network_parent_class)->dispose(gobject);
@@ -127,6 +136,23 @@ static void network_post_init(Network *self)
 	/* PropertyChanged(string name, variant value) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
 	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
+
+	/* Properties init */
+	GError *error = NULL;
+	GHashTable *properties = network_get_properties(self, &error);
+	g_assert(error == NULL);
+	g_assert(properties != NULL);
+
+	/* boolean Connected [readonly] */
+	self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
+
+	/* string Interface [readonly] */
+	self->priv->interface = g_value_dup_string(g_hash_table_lookup(properties, "Interface"));
+
+	/* string UUID [readonly] */
+	self->priv->uuid = g_value_dup_string(g_hash_table_lookup(properties, "UUID"));
+
+	g_hash_table_unref(properties);
 }
 
 static void _network_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
@@ -135,40 +161,19 @@ static void _network_get_property(GObject *object, guint property_id, GValue *va
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		g_value_set_string(value, g_strdup(network_get_dbus_object_path(self)));
+		g_value_set_string(value, network_get_dbus_object_path(self));
 		break;
 
 	case PROP_CONNECTED:
-	{
-		GError *error = NULL;
-		g_value_set_boolean(value, network_get_connected(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_boolean(value, network_get_connected(self));
 		break;
 
 	case PROP_INTERFACE:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, network_get_interface(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, network_get_interface(self));
 		break;
 
 	case PROP_UUID:
-	{
-		GError *error = NULL;
-		g_value_set_string(value, network_get_uuid(self, &error));
-		if (error != NULL) {
-			g_print("%s: %s\n", g_get_prgname(), error->message);
-			g_error_free(error);
-		}
-	}
+		g_value_set_string(value, network_get_uuid(self));
 		break;
 
 	default:
@@ -242,46 +247,42 @@ const gchar *network_get_dbus_object_path(Network *self)
 	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
 }
 
-gboolean network_get_connected(Network *self, GError **error)
+const gboolean network_get_connected(Network *self)
 {
 	g_assert(NETWORK_IS(self));
 
-	GHashTable *properties = network_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, 0);
-	gboolean ret = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->connected;
 }
 
-gchar *network_get_interface(Network *self, GError **error)
+const gchar *network_get_interface(Network *self)
 {
 	g_assert(NETWORK_IS(self));
 
-	GHashTable *properties = network_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "Interface"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->interface;
 }
 
-gchar *network_get_uuid(Network *self, GError **error)
+const gchar *network_get_uuid(Network *self)
 {
 	g_assert(NETWORK_IS(self));
 
-	GHashTable *properties = network_get_properties(self, error);
-	g_return_val_if_fail(properties != NULL, NULL);
-	gchar *ret = g_value_dup_string(g_hash_table_lookup(properties, "UUID"));
-	g_hash_table_unref(properties);
-
-	return ret;
+	return self->priv->uuid;
 }
 
 /* Signals handlers */
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data)
 {
 	Network *self = NETWORK(data);
+
+	if (g_strcmp0(name, "Connected") == 0) {
+		self->priv->connected = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "Interface") == 0) {
+		g_free(self->priv->interface);
+		self->priv->interface = g_value_dup_string(value);
+	} else if (g_strcmp0(name, "UUID") == 0) {
+		g_free(self->priv->uuid);
+		self->priv->uuid = g_value_dup_string(value);
+	}
+
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);
 }
 

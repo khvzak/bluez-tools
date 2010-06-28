@@ -61,7 +61,7 @@ gchar *manager_default_adapter(Manager *self, GError **error);
 gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error);
 GHashTable *manager_get_properties(Manager *self, GError **error);
 
-GPtrArray *manager_get_adapters(Manager *self, GError **error);
+const GPtrArray *manager_get_adapters(Manager *self);
 
 #endif /* __MANAGER_H */
 
