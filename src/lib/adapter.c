@@ -45,7 +45,7 @@ struct _AdapterPrivate {
 	gboolean discovering;
 	gchar *name;
 	gboolean pairable;
-	guint32 paireable_timeout;
+	guint32 pairable_timeout;
 	gboolean powered;
 	GPtrArray *uuids;
 };
@@ -64,7 +64,7 @@ enum {
 	PROP_DISCOVERING, /* readonly */
 	PROP_NAME, /* readwrite */
 	PROP_PAIRABLE, /* readwrite */
-	PROP_PAIREABLE_TIMEOUT, /* readwrite */
+	PROP_PAIRABLE_TIMEOUT, /* readwrite */
 	PROP_POWERED, /* readwrite */
 	PROP_UUIDS /* readonly */
 };
@@ -161,9 +161,9 @@ static void adapter_class_init(AdapterClass *klass)
 	pspec = g_param_spec_boolean("Pairable", NULL, NULL, FALSE, G_PARAM_READWRITE);
 	g_object_class_install_property(gobject_class, PROP_PAIRABLE, pspec);
 
-	/* uint32 PaireableTimeout [readwrite] */
-	pspec = g_param_spec_uint("PaireableTimeout", NULL, NULL, 0, 65535, 0, G_PARAM_READWRITE);
-	g_object_class_install_property(gobject_class, PROP_PAIREABLE_TIMEOUT, pspec);
+	/* uint32 PairableTimeout [readwrite] */
+	pspec = g_param_spec_uint("PairableTimeout", NULL, NULL, 0, 65535, 0, G_PARAM_READWRITE);
+	g_object_class_install_property(gobject_class, PROP_PAIRABLE_TIMEOUT, pspec);
 
 	/* boolean Powered [readwrite] */
 	pspec = g_param_spec_boolean("Powered", NULL, NULL, FALSE, G_PARAM_READWRITE);
@@ -273,8 +273,8 @@ static void adapter_post_init(Adapter *self)
 	/* boolean Pairable [readwrite] */
 	self->priv->pairable = g_value_get_boolean(g_hash_table_lookup(properties, "Pairable"));
 
-	/* uint32 PaireableTimeout [readwrite] */
-	self->priv->paireable_timeout = g_value_get_uint(g_hash_table_lookup(properties, "PaireableTimeout"));
+	/* uint32 PairableTimeout [readwrite] */
+	self->priv->pairable_timeout = g_value_get_uint(g_hash_table_lookup(properties, "PairableTimeout"));
 
 	/* boolean Powered [readwrite] */
 	self->priv->powered = g_value_get_boolean(g_hash_table_lookup(properties, "Powered"));
@@ -326,8 +326,8 @@ static void _adapter_get_property(GObject *object, guint property_id, GValue *va
 		g_value_set_boolean(value, adapter_get_pairable(self));
 		break;
 
-	case PROP_PAIREABLE_TIMEOUT:
-		g_value_set_uint(value, adapter_get_paireable_timeout(self));
+	case PROP_PAIRABLE_TIMEOUT:
+		g_value_set_uint(value, adapter_get_pairable_timeout(self));
 		break;
 
 	case PROP_POWERED:
@@ -391,10 +391,10 @@ static void _adapter_set_property(GObject *object, guint property_id, const GVal
 	}
 		break;
 
-	case PROP_PAIREABLE_TIMEOUT:
+	case PROP_PAIRABLE_TIMEOUT:
 	{
 		GError *error = NULL;
-		adapter_set_property(self, "PaireableTimeout", value, &error);
+		adapter_set_property(self, "PairableTimeout", value, &error);
 		g_assert(error == NULL);
 	}
 		break;
@@ -663,14 +663,14 @@ void adapter_set_pairable(Adapter *self, const gboolean value)
 	g_assert(error == NULL);
 }
 
-const guint32 adapter_get_paireable_timeout(Adapter *self)
+const guint32 adapter_get_pairable_timeout(Adapter *self)
 {
 	g_assert(ADAPTER_IS(self));
 
-	return self->priv->paireable_timeout;
+	return self->priv->pairable_timeout;
 }
 
-void adapter_set_paireable_timeout(Adapter *self, const guint32 value)
+void adapter_set_pairable_timeout(Adapter *self, const guint32 value)
 {
 	g_assert(ADAPTER_IS(self));
 
@@ -679,7 +679,7 @@ void adapter_set_paireable_timeout(Adapter *self, const guint32 value)
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_UINT);
 	g_value_set_uint(&t, value);
-	adapter_set_property(self, "PaireableTimeout", &t, &error);
+	adapter_set_property(self, "PairableTimeout", &t, &error);
 	g_value_unset(&t);
 
 	g_assert(error == NULL);
@@ -766,8 +766,8 @@ static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name
 		self->priv->name = g_value_dup_string(value);
 	} else if (g_strcmp0(name, "Pairable") == 0) {
 		self->priv->pairable = g_value_get_boolean(value);
-	} else if (g_strcmp0(name, "PaireableTimeout") == 0) {
-		self->priv->paireable_timeout = g_value_get_uint(value);
+	} else if (g_strcmp0(name, "PairableTimeout") == 0) {
+		self->priv->pairable_timeout = g_value_get_uint(value);
 	} else if (g_strcmp0(name, "Powered") == 0) {
 		self->priv->powered = g_value_get_boolean(value);
 	} else if (g_strcmp0(name, "UUIDs") == 0) {

@@ -44,33 +44,26 @@ static GPtrArray *captured_devices = NULL;
 static void manager_adapter_added(Manager *manager, const gchar *adapter_path, gpointer data)
 {
 	Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
-	gchar *adapter_name = adapter_get_name(adapter, NULL);
 
-	if (capture_adapter_name == NULL || (g_strcmp0(capture_adapter_name, adapter_name) == 0 && captured_adapters->len == 0)) {
+	if (capture_adapter_name == NULL || (g_strcmp0(capture_adapter_name, adapter_get_name(adapter)) == 0 && captured_adapters->len == 0)) {
 		g_ptr_array_add(captured_adapters, adapter);
-		g_print("[MANAGER] adapter added: %s (%s)\n", adapter_name, adapter_path);
+		g_print("[MANAGER] adapter added: %s (%s)\n", adapter_get_name(adapter), adapter_path);
 	} else {
 		g_object_unref(adapter);
 	}
-
-	g_free(adapter_name);
 }
 
 static void manager_adapter_removed(Manager *manager, const gchar *adapter_path, gpointer data)
 {
 	for (int i = 0; i < captured_adapters->len; i++) {
 		Adapter *adapter = ADAPTER(g_ptr_array_index(captured_adapters, i));
-		gchar *adapter_name = adapter_get_name(adapter, NULL);
 
 		if (g_strcmp0(adapter_path, adapter_get_dbus_object_path(adapter)) == 0) {
 			g_ptr_array_remove_index(captured_adapters, i);
-			g_print("[MANAGER] adapter removed: %s (%s)\n", adapter_name, adapter_path);
+			g_print("[MANAGER] adapter removed: %s (%s)\n", adapter_get_name(adapter), adapter_path);
 			g_object_unref(adapter);
-			g_free(adapter_name);
 			break;
 		}
-
-		g_free(adapter_name);
 	}
 }
 
@@ -185,36 +178,23 @@ int main(int argc, char *argv[])
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
 
 	if (capture_adapter_name != NULL) {
-		gchar *adapter_path = find_adapter_by_name(capture_adapter_name, &error);
+		Adapter *adapter = find_adapter_by_name(capture_adapter_name, &error);
 		exit_if_error(error);
-
-		g_print("capturing adapter: %s (%s)\n", capture_adapter_name, adapter_path);
-
-		Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
+		g_print("capturing adapter: %s (%s)\n", capture_adapter_name, adapter_get_dbus_object_path(adapter));
 		g_ptr_array_add(captured_adapters, adapter);
-		g_free(adapter_path);
 	} else {
-		GPtrArray *adapters_list = manager_get_adapters(manager, &error);
-		g_return_val_if_fail(adapters_list != NULL, NULL);
-		exit_if_error(error);
+		const GPtrArray *adapters_list = manager_get_adapters(manager);
+		g_return_val_if_fail(adapters_list != NULL, EXIT_FAILURE);
 
 		if (adapters_list->len == 0) {
 			g_print("no adapters found\n");
 		}
 
 		for (int i = 0; i < adapters_list->len; i++) {
-			gchar *adapter_path = g_ptr_array_index(adapters_list, i);
-			Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
-			gchar *adapter_name = adapter_get_name(adapter, &error);
-			exit_if_error(error);
-
-			g_print("capturing adapter: %s (%s)\n", adapter_name, adapter_path);
-
+			Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", g_ptr_array_index(adapters_list, i), NULL);
+			g_print("capturing adapter: %s (%s)\n", adapter_get_name(adapter), adapter_get_dbus_object_path(adapter));
 			g_ptr_array_add(captured_adapters, adapter);
-			g_free(adapter_name);
 		}
-
-		g_ptr_array_unref(adapters_list);
 	}
 
 	g_signal_connect(manager, "AdapterAdded", G_CALLBACK(manager_adapter_added), NULL);
@@ -233,10 +213,11 @@ int main(int argc, char *argv[])
 		g_signal_connect(adapter, "PropertyChanged", G_CALLBACK(adapter_property_changed), NULL);
 
 		// Capturing signals from devices
-		GPtrArray *devices_list = adapter_get_devices(adapter, NULL);
+		const GPtrArray *devices_list = adapter_get_devices(adapter);
+		g_return_val_if_fail(devices_list != NULL, EXIT_FAILURE);
+
 		for (int i = 0; i < devices_list->len; i++) {
-			gchar *device_path = g_ptr_array_index(devices_list, i);
-			Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
+			Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", g_ptr_array_index(devices_list, i), NULL);
 			g_ptr_array_add(captured_devices, device);
 
 			g_signal_connect(device, "DisconnectRequested", G_CALLBACK(device_disconnect_requested), NULL);
@@ -244,8 +225,6 @@ int main(int argc, char *argv[])
 			g_signal_connect(device, "NodeRemoved", G_CALLBACK(device_node_removed), NULL);
 			g_signal_connect(device, "PropertyChanged", G_CALLBACK(device_property_changed), NULL);
 		}
-
-		g_ptr_array_unref(devices_list);
 	}
 
 	GMainLoop *mainloop;

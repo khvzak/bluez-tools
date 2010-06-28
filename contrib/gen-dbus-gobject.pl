@@ -24,6 +24,7 @@ sub parse_doc_api {
         /^\s*$/ && next;
         
         # On-fly patches:
+        
         # audio-api.txt
         s/void (PropertyChanged\(string name, variant value\))$/$1/;
         s/(string State)$/$1 [readonly]/;
@@ -35,6 +36,9 @@ sub parse_doc_api {
         s/void (CallStarted\(\))$/$1/;
         s/void (CallEnded\(\))$/$1/;
         s/^p(roperties\tboolean Connected \[readonly\])$/P$1/;
+        
+        # adapter-api.txt
+        s/PaireableTimeout/PairableTimeout/;
         
         if (/^(.+) hierarchy$/) {
             my $hierarchy = $1;
