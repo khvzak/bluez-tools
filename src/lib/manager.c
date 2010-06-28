@@ -168,7 +168,11 @@ static void manager_init(Manager *self)
 	g_assert(properties != NULL);
 
 	/* array{object} Adapters [readonly] */
-	self->priv->adapters = g_value_dup_boxed(g_hash_table_lookup(properties, "Adapters"));
+	if (g_hash_table_lookup(properties, "Adapters")) {
+		self->priv->adapters = g_value_dup_boxed(g_hash_table_lookup(properties, "Adapters"));
+	} else {
+		self->priv->adapters = g_ptr_array_new();
+	}
 
 	g_hash_table_unref(properties);
 }

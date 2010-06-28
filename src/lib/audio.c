@@ -131,7 +131,11 @@ static void audio_post_init(Audio *self)
 	g_assert(properties != NULL);
 
 	/* string State [readonly] */
-	self->priv->state = g_value_dup_string(g_hash_table_lookup(properties, "State"));
+	if (g_hash_table_lookup(properties, "State")) {
+		self->priv->state = g_value_dup_string(g_hash_table_lookup(properties, "State"));
+	} else {
+		self->priv->state = g_strdup("undefined");
+	}
 
 	g_hash_table_unref(properties);
 }

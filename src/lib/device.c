@@ -251,43 +251,95 @@ static void device_post_init(Device *self)
 	g_assert(properties != NULL);
 
 	/* object Adapter [readonly] */
-	self->priv->adapter = g_value_dup_string(g_hash_table_lookup(properties, "Adapter"));
+	if (g_hash_table_lookup(properties, "Adapter")) {
+		self->priv->adapter = g_value_dup_string(g_hash_table_lookup(properties, "Adapter"));
+	} else {
+		self->priv->adapter = g_strdup("undefined");
+	}
 
 	/* string Address [readonly] */
-	self->priv->address = g_value_dup_string(g_hash_table_lookup(properties, "Address"));
+	if (g_hash_table_lookup(properties, "Address")) {
+		self->priv->address = g_value_dup_string(g_hash_table_lookup(properties, "Address"));
+	} else {
+		self->priv->address = g_strdup("undefined");
+	}
 
 	/* string Alias [readwrite] */
-	self->priv->alias = g_value_dup_string(g_hash_table_lookup(properties, "Alias"));
+	if (g_hash_table_lookup(properties, "Alias")) {
+		self->priv->alias = g_value_dup_string(g_hash_table_lookup(properties, "Alias"));
+	} else {
+		self->priv->alias = g_strdup("undefined");
+	}
 
 	/* boolean Blocked [readwrite] */
-	self->priv->blocked = g_value_get_boolean(g_hash_table_lookup(properties, "Blocked"));
+	if (g_hash_table_lookup(properties, "Blocked")) {
+		self->priv->blocked = g_value_get_boolean(g_hash_table_lookup(properties, "Blocked"));
+	} else {
+		self->priv->blocked = FALSE;
+	}
 
 	/* uint32 Class [readonly] */
-	self->priv->class = g_value_get_uint(g_hash_table_lookup(properties, "Class"));
+	if (g_hash_table_lookup(properties, "Class")) {
+		self->priv->class = g_value_get_uint(g_hash_table_lookup(properties, "Class"));
+	} else {
+		self->priv->class = 0;
+	}
 
 	/* boolean Connected [readonly] */
-	self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
+	if (g_hash_table_lookup(properties, "Connected")) {
+		self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
+	} else {
+		self->priv->connected = FALSE;
+	}
 
 	/* string Icon [readonly] */
-	self->priv->icon = g_value_dup_string(g_hash_table_lookup(properties, "Icon"));
+	if (g_hash_table_lookup(properties, "Icon")) {
+		self->priv->icon = g_value_dup_string(g_hash_table_lookup(properties, "Icon"));
+	} else {
+		self->priv->icon = g_strdup("undefined");
+	}
 
 	/* boolean LegacyPairing [readonly] */
-	self->priv->legacy_pairing = g_value_get_boolean(g_hash_table_lookup(properties, "LegacyPairing"));
+	if (g_hash_table_lookup(properties, "LegacyPairing")) {
+		self->priv->legacy_pairing = g_value_get_boolean(g_hash_table_lookup(properties, "LegacyPairing"));
+	} else {
+		self->priv->legacy_pairing = FALSE;
+	}
 
 	/* string Name [readonly] */
-	self->priv->name = g_value_dup_string(g_hash_table_lookup(properties, "Name"));
+	if (g_hash_table_lookup(properties, "Name")) {
+		self->priv->name = g_value_dup_string(g_hash_table_lookup(properties, "Name"));
+	} else {
+		self->priv->name = g_strdup("undefined");
+	}
 
 	/* array{object} Nodes [readonly] */
-	self->priv->nodes = g_value_dup_boxed(g_hash_table_lookup(properties, "Nodes"));
+	if (g_hash_table_lookup(properties, "Nodes")) {
+		self->priv->nodes = g_value_dup_boxed(g_hash_table_lookup(properties, "Nodes"));
+	} else {
+		self->priv->nodes = g_ptr_array_new();
+	}
 
 	/* boolean Paired [readonly] */
-	self->priv->paired = g_value_get_boolean(g_hash_table_lookup(properties, "Paired"));
+	if (g_hash_table_lookup(properties, "Paired")) {
+		self->priv->paired = g_value_get_boolean(g_hash_table_lookup(properties, "Paired"));
+	} else {
+		self->priv->paired = FALSE;
+	}
 
 	/* boolean Trusted [readwrite] */
-	self->priv->trusted = g_value_get_boolean(g_hash_table_lookup(properties, "Trusted"));
+	if (g_hash_table_lookup(properties, "Trusted")) {
+		self->priv->trusted = g_value_get_boolean(g_hash_table_lookup(properties, "Trusted"));
+	} else {
+		self->priv->trusted = FALSE;
+	}
 
 	/* array{string} UUIDs [readonly] */
-	self->priv->uuids = g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
+	if (g_hash_table_lookup(properties, "UUIDs")) {
+		self->priv->uuids = g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
+	} else {
+		self->priv->uuids = g_ptr_array_new();
+	}
 
 	g_hash_table_unref(properties);
 }

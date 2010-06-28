@@ -144,13 +144,25 @@ static void network_post_init(Network *self)
 	g_assert(properties != NULL);
 
 	/* boolean Connected [readonly] */
-	self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
+	if (g_hash_table_lookup(properties, "Connected")) {
+		self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
+	} else {
+		self->priv->connected = FALSE;
+	}
 
 	/* string Interface [readonly] */
-	self->priv->interface = g_value_dup_string(g_hash_table_lookup(properties, "Interface"));
+	if (g_hash_table_lookup(properties, "Interface")) {
+		self->priv->interface = g_value_dup_string(g_hash_table_lookup(properties, "Interface"));
+	} else {
+		self->priv->interface = g_strdup("undefined");
+	}
 
 	/* string UUID [readonly] */
-	self->priv->uuid = g_value_dup_string(g_hash_table_lookup(properties, "UUID"));
+	if (g_hash_table_lookup(properties, "UUID")) {
+		self->priv->uuid = g_value_dup_string(g_hash_table_lookup(properties, "UUID"));
+	} else {
+		self->priv->uuid = g_strdup("undefined");
+	}
 
 	g_hash_table_unref(properties);
 }

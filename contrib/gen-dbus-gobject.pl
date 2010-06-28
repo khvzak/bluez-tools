@@ -609,9 +609,7 @@ EOT
         $priv_properties .= "\t".get_g_type($p{'type'})."$property_var;\n";
         $enum_properties .= "\t$enum, /* $p{'mode'} */\n";
         $properties_registration .= "\t/* $p{'decl'} */\n";
-        $properties_init .=
-        "\t/* $p{'decl'} */\n".
-        "\tself->priv->$property_var = ";
+        $properties_init .= "\t/* $p{'decl'} */\n";
         $properties_access_methods .=
         "const ".get_g_type($p{'type'})."$property_get_method({\$Object} *self)\n".
         "{\n".
@@ -623,7 +621,12 @@ EOT
         $get_properties .= "\tcase $enum:\n";
         if ($p{'type'} eq 'string' || $p{'type'} eq 'object') {
             $properties_registration .= "\tpspec = g_param_spec_string(\"$property\", NULL, NULL, NULL, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .= "g_value_dup_string(g_hash_table_lookup(properties, \"$property\"));\n";
+	    $properties_init .=
+            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
+            "\t\tself->priv->$property_var = g_value_dup_string(g_hash_table_lookup(properties, \"$property\"));\n".
+            "\t} else {\n".
+            "\t\tself->priv->$property_var = g_strdup(\"undefined\");\n".
+            "\t}\n";
             $get_properties .= "\t\tg_value_set_string(value, $property_get_method(self));\n";
             $properties_free .= "\tg_free(self->priv->$property_var);\n";
             $properties_changed_handler .=
@@ -631,7 +634,12 @@ EOT
             "\t\tself->priv->$property_var = g_value_dup_string(value);\n";
         } elsif ($p{'type'} eq 'array{object}' || $p{'type'} eq 'array{string}') {
             $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_PTR_ARRAY, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .= "g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n";
+	    $properties_init .=
+            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
+            "\t\tself->priv->$property_var = g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
+            "\t} else {\n".
+            "\t\tself->priv->$property_var = g_ptr_array_new();\n".
+            "\t}\n";
             $get_properties .= "\t\tg_value_set_boxed(value, $property_get_method(self));\n";
             $properties_free .= "\tg_ptr_array_unref(self->priv->$property_var);\n";
             $properties_changed_handler .=
@@ -639,12 +647,22 @@ EOT
             "\t\tself->priv->$property_var = g_value_dup_boxed(value);\n";
         } elsif ($p{'type'} eq 'uint32') {
             $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 65535, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .= "g_value_get_uint(g_hash_table_lookup(properties, \"$property\"));\n";
+	    $properties_init .=
+            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
+            "\t\tself->priv->$property_var = g_value_get_uint(g_hash_table_lookup(properties, \"$property\"));\n".
+            "\t} else {\n".
+            "\t\tself->priv->$property_var = 0;\n".
+            "\t}\n";
             $get_properties .= "\t\tg_value_set_uint(value, $property_get_method(self));\n";
             $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uint(value);\n";
         } elsif ($p{'type'} eq 'boolean') {
             $properties_registration .= "\tpspec = g_param_spec_boolean(\"$property\", NULL, NULL, FALSE, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .= "g_value_get_boolean(g_hash_table_lookup(properties, \"$property\"));\n";
+	    $properties_init .=
+            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
+            "\t\tself->priv->$property_var = g_value_get_boolean(g_hash_table_lookup(properties, \"$property\"));\n".
+            "\t} else {\n".
+            "\t\tself->priv->$property_var = FALSE;\n".
+            "\t}\n";
             $get_properties .= "\t\tg_value_set_boolean(value, $property_get_method(self));\n";
             $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_boolean(value);\n";
         } else {

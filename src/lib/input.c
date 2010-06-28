@@ -131,7 +131,11 @@ static void input_post_init(Input *self)
 	g_assert(properties != NULL);
 
 	/* boolean Connected [readonly] */
-	self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
+	if (g_hash_table_lookup(properties, "Connected")) {
+		self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
+	} else {
+		self->priv->connected = FALSE;
+	}
 
 	g_hash_table_unref(properties);
 }

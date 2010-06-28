@@ -250,37 +250,81 @@ static void adapter_post_init(Adapter *self)
 	g_assert(properties != NULL);
 
 	/* string Address [readonly] */
-	self->priv->address = g_value_dup_string(g_hash_table_lookup(properties, "Address"));
+	if (g_hash_table_lookup(properties, "Address")) {
+		self->priv->address = g_value_dup_string(g_hash_table_lookup(properties, "Address"));
+	} else {
+		self->priv->address = g_strdup("undefined");
+	}
 
 	/* uint32 Class [readonly] */
-	self->priv->class = g_value_get_uint(g_hash_table_lookup(properties, "Class"));
+	if (g_hash_table_lookup(properties, "Class")) {
+		self->priv->class = g_value_get_uint(g_hash_table_lookup(properties, "Class"));
+	} else {
+		self->priv->class = 0;
+	}
 
 	/* array{object} Devices [readonly] */
-	self->priv->devices = g_value_dup_boxed(g_hash_table_lookup(properties, "Devices"));
+	if (g_hash_table_lookup(properties, "Devices")) {
+		self->priv->devices = g_value_dup_boxed(g_hash_table_lookup(properties, "Devices"));
+	} else {
+		self->priv->devices = g_ptr_array_new();
+	}
 
 	/* boolean Discoverable [readwrite] */
-	self->priv->discoverable = g_value_get_boolean(g_hash_table_lookup(properties, "Discoverable"));
+	if (g_hash_table_lookup(properties, "Discoverable")) {
+		self->priv->discoverable = g_value_get_boolean(g_hash_table_lookup(properties, "Discoverable"));
+	} else {
+		self->priv->discoverable = FALSE;
+	}
 
 	/* uint32 DiscoverableTimeout [readwrite] */
-	self->priv->discoverable_timeout = g_value_get_uint(g_hash_table_lookup(properties, "DiscoverableTimeout"));
+	if (g_hash_table_lookup(properties, "DiscoverableTimeout")) {
+		self->priv->discoverable_timeout = g_value_get_uint(g_hash_table_lookup(properties, "DiscoverableTimeout"));
+	} else {
+		self->priv->discoverable_timeout = 0;
+	}
 
 	/* boolean Discovering [readonly] */
-	self->priv->discovering = g_value_get_boolean(g_hash_table_lookup(properties, "Discovering"));
+	if (g_hash_table_lookup(properties, "Discovering")) {
+		self->priv->discovering = g_value_get_boolean(g_hash_table_lookup(properties, "Discovering"));
+	} else {
+		self->priv->discovering = FALSE;
+	}
 
 	/* string Name [readwrite] */
-	self->priv->name = g_value_dup_string(g_hash_table_lookup(properties, "Name"));
+	if (g_hash_table_lookup(properties, "Name")) {
+		self->priv->name = g_value_dup_string(g_hash_table_lookup(properties, "Name"));
+	} else {
+		self->priv->name = g_strdup("undefined");
+	}
 
 	/* boolean Pairable [readwrite] */
-	self->priv->pairable = g_value_get_boolean(g_hash_table_lookup(properties, "Pairable"));
+	if (g_hash_table_lookup(properties, "Pairable")) {
+		self->priv->pairable = g_value_get_boolean(g_hash_table_lookup(properties, "Pairable"));
+	} else {
+		self->priv->pairable = FALSE;
+	}
 
 	/* uint32 PairableTimeout [readwrite] */
-	self->priv->pairable_timeout = g_value_get_uint(g_hash_table_lookup(properties, "PairableTimeout"));
+	if (g_hash_table_lookup(properties, "PairableTimeout")) {
+		self->priv->pairable_timeout = g_value_get_uint(g_hash_table_lookup(properties, "PairableTimeout"));
+	} else {
+		self->priv->pairable_timeout = 0;
+	}
 
 	/* boolean Powered [readwrite] */
-	self->priv->powered = g_value_get_boolean(g_hash_table_lookup(properties, "Powered"));
+	if (g_hash_table_lookup(properties, "Powered")) {
+		self->priv->powered = g_value_get_boolean(g_hash_table_lookup(properties, "Powered"));
+	} else {
+		self->priv->powered = FALSE;
+	}
 
 	/* array{string} UUIDs [readonly] */
-	self->priv->uuids = g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
+	if (g_hash_table_lookup(properties, "UUIDs")) {
+		self->priv->uuids = g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
+	} else {
+		self->priv->uuids = g_ptr_array_new();
+	}
 
 	g_hash_table_unref(properties);
 }
