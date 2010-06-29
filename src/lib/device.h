@@ -82,7 +82,7 @@ const GPtrArray *device_get_nodes(Device *self);
 const gboolean device_get_paired(Device *self);
 const gboolean device_get_trusted(Device *self);
 void device_set_trusted(Device *self, const gboolean value);
-const GPtrArray *device_get_uuids(Device *self);
+const gchar **device_get_uuids(Device *self);
 
 #endif /* __DEVICE_H */
 

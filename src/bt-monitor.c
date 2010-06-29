@@ -33,6 +33,7 @@
 #include "lib/adapter.h"
 #include "lib/device.h"
 #include "lib/manager.h"
+#include "lib/agent.h"
 
 static gchar *capture_adapter_name = NULL;
 static GPtrArray *captured_adapters = NULL;
@@ -92,7 +93,7 @@ static void adapter_device_disappeared(Adapter *adapter, const gchar *address, g
 	g_print("[ADAPTER] device disappeared: %s\n", address);
 }
 
-static void adapter_device_found(Adapter *adapter, const gchar *address, gpointer data)
+static void adapter_device_found(Adapter *adapter, const gchar *address, const GHashTable *values, gpointer data)
 {
 	g_print("[ADAPTER] device found: %s\n", address);
 }
@@ -242,7 +243,7 @@ int main(int argc, char *argv[])
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
 
 	if (capture_adapter_name != NULL) {
-		Adapter *adapter = find_adapter_by_name(capture_adapter_name, &error);
+		Adapter *adapter = find_adapter(capture_adapter_name, &error);
 		exit_if_error(error);
 		capture_adapter(adapter);
 	} else {
@@ -263,6 +264,9 @@ int main(int argc, char *argv[])
 	g_signal_connect(manager, "AdapterRemoved", G_CALLBACK(manager_adapter_removed), NULL);
 	g_signal_connect(manager, "DefaultAdapterChanged", G_CALLBACK(manager_default_adapter_changed), NULL);
 	g_signal_connect(manager, "PropertyChanged", G_CALLBACK(manager_property_changed), NULL);
+
+	Agent *agent = g_object_new(AGENT_TYPE, NULL);
+	g_print("agent registered...\n");
 
 	GMainLoop *mainloop;
 	mainloop = g_main_loop_new(NULL, FALSE);

@@ -21,33 +21,22 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#ifndef __HELPERS_H
+#define __HELPERS_H
 
-#include "agent.h"
-#include "marshallers.h"
-#include "dbus-common.h"
+#include <glib.h>
+#include <dbus/dbus-glib.h>
 
-DBusGConnection *conn = NULL;
+#include "adapter.h"
 
-gboolean dbus_connect(GError **error)
-{
-	conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, error);
-	if (!conn) {
-		return FALSE;
-	}
+Adapter *find_adapter(const gchar *name, GError **error);
+const gchar *uuid2service(const gchar *uuid);
 
-	/* Marshallers registration */
-	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__STRING_BOXED, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
+#define exit_if_error(error) G_STMT_START{ \
+if (error) { \
+	g_printerr("%s\n", error->message); \
+	exit(EXIT_FAILURE); \
+}; }G_STMT_END
 
-	/* Agent installation */
-	dbus_g_object_type_install_info(AGENT_TYPE, &dbus_glib_agent_object_info);
+#endif /* __HELPERS_H */
 
-	return TRUE;
-}
-
-void dbus_disconnect()
-{
-	dbus_g_connection_unref(conn);
-}

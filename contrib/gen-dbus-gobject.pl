@@ -173,7 +173,8 @@ sub get_g_type {
     $g_type = 'gboolean ' if $bluez_type eq 'boolean';
     $g_type = 'gint32 ' if $bluez_type eq 'int32';
     $g_type = 'guint32 ' if $bluez_type eq 'uint32';
-    $g_type = 'GPtrArray *' if $bluez_type eq 'array{object}' || $bluez_type eq 'array{string}';
+    $g_type = 'GPtrArray *' if $bluez_type eq 'array{object}';
+    $g_type = 'gchar **' if $bluez_type eq 'array{string}';
     
     die "unknown bluez type (1): $bluez_type\n" unless defined $g_type;
     
@@ -645,7 +646,7 @@ EOT
             $properties_changed_handler .=
             "\t\tg_free(self->priv->$property_var);\n".
             "\t\tself->priv->$property_var = (gchar *)g_value_dup_boxed(value);\n";
-        } elsif ($p{'type'} eq 'array{object}' || $p{'type'} eq 'array{string}') {
+        } elsif ($p{'type'} eq 'array{object}') {
             $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_PTR_ARRAY, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
@@ -658,6 +659,20 @@ EOT
             $properties_changed_handler .=
             "\t\tg_ptr_array_unref(self->priv->$property_var);\n".
             "\t\tself->priv->$property_var = g_value_dup_boxed(value);\n";
+        } elsif ($p{'type'} eq 'array{string}') {
+            $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_STRV, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
+	    $properties_init .=
+            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
+            "\t\tself->priv->$property_var = (gchar **)g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
+            "\t} else {\n".
+            "\t\tself->priv->$property_var = g_new0(char *, 1);\n".
+            "\t\tself->priv->${property_var}[0] = NULL;\n".
+            "\t}\n";
+            $get_properties .= "\t\tg_value_set_boxed(value, $property_get_method(self));\n";
+            $properties_free .= "\tg_strfreev(self->priv->$property_var);\n";
+            $properties_changed_handler .=
+            "\t\tg_strfreev(self->priv->$property_var);\n".
+            "\t\tself->priv->$property_var = (gchar **)g_value_dup_boxed(value);\n";
         } elsif ($p{'type'} eq 'uint32') {
             $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 65535, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $properties_init .=

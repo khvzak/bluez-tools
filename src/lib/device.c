@@ -49,7 +49,7 @@ struct _DevicePrivate {
 	GPtrArray *nodes;
 	gboolean paired;
 	gboolean trusted;
-	GPtrArray *uuids;
+	gchar **uuids;
 };
 
 G_DEFINE_TYPE(Device, device, G_TYPE_OBJECT);
@@ -109,7 +109,7 @@ static void device_dispose(GObject *gobject)
 	g_free(self->priv->icon);
 	g_free(self->priv->name);
 	g_ptr_array_unref(self->priv->nodes);
-	g_ptr_array_unref(self->priv->uuids);
+	g_strfreev(self->priv->uuids);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(device_parent_class)->dispose(gobject);
@@ -182,7 +182,7 @@ static void device_class_init(DeviceClass *klass)
 	g_object_class_install_property(gobject_class, PROP_TRUSTED, pspec);
 
 	/* array{string} UUIDs [readonly] */
-	pspec = g_param_spec_boxed("UUIDs", NULL, NULL, G_TYPE_PTR_ARRAY, G_PARAM_READABLE);
+	pspec = g_param_spec_boxed("UUIDs", NULL, NULL, G_TYPE_STRV, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_UUIDS, pspec);
 
 	/* Signals registation */
@@ -336,9 +336,10 @@ static void device_post_init(Device *self)
 
 	/* array{string} UUIDs [readonly] */
 	if (g_hash_table_lookup(properties, "UUIDs")) {
-		self->priv->uuids = g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
+		self->priv->uuids = (gchar **)g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
 	} else {
-		self->priv->uuids = g_ptr_array_new();
+		self->priv->uuids = g_new0(char *, 1);
+		self->priv->uuids[0] = NULL;
 	}
 
 	g_hash_table_unref(properties);
@@ -679,7 +680,7 @@ void device_set_trusted(Device *self, const gboolean value)
 	g_assert(error == NULL);
 }
 
-const GPtrArray *device_get_uuids(Device *self)
+const gchar **device_get_uuids(Device *self)
 {
 	g_assert(DEVICE_IS(self));
 
@@ -743,8 +744,8 @@ static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name
 	} else if (g_strcmp0(name, "Trusted") == 0) {
 		self->priv->trusted = g_value_get_boolean(value);
 	} else if (g_strcmp0(name, "UUIDs") == 0) {
-		g_ptr_array_unref(self->priv->uuids);
-		self->priv->uuids = g_value_dup_boxed(value);
+		g_strfreev(self->priv->uuids);
+		self->priv->uuids = (gchar **)g_value_dup_boxed(value);
 	}
 
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);

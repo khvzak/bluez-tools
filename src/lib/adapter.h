@@ -88,7 +88,7 @@ const guint32 adapter_get_pairable_timeout(Adapter *self);
 void adapter_set_pairable_timeout(Adapter *self, const guint32 value);
 const gboolean adapter_get_powered(Adapter *self);
 void adapter_set_powered(Adapter *self, const gboolean value);
-const GPtrArray *adapter_get_uuids(Adapter *self);
+const gchar **adapter_get_uuids(Adapter *self);
 
 #endif /* __ADAPTER_H */
 
