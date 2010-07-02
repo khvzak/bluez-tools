@@ -86,7 +86,7 @@ static void _adapter_set_property(GObject *object, guint property_id, const GVal
 
 static void device_created_handler(DBusGProxy *dbus_g_proxy, const gchar *device, gpointer data);
 static void device_disappeared_handler(DBusGProxy *dbus_g_proxy, const gchar *address, gpointer data);
-static void device_found_handler(DBusGProxy *dbus_g_proxy, const gchar *address, const GHashTable *values, gpointer data);
+static void device_found_handler(DBusGProxy *dbus_g_proxy, const gchar *address, GHashTable *values, gpointer data);
 static void device_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *device, gpointer data);
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data);
 
@@ -193,7 +193,7 @@ static void adapter_class_init(AdapterClass *klass)
 			G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
 			0, NULL, NULL,
 			g_cclosure_bluez_marshal_VOID__STRING_BOXED,
-			G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_VALUE);
+			G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_HASH_TABLE);
 
 	signals[DEVICE_REMOVED] = g_signal_new("DeviceRemoved",
 			G_TYPE_FROM_CLASS(gobject_class),
@@ -321,7 +321,7 @@ static void adapter_post_init(Adapter *self)
 
 	/* array{string} UUIDs [readonly] */
 	if (g_hash_table_lookup(properties, "UUIDs")) {
-		self->priv->uuids = (gchar **)g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
+		self->priv->uuids = (gchar **) g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
 	} else {
 		self->priv->uuids = g_new0(char *, 1);
 		self->priv->uuids[0] = NULL;
@@ -774,7 +774,7 @@ static void device_disappeared_handler(DBusGProxy *dbus_g_proxy, const gchar *ad
 	g_signal_emit(self, signals[DEVICE_DISAPPEARED], 0, address);
 }
 
-static void device_found_handler(DBusGProxy *dbus_g_proxy, const gchar *address, const GHashTable *values, gpointer data)
+static void device_found_handler(DBusGProxy *dbus_g_proxy, const gchar *address, GHashTable *values, gpointer data)
 {
 	Adapter *self = ADAPTER(data);
 
@@ -817,7 +817,7 @@ static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name
 		self->priv->powered = g_value_get_boolean(value);
 	} else if (g_strcmp0(name, "UUIDs") == 0) {
 		g_strfreev(self->priv->uuids);
-		self->priv->uuids = (gchar **)g_value_dup_boxed(value);
+		self->priv->uuids = (gchar **) g_value_dup_boxed(value);
 	}
 
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);

@@ -336,7 +336,7 @@ static void device_post_init(Device *self)
 
 	/* array{string} UUIDs [readonly] */
 	if (g_hash_table_lookup(properties, "UUIDs")) {
-		self->priv->uuids = (gchar **)g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
+		self->priv->uuids = (gchar **) g_value_dup_boxed(g_hash_table_lookup(properties, "UUIDs"));
 	} else {
 		self->priv->uuids = g_new0(char *, 1);
 		self->priv->uuids[0] = NULL;
@@ -745,7 +745,7 @@ static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name
 		self->priv->trusted = g_value_get_boolean(value);
 	} else if (g_strcmp0(name, "UUIDs") == 0) {
 		g_strfreev(self->priv->uuids);
-		self->priv->uuids = (gchar **)g_value_dup_boxed(value);
+		self->priv->uuids = (gchar **) g_value_dup_boxed(value);
 	}
 
 	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);

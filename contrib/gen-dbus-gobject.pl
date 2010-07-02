@@ -502,7 +502,7 @@ EOT
         
         my $enum = join '_', (map uc $_, @a);
         my $handler_name = (join '_', (map lc $_, @a))."_handler";
-	my $in_args = join ', ', map("const ".get_g_type($_->{'type'}).$_->{'name'}, @{$s{'args'}});
+	my $in_args = join ', ', map(($_->{'type'} ne 'dict' ? "const " : "").get_g_type($_->{'type'}).$_->{'name'}, @{$s{'args'}});
         my $handler = "static void $handler_name(DBusGProxy *dbus_g_proxy, ".($in_args eq '' ? "" : "$in_args, ")."gpointer data)";
         
         $signals_registration .=
@@ -520,10 +520,14 @@ EOT
             $signals_registration .=
             "\t\t\tg_cclosure_marshal_VOID__STRING,\n".
             "\t\t\tG_TYPE_NONE, 1, G_TYPE_STRING);\n\n";
-        } elsif ($arg_t eq 'string_variant' || $arg_t eq 'string_dict') {
+        } elsif ($arg_t eq 'string_variant') {
             $signals_registration .=
             "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_BOXED,\n".
             "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_VALUE);\n\n";
+        } elsif ($arg_t eq 'string_dict') {
+            $signals_registration .=
+            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_BOXED,\n".
+            "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_HASH_TABLE);\n\n";
         } else {
             die "unknown signal arguments: $arg_t\n";
         }
@@ -663,7 +667,7 @@ EOT
             $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_STRV, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
-            "\t\tself->priv->$property_var = (gchar **)g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
+            "\t\tself->priv->$property_var = (gchar **) g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
             "\t} else {\n".
             "\t\tself->priv->$property_var = g_new0(char *, 1);\n".
             "\t\tself->priv->${property_var}[0] = NULL;\n".
@@ -672,7 +676,7 @@ EOT
             $properties_free .= "\tg_strfreev(self->priv->$property_var);\n";
             $properties_changed_handler .=
             "\t\tg_strfreev(self->priv->$property_var);\n".
-            "\t\tself->priv->$property_var = (gchar **)g_value_dup_boxed(value);\n";
+            "\t\tself->priv->$property_var = (gchar **) g_value_dup_boxed(value);\n";
         } elsif ($p{'type'} eq 'uint32') {
             $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 65535, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $properties_init .=

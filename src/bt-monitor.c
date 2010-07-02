@@ -93,7 +93,7 @@ static void adapter_device_disappeared(Adapter *adapter, const gchar *address, g
 	g_print("[ADAPTER] device disappeared: %s\n", address);
 }
 
-static void adapter_device_found(Adapter *adapter, const gchar *address, const GHashTable *values, gpointer data)
+static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTable *values, gpointer data)
 {
 	g_print("[ADAPTER] device found: %s\n", address);
 }
