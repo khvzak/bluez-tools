@@ -28,9 +28,14 @@
 #include <dbus/dbus-glib.h>
 
 #include "adapter.h"
+#include "device.h"
 
+/* Adapter helpers */
 Adapter *find_adapter(const gchar *name, GError **error);
 const gchar *uuid2service(const gchar *uuid);
+
+/* Device helpers */
+Device *find_device(Adapter *adapter, const gchar *name, GError **error);
 
 #define exit_if_error(error) G_STMT_START{ \
 if (error) { \

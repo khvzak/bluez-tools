@@ -23,10 +23,11 @@ lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/network.c lib/network.h \
 		lib/serial.c lib/serial.h
 
-bin_PROGRAMS = bt-monitor bt-adapter bt-agent
+bin_PROGRAMS = bt-monitor bt-adapter bt-agent bt-device
 bt_monitor_SOURCES = $(lib_sources) bt-monitor.c
 bt_adapter_SOURCES = ${lib_sources} bt-adapter.c
 bt_agent_SOURCES = $(lib_sources) bt-agent.c
+bt_device_SOURCES = $(lib_sources) bt-device.c
 
 CLEANFILES = Makefile.in lib/marshallers.c lib/marshallers.h
 

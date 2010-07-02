@@ -56,7 +56,9 @@ Adapter *find_adapter(const gchar *name, GError **error)
 			const GPtrArray *adapters_list = manager_get_adapters(manager);
 			g_assert(adapters_list != NULL);
 			for (int i = 0; i < adapters_list->len; i++) {
-				adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", g_ptr_array_index(adapters_list, i), NULL);
+				adapter_path = g_ptr_array_index(adapters_list, i);
+				adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
+				adapter_path = NULL;
 
 				if (g_strcmp0(name, adapter_get_name(adapter)) == 0) {
 					if (error) {
@@ -81,8 +83,7 @@ Adapter *find_adapter(const gchar *name, GError **error)
 const gchar *uuid2service(const gchar *uuid)
 {
 	static GHashTable *t = NULL;
-	if (t == NULL)
-	{
+	if (t == NULL) {
 		t = g_hash_table_new(g_str_hash, g_str_equal);
 		g_hash_table_insert(t, "00001000-0000-1000-8000-00805f9b34fb", "ServiceDiscoveryServer");
 		g_hash_table_insert(t, "00001001-0000-1000-8000-00805f9b34fb", "BrowseGroupDescriptor");
@@ -144,5 +145,49 @@ const gchar *uuid2service(const gchar *uuid)
 	} else {
 		return uuid;
 	}
+}
+
+Device *find_device(Adapter *adapter, const gchar *name, GError **error)
+{
+	g_assert(adapter != NULL);
+	g_assert(ADAPTER_IS(adapter));
+
+	g_assert(name);
+	g_assert(strlen(name) > 0);
+
+	gchar *device_path = NULL;
+	Device *device = NULL;
+
+	// Try to find by MAC
+	device_path = adapter_find_device(adapter, name, error);
+
+	// Found
+	if (device_path) {
+		device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
+	} else {
+		// Try to find by name
+		const GPtrArray *devices_list = adapter_get_devices(adapter);
+		g_assert(devices_list != NULL);
+		for (int i = 0; i < devices_list->len; i++) {
+			device_path = g_ptr_array_index(devices_list, i);
+			device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
+			device_path = NULL;
+
+			if (g_strcmp0(name, device_get_name(device)) == 0 || g_strcmp0(name, device_get_alias(device)) == 0) {
+				if (error) {
+					g_error_free(*error);
+					*error = NULL;
+				}
+				break;
+			}
+
+			g_object_unref(device);
+			device = NULL;
+		}
+	}
+
+	if (device_path) g_free(device_path);
+
+	return device;
 }
 

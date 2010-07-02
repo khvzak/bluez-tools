@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
 	}
 
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
+	
 	Adapter *adapter = find_adapter(adapter_arg, &error);
 	exit_if_error(error);
 
@@ -80,6 +81,12 @@ int main(int argc, char *argv[])
 	GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(mainloop);
 
+	adapter_unregister_agent(adapter, "/Agent", &error);
+	exit_if_error(error);
+
+	g_print("Adange unregistered\n");
+
+	g_object_unref(agent);
 	g_object_unref(adapter);
 	g_object_unref(manager);
 
