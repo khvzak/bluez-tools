@@ -29,6 +29,8 @@
 
 #include "marshallers.h"
 
+#define AGENT_DBUS_PATH "/agent"
+
 /*
  * Type macros
  */

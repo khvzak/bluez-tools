@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 
 	Agent *agent = g_object_new(AGENT_TYPE, NULL);
 
-	adapter_register_agent(adapter, "/Agent", "DisplayYesNo", &error);
+	adapter_register_agent(adapter, AGENT_DBUS_PATH, "DisplayYesNo", &error);
 	exit_if_error(error);
 
 	g_print("Agent registered\n");
@@ -81,10 +81,10 @@ int main(int argc, char *argv[])
 	GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(mainloop);
 
-	adapter_unregister_agent(adapter, "/Agent", &error);
+	adapter_unregister_agent(adapter, AGENT_DBUS_PATH, &error);
 	exit_if_error(error);
 
-	g_print("Adange unregistered\n");
+	g_print("Agent unregistered\n");
 
 	g_object_unref(agent);
 	g_object_unref(adapter);

@@ -25,7 +25,6 @@
 #define __HELPERS_H
 
 #include <glib.h>
-#include <dbus/dbus-glib.h>
 
 #include "adapter.h"
 #include "device.h"

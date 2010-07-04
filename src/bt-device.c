@@ -32,7 +32,6 @@
 #include "lib/helpers.h"
 #include "lib/adapter.h"
 #include "lib/device.h"
-#include "lib/manager.h"
 #include "lib/agent.h"
 
 static gchar *adapter_arg = NULL;
@@ -42,6 +41,7 @@ static gchar *remove_arg = NULL;
 static gchar *info_arg = NULL;
 static gchar *services_arg = NULL;
 static gboolean set_arg = FALSE;
+static gchar *set_device_arg = NULL;
 static gchar *set_name_arg = NULL;
 static gchar *set_value_arg = NULL;
 
@@ -88,8 +88,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
-
 	Adapter *adapter = find_adapter(adapter_arg, &error);
 	exit_if_error(error);
 
@@ -109,26 +107,41 @@ int main(int argc, char *argv[])
 			g_object_unref(device);
 		}
 	} else if (connect_arg) {
-
+		g_print("Connecting to: %s\n", connect_arg);
+		Agent *agent = g_object_new(AGENT_TYPE, NULL);
+		adapter_create_paired_device(adapter, connect_arg, AGENT_DBUS_PATH, "DisplayYesNo", &error);
+		exit_if_error(error);
+		g_object_unref(agent);
 	} else if (remove_arg) {
-		Device *device = find_device(adapter, info_arg, &error);
+		Device *device = find_device(adapter, remove_arg, &error);
 		exit_if_error(error);
 
+		adapter_remove_device(adapter, device_get_dbus_object_path(device), &error);
+		exit_if_error(error);
+
+		g_print("Done\n");
+		g_object_unref(device);
 	} else if (info_arg) {
 		Device *device = find_device(adapter, info_arg, &error);
 		exit_if_error(error);
 
+		g_print("[%s]\n", device_get_address(device));
+		g_print("  Name: %s\n", device_get_name(device));
+		g_print("  Alias: %s\n", device_get_alias(device));
+		g_print("  Address: %s\n", device_get_address(device));
+		g_print("  Class: %x\n", device_get_class(device));
+
+		g_object_unref(device);
 	} else if (services_arg) {
-		Device *device = find_device(adapter, info_arg, &error);
+		Device *device = find_device(adapter, services_arg, &error);
 		exit_if_error(error);
 
 	} else if (set_arg) {
-		Device *device = find_device(adapter, info_arg, &error);
+		Device *device = find_device(adapter, set_device_arg, &error);
 		exit_if_error(error);
 
 	}
 
-	g_object_unref(manager);
 	g_object_unref(adapter);
 
 	exit(EXIT_SUCCESS);
