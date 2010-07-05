@@ -1,0 +1,177 @@
+blueZ-tools:
+A set of tools to manage bluetooth devices and services.
+
+1) blueZ-agent (btagent/btagentlib)
+Bluetooth agent/lib, that implements org.bluez.Agent/org.openobex.Agent interfaces;
+Tasks:
+ - request pincode/passkey for an authentication from user (bluetooth v2.0)
+ - display passkey to user (bluetooth v2.1)
+ - request confirmation from user, that a passkey for an authentication is valid (bluetooth v2.1)
+ - authorize a connection/service request
+ - cancel request if request failed/reply was not returned
+ - confirm mode change of adapter
+ - register/unregister self for an selected adapter
+ OBEX:
+  - accept/reject a bluetooth object push request
+
+btagent is an external tool, that manage incoming? connections.
+command line arguments:
+./btagent [help|--help|-h] [adapter#id]
+ adapter#id  -  register agent for an given adapter
+ help        -  show help and exit
+
+If no adapter#id is given, than agent register self to a default adapter;
+Agentlib is used as embedded agent to manage outgoing? connections;
+
+2) blueZ-monitor (btmon)
+Bluetooth monitor, that displays some events (ie signals);
+Tasks:
+ Adaper signals:
+  - adapter added/removed (GLOBAL)
+  - default adapter changed (GLOBAL)
+  - adapter property changed
+ Device(remote) signals:
+  - device added/removed (ie created/removed)
+  - device property changed
+  - disconnection to a remote device has been requested
+  - node created/removed (TODO)
+ Input service signals:
+  - input device connected/disconnected
+ Network service signals:
+  - network device connected/disconnected (also displays interface name)
+ Audio service signals (generic, org.bluez.Audio interface):
+  - audio device connected/disconnected/connection state changed
+ Others:
+  - AVRCP service monitoring? (TODO)
+ OBEX:
+  - FTP OBEX connection has been accepted/disconnected
+  - object push operation starts
+  - object has been received
+
+command line arguments:
+./btmon [help|--help|-h] [adapter#id]
+ adapter#id  -  show events only for an given adapter
+ help        -  show help and exit
+
+If no adapter#id is given, that display events from all adapters and devices;
+GLOBAL events are displayed for all;
+
+Also, if needed - monitor can listen for an error messages and display it;
+
+3) blueZ-tool (bttool)
+Bluetooth tool to manage devices and services;
+Tasks:
+ Adapter managment:
+  - list all available adapters
+  - get/set properties
+  - discover remote devices
+ Device managment:
+  - list of added devices
+  - add remote device and initiate pairing
+  - remove device
+  - get/set properties
+  - discover services
+  - disconnect from device
+  - list/create/remove node(s) (TODO)
+ Services managment:
+  - list connected services
+  - connect/disconnect to/from an input device
+  - connect/disconnect to/from a serial device
+  - connect/disconnect to/from a network device (TODO: can be moved to btnetwork)
+  - connect/disconnect to/from an audio device (TODO: can be moved to btaudio)
+
+command line arguments:
+./bttool [help|--help|-h] [list|--list|-l] [ [adapter#id] commands [params] ]
+  help        -  show help and exit
+  list        -  list all available adapters
+  
+  [adapter#id] ...  (use an given adapter or default if does not defined)
+   Adapter commands:
+    prop[erties] [name] [value]  -  list/get/set property(es)
+    disc[over]                   -  discover available remote devices
+    
+    dev[ice] addr|name? ...
+     Device commands:
+      list                         -  list of added devices
+      conn[ect]                    -  add remote device and initiate pairing
+      rem[ove]                     -  remove device
+      discon[nect]                 -  disconnect from device
+      prop[erties] [name] [value]  -  list/get/set property(es)
+      disc[over]                   -  discover services
+      
+      serv[ice] ...
+       Services comands:
+        list                           -  list connected services
+        disc[over]                     -  discover services (alias)
+        in[put] conn[ect]|discon[ect]  -  connect/disconnect to/from an input device
+        ser[ial] ...
+         conn[ect] uuid|profile|channel  -  connect to a serial device
+         discon[nect] device             -  disconnect from a serial device
+        net[work] ...
+         conn[ect] gn|panu|nap           - connect to a network device
+         discon[nect]                    - disconnect from a network device
+        au[dio] conn[ect]|discon[ect]  -  connect/disconnect to/from an audio device
+
+If no options are given - show help page;
+
+Examples of usage:
+ a) Discover remote devices
+ bttool disc
+ b) Connect to a remote device and initiate pairing
+ bttool dev xx:xx:xx:xx:xx:xx conn
+ c) Discover remote services
+ bttool dev xx:xx:xx:xx:xx:xx disc
+  or
+ bttool dev xx:xx:xx:xx:xx:xx serv disc
+ d) Connect to an input device
+ bttool dev xx:xx:xx:xx:xx:xx serv in conn
+ e) Change adapter mode/properties
+ bttool prop Discoverable off
+ bttool prop DiscoverableTimeout 1h
+ f) List added devices
+ bttool dev list
+ g) List all connected services
+ bttool dev xx:xx:xx:xx:xx:xx serv list
+
+4) blueZ-audio (btaudio)
+
+(TODO)
+
+5) blueZ-network (btnetwork)
+
+(TODO)
+
+6) blueZ-obex (btobex)
+Bluetooth utility, that implements OBEX protocol;
+Tasks:
+ - Send files via object push request
+ - Provide ftp access to remote device
+
+command line arguments:
+./btobex [--help|-h|help] [adapter#id] dev[ice] addr|name? send|ftp [file1..fileN]
+  help        -  show help and exit
+  adapter#id  -  use an given adapter or default if does not defined
+  
+  dev[ice] addr|name? ...
+   Commands:
+    ftp                -  open FTP session
+    send file1..fileN  -  send file(s)
+
+FTP session example:
+./btobex dev xx:xx:xx:xx:xx:xx ftp
+> help
+Available commands:
+cd <name>		Change directory
+mkdir <name>		Make directory
+ls			List files in current directory
+put <src> [<dst>] 	Copy the src file (from local filesystem) to the dst file (on remote device)
+get <src> [<dst>]	Copy the src file (from remote device) to the dst file (on local filesystem)
+cp <src> <dst>		Copy file
+mv <src> <dst>		Move file
+rm <name>		Deletes the specified file/folder
+quit			End sessions
+> quit
+
+
+---------
+* (TODO) These features will be available in future versions

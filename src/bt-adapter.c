@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
 		g_print("  Pairable: %d [rw]\n", adapter_get_pairable(adapter));
 		g_print("  PairableTimeout: %d [rw]\n", adapter_get_pairable_timeout(adapter));
 		g_print("  Powered: %d [rw]\n", adapter_get_powered(adapter));
-		g_print("  Service(s): [");
+		g_print("  UUIDs: [");
 		const gchar **uuids = adapter_get_uuids(adapter);
 		for (int j = 0; uuids[j] != NULL; j++) {
 			if (j > 0) g_print(", ");
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 		adapter_set_property(adapter, set_name_arg, &v, &error);
 		exit_if_error(error);
 
-		g_value_unset (&v);
+		g_value_unset(&v);
 		g_object_unref(adapter);
 	}
 

@@ -65,13 +65,14 @@ static void agent_init(Agent *self)
 
 	g_assert(conn != NULL);
 
-	dbus_g_connection_register_g_object(conn, AGENT_DBUS_PATH, G_OBJECT(self));
+	dbus_g_connection_register_g_object(conn, DBUS_AGENT_PATH, G_OBJECT(self));
 }
 
 /* Methods */
 
 gboolean agent_release(Agent *self, GError **error)
 {
+	g_print("Agent released\n");
 	return TRUE;
 }
 

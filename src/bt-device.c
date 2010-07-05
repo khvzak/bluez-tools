@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 	} else if (connect_arg) {
 		g_print("Connecting to: %s\n", connect_arg);
 		Agent *agent = g_object_new(AGENT_TYPE, NULL);
-		adapter_create_paired_device(adapter, connect_arg, AGENT_DBUS_PATH, "DisplayYesNo", &error);
+		adapter_create_paired_device(adapter, connect_arg, DBUS_AGENT_PATH, "DisplayYesNo", &error);
 		exit_if_error(error);
 		g_object_unref(agent);
 	} else if (remove_arg) {
@@ -127,19 +127,74 @@ int main(int argc, char *argv[])
 
 		g_print("[%s]\n", device_get_address(device));
 		g_print("  Name: %s\n", device_get_name(device));
-		g_print("  Alias: %s\n", device_get_alias(device));
+		g_print("  Alias: %s [rw]\n", device_get_alias(device));
 		g_print("  Address: %s\n", device_get_address(device));
 		g_print("  Class: %x\n", device_get_class(device));
+		g_print("  Paired: %d\n", device_get_paired(device));
+		g_print("  Trusted: %d [rw]\n", device_get_trusted(device));
+		g_print("  Blocked: %d [rw]\n", device_get_blocked(device));
+		g_print("  Connected: %d\n", device_get_connected(device));
+		g_print("  UUIDs: [");
+		const gchar **uuids = device_get_uuids(device);
+		for (int j = 0; uuids[j] != NULL; j++) {
+			if (j > 0) g_print(", ");
+			g_print("%s", uuid2service(uuids[j]));
+		}
+		g_print("]\n");
 
 		g_object_unref(device);
 	} else if (services_arg) {
 		Device *device = find_device(adapter, services_arg, &error);
 		exit_if_error(error);
 
+		g_object_unref(device);
 	} else if (set_arg) {
+		set_device_arg = argv[1];
+		set_name_arg = argv[2];
+		set_value_arg = argv[3];
+
 		Device *device = find_device(adapter, set_device_arg, &error);
 		exit_if_error(error);
 
+		GValue v = {0,};
+
+		if (g_strcmp0(set_name_arg, "Alias") == 0) {
+			g_value_init(&v, G_TYPE_STRING);
+			g_value_set_string(&v, set_value_arg);
+		} else if (
+				g_strcmp0(set_name_arg, "Trusted") == 0 ||
+				g_strcmp0(set_name_arg, "Blocked") == 0
+				) {
+			g_value_init(&v, G_TYPE_BOOLEAN);
+
+			if (g_strcmp0(set_value_arg, "0") == 0 || g_strcmp0(set_value_arg, "FALSE") == 0) {
+				g_value_set_boolean(&v, FALSE);
+			} else if (g_strcmp0(set_value_arg, "1") == 0 || g_strcmp0(set_value_arg, "TRUE") == 0) {
+				g_value_set_boolean(&v, TRUE);
+			} else {
+				g_print("Invalid value: %s\n", set_value_arg);
+			}
+		} else {
+			g_print("Invalid property: %s\n", set_name_arg);
+			exit(EXIT_FAILURE);
+		}
+
+		GHashTable *props = device_get_properties(device, &error);
+		exit_if_error(error);
+		GValue *old_value = g_hash_table_lookup(props, set_name_arg);
+		g_assert(old_value != NULL);
+		if (G_VALUE_HOLDS_STRING(old_value)) {
+			g_print("%s: %s -> %s\n", set_name_arg, g_value_get_string(old_value), g_value_get_string(&v));
+		} else if (G_VALUE_HOLDS_BOOLEAN(old_value)) {
+			g_print("%s: %d -> %d\n", set_name_arg, g_value_get_boolean(old_value), g_value_get_boolean(&v));
+		}
+		g_hash_table_unref(props);
+
+		device_set_property(device, set_name_arg, &v, &error);
+		exit_if_error(error);
+
+		g_value_unset(&v);
+		g_object_unref(device);
 	}
 
 	g_object_unref(adapter);
