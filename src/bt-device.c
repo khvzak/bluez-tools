@@ -46,14 +46,14 @@ static gchar *set_name_arg = NULL;
 static gchar *set_value_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
-	{ "list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List added devices", NULL},
-	{ "connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to a device", "device#id"},
-	{ "remove", 'r', 0, G_OPTION_ARG_STRING, &remove_arg, "Remove device", "device#id"},
-	{ "info", 'i', 0, G_OPTION_ARG_STRING, &info_arg, "Get info about device", "device#id"},
-	{ "services", 's', 0, G_OPTION_ARG_STRING, &services_arg, "Discover device services", "device#id"},
-	{ "set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set property", NULL},
-	{ NULL}
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
+	{"list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List added devices", NULL},
+	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to a device", "device#id"},
+	{"remove", 'r', 0, G_OPTION_ARG_STRING, &remove_arg, "Remove device", "device#id"},
+	{"info", 'i', 0, G_OPTION_ARG_STRING, &info_arg, "Get info about device", "device#id"},
+	{"services", 's', 0, G_OPTION_ARG_STRING, &services_arg, "Discover device services", "device#id"},
+	{"set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set property", NULL},
+	{NULL}
 };
 
 int main(int argc, char *argv[])
@@ -65,8 +65,8 @@ int main(int argc, char *argv[])
 
 	context = g_option_context_new("[--set device#id Name Value] - a bluetooth device manager");
 	g_option_context_add_main_entries(context, entries, NULL);
-	g_option_context_set_summary(context, "summary");
-	g_option_context_set_description(context, "desc");
+	g_option_context_set_summary(context, "device summary");
+	g_option_context_set_description(context, "device desc");
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("%s: %s\n", g_get_prgname(), error->message);
@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
 		g_assert(devices_list != NULL);
 
 		g_print("Added devices:\n");
+
 		if (devices_list->len == 0) {
 			g_print("no devices found\n");
 		}
@@ -103,7 +104,7 @@ int main(int argc, char *argv[])
 		for (int i = 0; i < devices_list->len; i++) {
 			const gchar *device_path = g_ptr_array_index(devices_list, i);
 			Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
-			g_print("%s (%s)\n", device_get_name(device), device_get_address(device));
+			g_print("%s (%s)\n", device_get_alias(device), device_get_address(device));
 			g_object_unref(device);
 		}
 	} else if (connect_arg) {
@@ -129,6 +130,7 @@ int main(int argc, char *argv[])
 		g_print("  Name: %s\n", device_get_name(device));
 		g_print("  Alias: %s [rw]\n", device_get_alias(device));
 		g_print("  Address: %s\n", device_get_address(device));
+		// TODO: Add class to type conv
 		g_print("  Class: %x\n", device_get_class(device));
 		g_print("  Paired: %d\n", device_get_paired(device));
 		g_print("  Trusted: %d [rw]\n", device_get_trusted(device));
@@ -146,6 +148,8 @@ int main(int argc, char *argv[])
 	} else if (services_arg) {
 		Device *device = find_device(adapter, services_arg, &error);
 		exit_if_error(error);
+
+		// TODO: Impl services scan
 
 		g_object_unref(device);
 	} else if (set_arg) {

@@ -36,6 +36,7 @@
 static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTable *values, gpointer data)
 {
 	GHashTable *found_devices = data;
+	g_assert(found_devices != NULL);
 
 	if (g_hash_table_lookup(found_devices, address) != NULL) {
 		return;
@@ -53,13 +54,15 @@ static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTa
 	g_print("  RSSI: %d\n", g_value_get_int(g_hash_table_lookup(values, "RSSI")));
 	g_print("\n");
 
-	g_hash_table_insert(found_devices, g_strdup(address), g_value_dup_string(g_hash_table_lookup(values, "Name")));
+	g_hash_table_insert(found_devices, g_strdup(address), g_value_dup_string(g_hash_table_lookup(values, "Alias")));
 }
 
 static void adapter_device_disappeared(Adapter *adapter, const gchar *address, gpointer data)
 {
-	//GHashTable *found_devices = data;
-	//g_print("Device disappeared: %s (%s)\n", address, g_value_get_string(g_hash_table_lookup(found_devices, address)));
+	GHashTable *found_devices = data;
+	g_assert(found_devices != NULL);
+
+	g_print("Device disappeared: %s (%s)\n", g_value_get_string(g_hash_table_lookup(found_devices, address)), address);
 }
 
 static void adapter_property_changed(Adapter *adapter, const gchar *name, const GValue *value, gpointer data)
@@ -79,12 +82,12 @@ static gchar *set_name_arg = NULL;
 static gchar *set_value_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{ "list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List all available adapters", NULL},
-	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
-	{ "info", 'i', 0, G_OPTION_ARG_NONE, &info_arg, "Show adapter info", NULL},
-	{ "discover", 'd', 0, G_OPTION_ARG_NONE, &discover_arg, "Discover remote devices", NULL},
-	{ "set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set property", NULL},
-	{ NULL}
+	{"list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List all available adapters", NULL},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
+	{"info", 'i', 0, G_OPTION_ARG_NONE, &info_arg, "Show adapter info", NULL},
+	{"discover", 'd', 0, G_OPTION_ARG_NONE, &discover_arg, "Discover remote devices", NULL},
+	{"set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set property", NULL},
+	{NULL}
 };
 
 int main(int argc, char *argv[])
@@ -96,8 +99,8 @@ int main(int argc, char *argv[])
 
 	context = g_option_context_new("[--set Name Value] - a bluetooth adapter manager");
 	g_option_context_add_main_entries(context, entries, NULL);
-	g_option_context_set_summary(context, "summary");
-	g_option_context_set_description(context, "desc");
+	g_option_context_set_summary(context, "adapter summary");
+	g_option_context_set_description(context, "adapter desc");
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("%s: %s\n", g_get_prgname(), error->message);
@@ -141,7 +144,8 @@ int main(int argc, char *argv[])
 		Adapter *adapter = find_adapter(adapter_arg, &error);
 		exit_if_error(error);
 
-		g_print("[%s]\n", g_basename(adapter_get_dbus_object_path(adapter)));
+		gchar *adapter_intf = g_path_get_basename(adapter_get_dbus_object_path(adapter));
+		g_print("[%s]\n", adapter_intf);
 		g_print("  Name: %s [rw]\n", adapter_get_name(adapter));
 		g_print("  Address: %s\n", adapter_get_address(adapter));
 		g_print("  Class: 0x%x\n", adapter_get_class(adapter));
@@ -159,6 +163,7 @@ int main(int argc, char *argv[])
 		}
 		g_print("]\n");
 
+		g_free(adapter_intf);
 		g_object_unref(adapter);
 	} else if (discover_arg) {
 		Adapter *adapter = find_adapter(adapter_arg, &error);
@@ -186,11 +191,11 @@ int main(int argc, char *argv[])
 		g_hash_table_unref(found_devices);
 		g_object_unref(adapter);
 	} else if (set_arg) {
-		Adapter *adapter = find_adapter(adapter_arg, &error);
-		exit_if_error(error);
-
 		set_name_arg = argv[1];
 		set_value_arg = argv[2];
+
+		Adapter *adapter = find_adapter(adapter_arg, &error);
+		exit_if_error(error);
 
 		GValue v = {0,};
 

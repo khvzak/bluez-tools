@@ -37,8 +37,8 @@
 static gchar *adapter_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{ "adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
-	{ NULL}
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
+	{NULL}
 };
 
 int main(int argc, char *argv[])
@@ -50,8 +50,8 @@ int main(int argc, char *argv[])
 
 	context = g_option_context_new(" - a bluetooth agent");
 	g_option_context_add_main_entries(context, entries, NULL);
-	g_option_context_set_summary(context, "summary");
-	g_option_context_set_description(context, "desc");
+	g_option_context_set_summary(context, "agent summary");
+	g_option_context_set_description(context, "agent desc");
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("%s: %s\n", g_get_prgname(), error->message);
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 	}
 
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
-	
+
 	Adapter *adapter = find_adapter(adapter_arg, &error);
 	exit_if_error(error);
 
