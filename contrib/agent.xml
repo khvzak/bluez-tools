@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<node name="/">
+<node name="/Agent">
   <interface name="org.bluez.Agent">
+    <annotation name="org.freedesktop.DBus.GLib.CSymbol" value="agent"/>
     <method name="Release"/>
     <method name="RequestPinCode">
       <arg type="o" name="device" direction="in"/>

@@ -45,6 +45,12 @@ static gchar *set_device_arg = NULL;
 static gchar *set_name_arg = NULL;
 static gchar *set_value_arg = NULL;
 
+static void create_paired_device_done(gpointer data)
+{
+	GMainLoop *mainloop = data;
+	g_main_loop_quit(mainloop);
+}
+
 static GOptionEntry entries[] = {
 	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
 	{"list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List added devices", NULL},
@@ -110,8 +116,14 @@ int main(int argc, char *argv[])
 	} else if (connect_arg) {
 		g_print("Connecting to: %s\n", connect_arg);
 		Agent *agent = g_object_new(AGENT_TYPE, NULL);
-		adapter_create_paired_device(adapter, connect_arg, DBUS_AGENT_PATH, "DisplayYesNo", &error);
+		GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
+
+		adapter_create_paired_device_begin(adapter, create_paired_device_done, mainloop, connect_arg, DBUS_AGENT_PATH, "DisplayYesNo");
+		g_main_loop_run(mainloop);
+		adapter_create_paired_device_end(adapter, &error);
 		exit_if_error(error);
+
+		g_main_loop_unref(mainloop);
 		g_object_unref(agent);
 	} else if (remove_arg) {
 		Device *device = find_device(adapter, remove_arg, &error);

@@ -48,6 +48,9 @@ struct _AdapterPrivate {
 	guint32 pairable_timeout;
 	gboolean powered;
 	gchar **uuids;
+
+	/* Async calls */
+	DBusGProxyCall *create_paired_device_call;
 };
 
 G_DEFINE_TYPE(Adapter, adapter, G_TYPE_OBJECT);
@@ -213,6 +216,9 @@ static void adapter_class_init(AdapterClass *klass)
 static void adapter_init(Adapter *self)
 {
 	self->priv = ADAPTER_GET_PRIVATE(self);
+
+	/* Async calls init */
+	self->priv->create_paired_device_call = NULL;
 
 	g_assert(conn != NULL);
 }
@@ -458,6 +464,14 @@ static void _adapter_set_property(GObject *object, guint property_id, const GVal
 	}
 }
 
+static void adapter_async_notify_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
+{
+	gpointer *p = data;
+	void (*AsyncNotifyFunc)(gpointer data) = p[0];
+	(*AsyncNotifyFunc)(p[1]);
+	g_free(p);
+}
+
 /* Methods */
 
 /* void CancelDeviceCreation(string address) */
@@ -482,14 +496,26 @@ gchar *adapter_create_device(Adapter *self, const gchar *address, GError **error
 }
 
 /* object CreatePairedDevice(string address, object agent, string capability) */
-gchar *adapter_create_paired_device(Adapter *self, const gchar *address, const gchar *agent, const gchar *capability, GError **error)
+void adapter_create_paired_device_begin(Adapter *self, void (*AsyncNotifyFunc)(gpointer data), gpointer data, const gchar *address, const gchar *agent, const gchar *capability)
 {
 	g_assert(ADAPTER_IS(self));
+	g_assert(self->priv->create_paired_device_call == NULL);
 
-	gchar *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "CreatePairedDevice", error, G_TYPE_STRING, address, DBUS_TYPE_G_OBJECT_PATH, agent, G_TYPE_STRING, capability, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	gpointer *p = g_new0(gpointer, 2);
+	p[0] = AsyncNotifyFunc;
+	p[1] = data;
+
+	self->priv->create_paired_device_call = dbus_g_proxy_begin_call(self->priv->dbus_g_proxy, "CreatePairedDevice", (DBusGProxyCallNotify) adapter_async_notify_callback, p, NULL, G_TYPE_STRING, address, DBUS_TYPE_G_OBJECT_PATH, agent, G_TYPE_STRING, capability, G_TYPE_INVALID);
+}
+
+gchar *adapter_create_paired_device_end(Adapter *self, GError **error)
+{
+	g_assert(ADAPTER_IS(self));
+	g_assert(self->priv->create_paired_device_call != NULL);
+
+	gchar *ret = NULL;
+	dbus_g_proxy_end_call(self->priv->dbus_g_proxy, self->priv->create_paired_device_call, error, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID);
+	self->priv->create_paired_device_call = NULL;
 
 	return ret;
 }

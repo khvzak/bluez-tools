@@ -26,6 +26,7 @@
 #endif
 
 #include <stdio.h>
+#include <glib.h>
 
 #include "dbus-common.h"
 #include "helpers.h"

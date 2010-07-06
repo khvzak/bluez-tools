@@ -59,7 +59,8 @@ GType adapter_get_type(void) G_GNUC_CONST;
  */
 void adapter_cancel_device_creation(Adapter *self, const gchar *address, GError **error);
 gchar *adapter_create_device(Adapter *self, const gchar *address, GError **error);
-gchar *adapter_create_paired_device(Adapter *self, const gchar *address, const gchar *agent, const gchar *capability, GError **error);
+void adapter_create_paired_device_begin(Adapter *self, void (*AsyncNotifyFunc)(gpointer data), gpointer data, const gchar *address, const gchar *agent, const gchar *capability);
+gchar *adapter_create_paired_device_end(Adapter *self, GError **error);
 gchar *adapter_find_device(Adapter *self, const gchar *address, GError **error);
 GHashTable *adapter_get_properties(Adapter *self, GError **error);
 void adapter_register_agent(Adapter *self, const gchar *agent, const gchar *capability, GError **error);

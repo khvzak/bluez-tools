@@ -3,13 +3,13 @@ AM_LDFLAGS = $(DBUS_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS) $(GIO_LIBS) $(DBUS_GLIB_L
 
 BUILT_SOURCES = lib/marshallers.c lib/marshallers.h
 
-GENMARSHAL_FLAGS = --prefix="g_cclosure_bluez_marshal" --g-fatal-warnings
-
-lib/marshallers.h: lib/marshallers.list
-			glib-genmarshal $(GENMARSHAL_FLAGS) --header lib/marshallers.list > lib/marshallers.h
-
-lib/marshallers.c: lib/marshallers.list
-			glib-genmarshal $(GENMARSHAL_FLAGS) --body lib/marshallers.list > lib/marshallers.c
+#GENMARSHAL_FLAGS = --prefix="g_cclosure_bluez_marshal" --g-fatal-warnings
+#
+#lib/marshallers.h: lib/marshallers.list
+#			glib-genmarshal $(GENMARSHAL_FLAGS) --header lib/marshallers.list > lib/marshallers.h
+#
+#lib/marshallers.c: lib/marshallers.list
+#			glib-genmarshal $(GENMARSHAL_FLAGS) --body lib/marshallers.list > lib/marshallers.c
 
 lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/dbus-common.c lib/dbus-common.h \
@@ -23,11 +23,15 @@ lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/network.c lib/network.h \
 		lib/serial.c lib/serial.h
 
-bin_PROGRAMS = bt-monitor bt-adapter bt-agent bt-device
+bin_PROGRAMS = bt-monitor bt-adapter bt-agent bt-device bt-input bt-audio bt-network bt-serial
 bt_monitor_SOURCES = $(lib_sources) bt-monitor.c
 bt_adapter_SOURCES = ${lib_sources} bt-adapter.c
 bt_agent_SOURCES = $(lib_sources) bt-agent.c
 bt_device_SOURCES = $(lib_sources) bt-device.c
+bt_input_SOURCES = $(lib_sources) bt-input.c
+bt_audio_SOURCES = $(lib_sources) bt-audio.c
+bt_network_SOURCES = $(lib_sources) bt-network.c
+bt_serial_SOURCES = $(lib_sources) bt-serial.c
 
-CLEANFILES = Makefile.in lib/marshallers.c lib/marshallers.h
+#CLEANFILES = Makefile.in lib/marshallers.c lib/marshallers.h
 

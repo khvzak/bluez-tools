@@ -80,17 +80,21 @@ sub parse_doc_api {
             s/Properties/          /;
         }
         
-        if (defined $section && $section eq 'methods' && (/^\s+((\S+) (\w+)\((.*)\))$/ || /^\s+((\S+) (\w+)\((.*,))$/)) {
+        if (defined $section && $section eq 'methods' && (/^\s+((\S+) (\w+)\((.*)\)( \[(\w+)\])?)$/ || /^\s+((\S+) (\w+)\((.*,))$/)) {
             my $decl = $1;
             my $ret = $2;
             my $name = $3;
             my $args = $4;
+            my $flag = $6;
 	    
             if ($decl =~ /,$/) {
                 my $add_str = <INPUT>;
-                if ($add_str =~ /\s+(.+)\)$/) {
+                # adapter-api.txt patch
+                $add_str =~ s/(string capability\))$/$1 [async]/;
+                if ($add_str =~ /\s+(.+)\)( \[(\w+)\])?$/) {
                     $decl .= " $1)";
                     $args .= " $1";
+                    $flag = $3;
                 }  else {
                     die "invalid file format (8)\n";
                 }
@@ -98,6 +102,7 @@ sub parse_doc_api {
 	    
             $data{$data{'intf'}}{'methods'}{$name}{'decl'} = $decl;
             $data{$data{'intf'}}{'methods'}{$name}{'ret'} = $ret;
+            $data{$data{'intf'}}{'methods'}{$name}{'flag'} = $flag;
             @{$data{$data{'intf'}}{'methods'}{$name}{'args'}} = map {type => (split / /, $_)[0], name => (split / /, $_)[1]}, (split /, /, $args);
         } elsif (defined $section && $section eq 'signals' && (/^\s+((\w+)\((.*)\))$/ || /^\s+((\w+)\((.*,))$/)) {
             my $decl = $1;
@@ -255,9 +260,16 @@ EOT
 	my %m = %{$node->{$intf}{'methods'}{$method}};
         
 	my $in_args = join ', ', (map "const ".get_g_type($_->{'type'}).$_->{'name'}, @{$m{'args'}});
-        $method_defs .=
-	get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."({\$Object} *self, ".
-        ($in_args eq '' ? "" : "$in_args, ")."GError **error);\n";
+        if (defined $m{'flag'} && $m{'flag'} eq 'async') {
+            $method_defs .=
+            "void {\$object}_".(join '_', (map lc $_, @a))."_begin({\$Object} *self, void (*AsyncNotifyFunc)(gpointer data), gpointer data".
+            ($in_args eq '' ? "" : ", $in_args").");\n".
+            get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."_end({\$Object} *self, GError **error);\n";
+        } else {
+            $method_defs .=
+            get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."({\$Object} *self, ".
+            ($in_args eq '' ? "" : "$in_args, ")."GError **error);\n";
+        }
     }
     $method_defs .= "\n";
     
@@ -304,6 +316,11 @@ struct _{\$Object}Private {
 	/* Properties */
 	{PRIV_PROPERTIES}
 	{FI_PROPERTIES}
+
+	{IF_ASYNC_CALLS}
+	/* Async calls */
+	{PRIV_ASYNC_CALLS}
+	{FI_ASYNC_CALLS}
 };
 
 G_DEFINE_TYPE({\$Object}, {\$object}, G_TYPE_OBJECT);
@@ -375,6 +392,11 @@ static void {\$object}_init({\$Object} *self)
 {
 	self->priv = {\$OBJECT}_GET_PRIVATE(self);
 
+	{IF_ASYNC_CALLS}
+	/* Async calls init */
+	{PRIV_ASYNC_CALLS_INIT}
+	{FI_ASYNC_CALLS}
+
 	g_assert(conn != NULL);
 
 	{IF_INIT}
@@ -439,6 +461,16 @@ static void _{\$object}_set_property(GObject *object, guint property_id, const G
 	}
 }
 
+{IF_ASYNC_CALLS}
+static void {\$object}_async_notify_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
+{
+	gpointer *p = data;
+	void (*AsyncNotifyFunc)(gpointer data) = p[0];
+	(*AsyncNotifyFunc)(p[1]);
+	g_free(p);
+}
+{FI_ASYNC_CALLS}
+
 /* Methods */
 
 {METHODS}
@@ -462,32 +494,70 @@ EOT
     $bluez_dbus_object_defs .= "#define BLUEZ_DBUS_{\$OBJECT}_INTERFACE \"$node->{'intf'}\"";
     
     my $methods = "";
+    my $async_flag = 0;
+    my $priv_async_calls = '';
+    my $priv_async_calls_init = '';
     for my $method (sort keys %{$node->{$intf}{'methods'}}) {
         my @a = $method =~ /([A-Z]+[a-z]*)/g;
 	my %m = %{$node->{$intf}{'methods'}{$method}};
         
 	my $in_args = join ', ', (map "const ".get_g_type($_->{'type'}).$_->{'name'}, @{$m{'args'}});
-        my $method_def =
-	get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."({\$Object} *self, ".
-        ($in_args eq '' ? "" : "$in_args, ")."GError **error)";
-	
-	my $in_args2 = join ', ', (map get_g_type_name($_->{'type'}).", $_->{'name'}", @{$m{'args'}});
-        $methods .=
-	"/* $m{'decl'} */\n".
-	"$method_def\n".
-	"{\n".
-	"\tg_assert({\$OBJECT}_IS(self));\n\n".
-	($m{'ret'} eq 'void' ?
-	 "\tdbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, G_TYPE_INVALID);\n"
-	 :
-	 "\t".get_g_type($m{'ret'})."ret;\n".
-	 "\tif (!dbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID)) {\n".
-	 "\t\treturn NULL;\n".
-	 "\t}\n\n".
-	 "\treturn ret;\n"
-	).
-	"}\n\n";
+        my $in_args2 = join ', ', (map get_g_type_name($_->{'type'}).", $_->{'name'}", @{$m{'args'}});
+        
+        if (defined $m{'flag'} && $m{'flag'} eq 'async') {
+            $async_flag = 1;
+            $priv_async_calls .= "\tDBusGProxyCall *".(join '_', (map lc $_, @a))."_call;\n";
+            $priv_async_calls_init .= "\tself->priv->".(join '_', (map lc $_, @a))."_call = NULL;\n";
+            $methods .=
+            "/* $m{'decl'} */\n".
+            "void {\$object}_".(join '_', (map lc $_, @a))."_begin({\$Object} *self, void (*AsyncNotifyFunc)(gpointer data), gpointer data".
+            ($in_args eq '' ? "" : ", $in_args").")\n".
+            "{\n".
+            "\tg_assert({\$OBJECT}_IS(self));\n".
+            "\tg_assert(self->priv->".(join '_', (map lc $_, @a))."_call == NULL);\n\n".
+            "\tgpointer *p = g_new0(gpointer, 2);\n".
+            "\tp[0] = AsyncNotifyFunc;\n".
+            "\tp[1] = data;\n\n".
+            "\tself->priv->".(join '_', (map lc $_, @a))."_call = dbus_g_proxy_begin_call(self->priv->dbus_g_proxy, \"$method\", (DBusGProxyCallNotify) {\$object}_async_notify_callback, p, NULL, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID);\n".
+            "}\n\n".
+            get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."_end({\$Object} *self, GError **error)\n".
+            "{\n".
+            "\tg_assert({\$OBJECT}_IS(self));\n".
+            "\tg_assert(self->priv->".(join '_', (map lc $_, @a))."_call != NULL);\n\n".
+            ($m{'ret'} eq 'void' ?
+             "\tdbus_g_proxy_end_call(self->priv->dbus_g_proxy, self->priv->".(join '_', (map lc $_, @a))."_call, error, G_TYPE_INVALID);\n".
+             "\tself->priv->".(join '_', (map lc $_, @a))."_call = NULL;\n"
+             :
+             "\t".get_g_type($m{'ret'})."ret = ".($m{'ret'} eq 'uint32' || $m{'ret'} eq 'boolean' ? "0" : "NULL").";\n".
+             "\tdbus_g_proxy_end_call(self->priv->dbus_g_proxy, self->priv->".(join '_', (map lc $_, @a))."_call, error, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID);\n".
+             "\tself->priv->".(join '_', (map lc $_, @a))."_call = NULL;\n\n".
+             "\treturn ret;\n"
+            ).
+            "}\n\n";
+        } else {
+            my $method_def =
+            get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."({\$Object} *self, ".
+            ($in_args eq '' ? "" : "$in_args, ")."GError **error)";
+            
+            $methods .=
+            "/* $m{'decl'} */\n".
+            "$method_def\n".
+            "{\n".
+            "\tg_assert({\$OBJECT}_IS(self));\n\n".
+            ($m{'ret'} eq 'void' ?
+             "\tdbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, G_TYPE_INVALID);\n"
+             :
+             "\t".get_g_type($m{'ret'})."ret;\n".
+             "\tif (!dbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID)) {\n".
+             "\t\treturn NULL;\n".
+             "\t}\n\n".
+             "\treturn ret;\n"
+            ).
+            "}\n\n";
+        }
     }
+    $priv_async_calls =~ s/^\t(.+?)\s+$/$1/s;
+    $priv_async_calls_init =~ s/^\t(.+?)\s+$/$1/s;
     $methods =~ s/\s+$//s;
     
     my $enum_signals = "";
@@ -771,6 +841,11 @@ EOT
     } else {
 	$output =~ s/\s+\{IF_PROPERTIES\}.+?\{FI_PROPERTIES\}//gs;
     }
+    if ($async_flag == 1) {
+        $output =~ s/\{IF_ASYNC_CALLS\}\s+(.+?)\s+\{FI_ASYNC_CALLS\}/$1/gs;
+    } else {
+        $output =~ s/\s+\{IF_ASYNC_CALLS\}.+?\{FI_ASYNC_CALLS\}//gs;
+    }
     $output =~ s/{BLUEZ_DBUS_OBJECT_DEFS}/$bluez_dbus_object_defs/;
     $output =~ s/{ENUM_SIGNALS}/$enum_signals/;
     $output =~ s/{SIGNALS_HANDLERS_DEF}/$signals_handlers_def/;
@@ -787,6 +862,8 @@ EOT
     $output =~ s/{SET_PROPERTIES}/$set_properties/;
     $output =~ s/{PROPERTIES_ACCESS_METHODS}/$properties_access_methods/;
     $output =~ s/{PROPERTIES_CHANGED_HANDLER}/$properties_changed_handler/;
+    $output =~ s/{PRIV_ASYNC_CALLS}/$priv_async_calls/;
+    $output =~ s/{PRIV_ASYNC_CALLS_INIT}/$priv_async_calls_init/;
     $output =~ s/{METHODS}/$methods/;
     $output =~ s/{\$OBJECT}/$obj_uc/g;
     $output =~ s/{\$Object}/$obj/g;
