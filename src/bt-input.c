@@ -50,7 +50,7 @@ static gchar *connect_arg = NULL;
 static gchar *disconnect_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", NULL},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
 	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to an input device", "device#id"},
 	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from an input device", "device#id"},
 	{NULL}

@@ -257,7 +257,7 @@ static void release_device(Device *device)
 }
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", NULL},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
 	{NULL}
 };
 

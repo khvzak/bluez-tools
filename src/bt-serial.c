@@ -25,8 +25,111 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
+#include <glib.h>
+
+#include "lib/dbus-common.h"
+#include "lib/helpers.h"
+#include "lib/adapter.h"
+#include "lib/device.h"
+#include "lib/serial.h"
+
+static gchar *adapter_arg = NULL;
+static gboolean connect_arg = FALSE;
+static gchar *connect_device_arg = NULL;
+static gchar *connect_service_arg = NULL;
+static gboolean disconnect_arg = FALSE;
+static gchar *disconnect_device_arg = NULL;
+static gchar *disconnect_tty_device_arg = NULL;
+
+static GOptionEntry entries[] = {
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
+	{"connect", 'c', 0, G_OPTION_ARG_NONE, &connect_arg, "Connect to a serial device", NULL},
+	{"disconnect", 'd', 0, G_OPTION_ARG_NONE, &disconnect_arg, "Disconnect from a serial device", NULL},
+	{NULL}
+};
+
 int main(int argc, char *argv[])
 {
+	GError *error = NULL;
+	GOptionContext *context;
 
+	g_type_init();
+
+	context = g_option_context_new(" - a bluetooth serial manager");
+	g_option_context_add_main_entries(context, entries, NULL);
+	g_option_context_set_summary(context, "serial summary");
+	g_option_context_set_description(context,
+			"Connect Options:\n"
+			"  -c, --connect device#id <pattern>\n"
+			"  Where pattern is:\n"
+			"     UUID 128 bit string\n"
+			"     Profile short name, e.g: spp, dun\n"
+			"     RFCOMM channel, 1-30\n\n"
+			"Disconnect Options:\n"
+			"  -d, --disconnect device#id <tty_device>\n"
+			"  Where tty_device is:\n"
+			"     RFCOMM TTY device that has been connected\n\n"
+			"serial desc"
+			);
+
+	if (!g_option_context_parse(context, &argc, &argv, &error)) {
+		g_print("%s: %s\n", g_get_prgname(), error->message);
+		g_print("Try `%s --help` for more information.\n", g_get_prgname());
+		exit(EXIT_FAILURE);
+	} else if (!connect_arg && !disconnect_arg) {
+		g_print("%s", g_option_context_get_help(context, FALSE, NULL));
+		exit(EXIT_FAILURE);
+	} else if (connect_arg && argc != 3) {
+		g_print("%s: Invalid arguments for --connect\n", g_get_prgname());
+		g_print("Try `%s --help` for more information.\n", g_get_prgname());
+		exit(EXIT_FAILURE);
+	} else if (disconnect_arg && argc != 3) {
+		g_print("%s: Invalid arguments for --disconnect\n", g_get_prgname());
+		g_print("Try `%s --help` for more information.\n", g_get_prgname());
+		exit(EXIT_FAILURE);
+	}
+
+	g_option_context_free(context);
+
+	if (connect_arg) {
+		connect_device_arg = argv[1];
+		connect_service_arg = argv[2];
+	} else {
+		disconnect_device_arg = argv[1];
+		disconnect_tty_device_arg = argv[2];
+	}
+
+	if (!dbus_connect(&error)) {
+		g_printerr("Couldn't connect to dbus: %s", error->message);
+		exit(EXIT_FAILURE);
+	}
+
+	Adapter *adapter = find_adapter(adapter_arg, &error);
+	exit_if_error(error);
+
+	Device *device = find_device(adapter, connect_device_arg != NULL ? connect_device_arg : disconnect_device_arg, &error);
+	exit_if_error(error);
+
+	// TODO: Test to Serial service
+
+	Serial *serial = g_object_new(SERIAL_TYPE, "DBusObjectPath", device_get_dbus_object_path(device), NULL);
+
+	if (connect_arg) {
+		gchar *tty_device = serial_connect(serial, connect_service_arg, &error);
+		exit_if_error(error);
+		g_print("Created RFCOMM TTY device: %s\n", tty_device);
+		g_free(tty_device);
+	} else if (disconnect_arg) {
+		serial_disconnect(serial, disconnect_tty_device_arg, &error);
+		exit_if_error(error);
+		g_print("Done\n");
+	}
+
+	g_object_unref(serial);
+	g_object_unref(device);
+	g_object_unref(adapter);
+
+	exit(EXIT_SUCCESS);
 }
 
