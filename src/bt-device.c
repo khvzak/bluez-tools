@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
 
 		adapter_create_paired_device_begin(adapter, create_paired_device_done, mainloop, connect_arg, DBUS_AGENT_PATH, "DisplayYesNo");
 		g_main_loop_run(mainloop);
-		g_char *created_device = adapter_create_paired_device_end(adapter, &error);
+		gchar *created_device = adapter_create_paired_device_end(adapter, &error);
 		exit_if_error(error);
 
 		g_main_loop_unref(mainloop);
