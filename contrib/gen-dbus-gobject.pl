@@ -379,6 +379,9 @@ static void {\$object}_dispose(GObject *gobject)
 	{PROPERTIES_FREE}
 	{FI_PROPERTIES}
 
+	/* Proxy free */
+	g_object_unref(self->priv->dbus_g_proxy);
+
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS({\$object}_parent_class)->dispose(gobject);
 }

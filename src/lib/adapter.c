@@ -110,6 +110,9 @@ static void adapter_dispose(GObject *gobject)
 	g_free(self->priv->name);
 	g_strfreev(self->priv->uuids);
 
+	/* Proxy free */
+	g_object_unref(self->priv->dbus_g_proxy);
+
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(adapter_parent_class)->dispose(gobject);
 }

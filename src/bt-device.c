@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 
 		g_hash_table_iter_init(&iter, device_services);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
-			g_print("%d -> %s\n", key, value);
+			g_print("%d:\n%s\n", key, value);
 		}
 
 		g_print("Done\n");

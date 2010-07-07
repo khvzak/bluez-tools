@@ -77,6 +77,9 @@ static void network_dispose(GObject *gobject)
 	g_free(self->priv->interface);
 	g_free(self->priv->uuid);
 
+	/* Proxy free */
+	g_object_unref(self->priv->dbus_g_proxy);
+
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(network_parent_class)->dispose(gobject);
 }

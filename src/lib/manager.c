@@ -81,6 +81,9 @@ static void manager_dispose(GObject *gobject)
 	/* Properties free */
 	g_ptr_array_unref(self->priv->adapters);
 
+	/* Proxy free */
+	g_object_unref(self->priv->dbus_g_proxy);
+
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(manager_parent_class)->dispose(gobject);
 }

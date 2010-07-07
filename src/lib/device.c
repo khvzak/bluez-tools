@@ -111,6 +111,9 @@ static void device_dispose(GObject *gobject)
 	g_ptr_array_unref(self->priv->nodes);
 	g_strfreev(self->priv->uuids);
 
+	/* Proxy free */
+	g_object_unref(self->priv->dbus_g_proxy);
+
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(device_parent_class)->dispose(gobject);
 }

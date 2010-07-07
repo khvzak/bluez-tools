@@ -72,6 +72,9 @@ static void audio_dispose(GObject *gobject)
 	/* Properties free */
 	g_free(self->priv->state);
 
+	/* Proxy free */
+	g_object_unref(self->priv->dbus_g_proxy);
+
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(audio_parent_class)->dispose(gobject);
 }

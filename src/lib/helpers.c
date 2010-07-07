@@ -137,6 +137,9 @@ const gchar *uuid2service(const gchar *uuid)
 		g_hash_table_insert(t, "00001202-0000-1000-8000-00805f9b34fb", "GenericFileTransfer");
 		g_hash_table_insert(t, "00001203-0000-1000-8000-00805f9b34fb", "GenericAudio");
 		g_hash_table_insert(t, "00001204-0000-1000-8000-00805f9b34fb", "GenericTelephony");
+		// Manualy added
+		g_hash_table_insert(t, "0000112f-0000-1000-8000-00805f9b34fb", "PhoneBookAccess");
+		g_hash_table_insert(t, "831c4071-7bc8-4a9c-a01c-15df25a4adbc", "ActiveSync");
 	}
 
 	if (g_hash_table_lookup(t, uuid) != NULL) {
