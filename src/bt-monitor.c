@@ -28,12 +28,7 @@
 #include <stdlib.h>
 #include <glib.h>
 
-#include "lib/dbus-common.h"
-#include "lib/helpers.h"
-#include "lib/adapter.h"
-#include "lib/device.h"
-#include "lib/manager.h"
-#include "lib/agent.h"
+#include "lib/bluez-dbus.h"
 
 static gchar *adapter_arg = NULL;
 
@@ -240,6 +235,8 @@ static void capture_device(Device *device)
 	g_signal_connect(device, "NodeRemoved", G_CALLBACK(device_node_removed), NULL);
 	g_signal_connect(device, "PropertyChanged", G_CALLBACK(device_property_changed), NULL);
 
+	// TODO: Add capturing services (eg. input, audio) signals
+
 	g_ptr_array_add(captured_devices, device);
 }
 
@@ -282,7 +279,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s", error->message);
+		g_printerr("Couldn't connect to dbus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
@@ -300,7 +297,8 @@ int main(int argc, char *argv[])
 		g_assert(adapters_list != NULL);
 
 		if (adapters_list->len == 0) {
-			g_print("no adapters found\n");
+			g_print("No adapters found\n");
+			exit(EXIT_FAILURE);
 		}
 
 		for (int i = 0; i < adapters_list->len; i++) {
@@ -317,6 +315,8 @@ int main(int argc, char *argv[])
 
 	GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(mainloop);
+
+	// TODO: Add SIGINT handler (Ctrl+C)
 
 	exit(EXIT_SUCCESS);
 }

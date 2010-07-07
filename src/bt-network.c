@@ -25,8 +25,13 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
+#include <glib.h>
+
+#include "lib/bluez-dbus.h"
+
 int main(int argc, char *argv[])
 {
-
+	exit(EXIT_SUCCESS);
 }
 

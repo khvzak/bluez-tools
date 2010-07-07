@@ -28,11 +28,7 @@
 #include <stdlib.h>
 #include <glib.h>
 
-#include "lib/dbus-common.h"
-#include "lib/helpers.h"
-#include "lib/adapter.h"
-#include "lib/device.h"
-#include "lib/serial.h"
+#include "lib/bluez-dbus.h"
 
 static gchar *adapter_arg = NULL;
 static gboolean connect_arg = FALSE;
@@ -61,14 +57,14 @@ int main(int argc, char *argv[])
 	g_option_context_set_summary(context, "serial summary");
 	g_option_context_set_description(context,
 			"Connect Options:\n"
-			"  -c, --connect device#id <pattern>\n"
-			"  Where pattern is:\n"
+			"  -c, --connect <device#id> <pattern>\n"
+			"  Where `pattern` is:\n"
 			"     UUID 128 bit string\n"
 			"     Profile short name, e.g: spp, dun\n"
 			"     RFCOMM channel, 1-30\n\n"
 			"Disconnect Options:\n"
-			"  -d, --disconnect device#id <tty_device>\n"
-			"  Where tty_device is:\n"
+			"  -d, --disconnect <device#id> <tty_device>\n"
+			"  Where `tty_device` is:\n"
 			"     RFCOMM TTY device that has been connected\n\n"
 			"serial desc"
 			);
@@ -101,7 +97,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s", error->message);
+		g_printerr("Couldn't connect to dbus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 

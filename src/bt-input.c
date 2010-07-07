@@ -28,11 +28,7 @@
 #include <stdlib.h>
 #include <glib.h>
 
-#include "lib/dbus-common.h"
-#include "lib/helpers.h"
-#include "lib/adapter.h"
-#include "lib/device.h"
-#include "lib/input.h"
+#include "lib/bluez-dbus.h"
 
 static void input_property_changed(Input *input, const gchar *name, const GValue *value, gpointer data)
 {
@@ -80,7 +76,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s", error->message);
+		g_printerr("Couldn't connect to dbus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 

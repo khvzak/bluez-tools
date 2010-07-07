@@ -28,11 +28,7 @@
 #include <stdlib.h>
 #include <glib.h>
 
-#include "lib/dbus-common.h"
-#include "lib/helpers.h"
-#include "lib/adapter.h"
-#include "lib/manager.h"
-#include "lib/agent.h"
+#include "lib/bluez-dbus.h"
 
 static gchar *adapter_arg = NULL;
 
@@ -62,7 +58,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s", error->message);
+		g_printerr("Couldn't connect to dbus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
@@ -80,6 +76,9 @@ int main(int argc, char *argv[])
 
 	GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(mainloop);
+
+	// It is unnecessary...
+	// TODO: Add SIGINT handler (Ctrl+C)
 
 	adapter_unregister_agent(adapter, DBUS_AGENT_PATH, &error);
 	exit_if_error(error);

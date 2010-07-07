@@ -27,9 +27,8 @@
 
 #include <string.h>
 
-#include "helpers.h"
-#include "adapter.h"
 #include "manager.h"
+#include "helpers.h"
 
 Adapter *find_adapter(const gchar *name, GError **error)
 {

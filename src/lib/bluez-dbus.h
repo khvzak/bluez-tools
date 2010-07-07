@@ -21,33 +21,26 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#ifndef __BLUEZ_DBUS_H
+#define __BLUEZ_DBUS_H
 
-#include "marshallers.h"
-#include "agent.h"
+/* Global includes */
+#include <glib.h>
+#include <dbus/dbus-glib.h>
+
+/* Local includes */
 #include "dbus-common.h"
+#include "helpers.h"
+#include "marshallers.h"
 
-DBusGConnection *conn = NULL;
+/* Bluez DBus Interfaces */
+#include "adapter.h"
+#include "agent.h"
+#include "audio.h"
+#include "device.h"
+#include "input.h"
+#include "manager.h"
+#include "network.h"
+#include "serial.h"
 
-gboolean dbus_connect(GError **error)
-{
-	conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, error);
-	if (!conn) {
-		return FALSE;
-	}
-
-	/* Marshallers registration */
-	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__STRING_BOXED, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
-
-	/* Agent installation */
-	dbus_g_object_type_install_info(AGENT_TYPE, &dbus_glib_agent_object_info);
-
-	return TRUE;
-}
-
-void dbus_disconnect()
-{
-	dbus_g_connection_unref(conn);
-}
+#endif /* __BLUEZ_DBUS_H */

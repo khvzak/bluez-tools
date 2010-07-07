@@ -28,10 +28,7 @@
 #include <stdlib.h>
 #include <glib.h>
 
-#include "lib/dbus-common.h"
-#include "lib/helpers.h"
-#include "lib/adapter.h"
-#include "lib/manager.h"
+#include "lib/bluez-dbus.h"
 
 static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTable *values, gpointer data)
 {
@@ -97,10 +94,22 @@ int main(int argc, char *argv[])
 
 	g_type_init();
 
-	context = g_option_context_new("[--set Name Value] - a bluetooth adapter manager");
+	context = g_option_context_new("- a bluetooth adapter manager");
 	g_option_context_add_main_entries(context, entries, NULL);
 	g_option_context_set_summary(context, "adapter summary");
-	g_option_context_set_description(context, "adapter desc");
+	g_option_context_set_description(context,
+			"Set Options:\n"
+			"  --set <Name> <Value>\n"
+			"  Where `Name` is adapter property name:\n"
+			"     Name\n"
+			"     Discoverable\n"
+			"     DiscoverableTimeout\n"
+			"     Pairable\n"
+			"     PairableTimeout\n"
+			"     Powered\n"
+			"  And `Value` is property value to set\n\n"
+			"adapter desc"
+			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("%s: %s\n", g_get_prgname(), error->message);
@@ -118,7 +127,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s", error->message);
+		g_printerr("Couldn't connect to dbus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
@@ -128,12 +137,12 @@ int main(int argc, char *argv[])
 		const GPtrArray *adapters_list = manager_get_adapters(manager);
 		g_assert(adapters_list != NULL);
 
-		g_print("Available adapters:\n");
-
 		if (adapters_list->len == 0) {
-			g_print("no adapters found\n");
+			g_print("No adapters found\n");
+			exit(EXIT_FAILURE);
 		}
 
+		g_print("Available adapters:\n");
 		for (int i = 0; i < adapters_list->len; i++) {
 			const gchar *adapter_path = g_ptr_array_index(adapters_list, i);
 			Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
@@ -209,9 +218,9 @@ int main(int argc, char *argv[])
 				) {
 			g_value_init(&v, G_TYPE_BOOLEAN);
 
-			if (g_strcmp0(set_value_arg, "0") == 0 || g_strcmp0(set_value_arg, "FALSE") == 0) {
+			if (g_strcmp0(set_value_arg, "0") == 0 || g_ascii_strcasecmp(set_value_arg, "FALSE") == 0 || g_ascii_strcasecmp(set_value_arg, "OFF") == 0) {
 				g_value_set_boolean(&v, FALSE);
-			} else if (g_strcmp0(set_value_arg, "1") == 0 || g_strcmp0(set_value_arg, "TRUE") == 0) {
+			} else if (g_strcmp0(set_value_arg, "1") == 0 || g_ascii_strcasecmp(set_value_arg, "TRUE") == 0 || g_ascii_strcasecmp(set_value_arg, "ON") == 0) {
 				g_value_set_boolean(&v, TRUE);
 			} else {
 				g_print("Invalid value: %s\n", set_value_arg);

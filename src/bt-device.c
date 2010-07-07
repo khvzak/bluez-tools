@@ -28,11 +28,13 @@
 #include <stdlib.h>
 #include <glib.h>
 
-#include "lib/dbus-common.h"
-#include "lib/helpers.h"
-#include "lib/adapter.h"
-#include "lib/device.h"
-#include "lib/agent.h"
+#include "lib/bluez-dbus.h"
+
+static void create_paired_device_done(gpointer data)
+{
+	GMainLoop *mainloop = data;
+	g_main_loop_quit(mainloop);
+}
 
 static gchar *adapter_arg = NULL;
 static gboolean list_arg = FALSE;
@@ -44,12 +46,6 @@ static gboolean set_arg = FALSE;
 static gchar *set_device_arg = NULL;
 static gchar *set_name_arg = NULL;
 static gchar *set_value_arg = NULL;
-
-static void create_paired_device_done(gpointer data)
-{
-	GMainLoop *mainloop = data;
-	g_main_loop_quit(mainloop);
-}
 
 static GOptionEntry entries[] = {
 	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
@@ -69,10 +65,19 @@ int main(int argc, char *argv[])
 
 	g_type_init();
 
-	context = g_option_context_new("[--set device#id Name Value] - a bluetooth device manager");
+	context = g_option_context_new("- a bluetooth device manager");
 	g_option_context_add_main_entries(context, entries, NULL);
 	g_option_context_set_summary(context, "device summary");
-	g_option_context_set_description(context, "device desc");
+	g_option_context_set_description(context,
+			"Set Options:\n"
+			"  --set <device#id> <Name> <Value>\n"
+			"  Where `Name` is device property name:\n"
+			"     Alias\n"
+			"     Trusted\n"
+			"     Blocked\n"
+			"  And `Value` is property value to set\n\n"
+			"device desc"
+			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("%s: %s\n", g_get_prgname(), error->message);
@@ -90,7 +95,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s", error->message);
+		g_printerr("Couldn't connect to dbus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
@@ -101,12 +106,12 @@ int main(int argc, char *argv[])
 		const GPtrArray *devices_list = adapter_get_devices(adapter);
 		g_assert(devices_list != NULL);
 
-		g_print("Added devices:\n");
-
 		if (devices_list->len == 0) {
-			g_print("no devices found\n");
+			g_print("No devices found\n");
+			exit(EXIT_FAILURE);
 		}
 
+		g_print("Added devices:\n");
 		for (int i = 0; i < devices_list->len; i++) {
 			const gchar *device_path = g_ptr_array_index(devices_list, i);
 			Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
@@ -120,11 +125,12 @@ int main(int argc, char *argv[])
 
 		adapter_create_paired_device_begin(adapter, create_paired_device_done, mainloop, connect_arg, DBUS_AGENT_PATH, "DisplayYesNo");
 		g_main_loop_run(mainloop);
-		adapter_create_paired_device_end(adapter, &error);
+		g_char *created_device = adapter_create_paired_device_end(adapter, &error);
 		exit_if_error(error);
 
 		g_main_loop_unref(mainloop);
 		g_object_unref(agent);
+		g_free(created_device);
 	} else if (remove_arg) {
 		Device *device = find_device(adapter, remove_arg, &error);
 		exit_if_error(error);
@@ -161,7 +167,7 @@ int main(int argc, char *argv[])
 		Device *device = find_device(adapter, services_arg, &error);
 		exit_if_error(error);
 
-		// TODO: Impl services scan
+		// TODO: Add services scan
 
 		g_object_unref(device);
 	} else if (set_arg) {
@@ -183,9 +189,9 @@ int main(int argc, char *argv[])
 				) {
 			g_value_init(&v, G_TYPE_BOOLEAN);
 
-			if (g_strcmp0(set_value_arg, "0") == 0 || g_strcmp0(set_value_arg, "FALSE") == 0) {
+			if (g_strcmp0(set_value_arg, "0") == 0 || g_ascii_strcasecmp(set_value_arg, "FALSE") == 0 || g_ascii_strcasecmp(set_value_arg, "OFF") == 0) {
 				g_value_set_boolean(&v, FALSE);
-			} else if (g_strcmp0(set_value_arg, "1") == 0 || g_strcmp0(set_value_arg, "TRUE") == 0) {
+			} else if (g_strcmp0(set_value_arg, "1") == 0 || g_ascii_strcasecmp(set_value_arg, "TRUE") == 0 || g_ascii_strcasecmp(set_value_arg, "ON") == 0) {
 				g_value_set_boolean(&v, TRUE);
 			} else {
 				g_print("Invalid value: %s\n", set_value_arg);
