@@ -487,10 +487,8 @@ gchar *adapter_create_device(Adapter *self, const gchar *address, GError **error
 {
 	g_assert(ADAPTER_IS(self));
 
-	gchar *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "CreateDevice", error, G_TYPE_STRING, address, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	gchar *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "CreateDevice", error, G_TYPE_STRING, address, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
@@ -525,10 +523,8 @@ gchar *adapter_find_device(Adapter *self, const gchar *address, GError **error)
 {
 	g_assert(ADAPTER_IS(self));
 
-	gchar *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "FindDevice", error, G_TYPE_STRING, address, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	gchar *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "FindDevice", error, G_TYPE_STRING, address, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
@@ -538,10 +534,8 @@ GHashTable *adapter_get_properties(Adapter *self, GError **error)
 {
 	g_assert(ADAPTER_IS(self));
 
-	GHashTable *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	GHashTable *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }

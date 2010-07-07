@@ -210,10 +210,8 @@ gchar *manager_default_adapter(Manager *self, GError **error)
 {
 	g_assert(MANAGER_IS(self));
 
-	gchar *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "DefaultAdapter", error, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	gchar *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "DefaultAdapter", error, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
@@ -223,10 +221,8 @@ gchar *manager_find_adapter(Manager *self, const gchar *pattern, GError **error)
 {
 	g_assert(MANAGER_IS(self));
 
-	gchar *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "FindAdapter", error, G_TYPE_STRING, pattern, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	gchar *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "FindAdapter", error, G_TYPE_STRING, pattern, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
@@ -236,10 +232,8 @@ GHashTable *manager_get_properties(Manager *self, GError **error)
 {
 	g_assert(MANAGER_IS(self));
 
-	GHashTable *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	GHashTable *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }

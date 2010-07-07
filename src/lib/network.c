@@ -222,10 +222,8 @@ gchar *network_connect(Network *self, const gchar *uuid, GError **error)
 {
 	g_assert(NETWORK_IS(self));
 
-	gchar *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "Connect", error, G_TYPE_STRING, uuid, G_TYPE_INVALID, G_TYPE_STRING, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	gchar *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Connect", error, G_TYPE_STRING, uuid, G_TYPE_INVALID, G_TYPE_STRING, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
@@ -243,10 +241,8 @@ GHashTable *network_get_properties(Network *self, GError **error)
 {
 	g_assert(NETWORK_IS(self));
 
-	GHashTable *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	GHashTable *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }

@@ -32,12 +32,14 @@
 
 static void input_property_changed(Input *input, const gchar *name, const GValue *value, gpointer data)
 {
+	GMainLoop *mainloop = data;
 	if (g_strcmp0(name, "Connected") == 0) {
 		if (g_value_get_boolean(value) == TRUE) {
 			g_print("Input service is connected\n");
 		} else {
 			g_print("Input service is disconnected\n");
 		}
+		g_main_loop_quit(mainloop);
 	}
 }
 
@@ -88,8 +90,10 @@ int main(int argc, char *argv[])
 
 	// TODO: Test to HID service
 
+	GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
+
 	Input *input = g_object_new(INPUT_TYPE, "DBusObjectPath", device_get_dbus_object_path(device), NULL);
-	g_signal_connect(input, "PropertyChanged", G_CALLBACK(input_property_changed), NULL);
+	g_signal_connect(input, "PropertyChanged", G_CALLBACK(input_property_changed), mainloop);
 
 	if (connect_arg) {
 		if (input_get_connected(input) == TRUE) {
@@ -97,6 +101,7 @@ int main(int argc, char *argv[])
 		} else {
 			input_connect(input, &error);
 			exit_if_error(error);
+			g_main_loop_run(mainloop);
 		}
 	} else if (disconnect_arg) {
 		if (input_get_connected(input) == FALSE) {
@@ -104,9 +109,11 @@ int main(int argc, char *argv[])
 		} else {
 			input_disconnect(input, &error);
 			exit_if_error(error);
+			g_main_loop_run(mainloop);
 		}
 	}
 
+	g_main_loop_unref(mainloop);
 	g_object_unref(input);
 	g_object_unref(device);
 	g_object_unref(adapter);

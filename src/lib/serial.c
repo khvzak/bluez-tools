@@ -130,10 +130,8 @@ gchar *serial_connect(Serial *self, const gchar *pattern, GError **error)
 {
 	g_assert(SERIAL_IS(self));
 
-	gchar *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "Connect", error, G_TYPE_STRING, pattern, G_TYPE_INVALID, G_TYPE_STRING, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	gchar *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Connect", error, G_TYPE_STRING, pattern, G_TYPE_INVALID, G_TYPE_STRING, &ret, G_TYPE_INVALID);
 
 	return ret;
 }

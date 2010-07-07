@@ -203,10 +203,8 @@ GHashTable *input_get_properties(Input *self, GError **error)
 {
 	g_assert(INPUT_IS(self));
 
-	GHashTable *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	GHashTable *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }

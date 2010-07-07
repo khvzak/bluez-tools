@@ -472,10 +472,8 @@ gchar *device_create_node(Device *self, const gchar *uuid, GError **error)
 {
 	g_assert(DEVICE_IS(self));
 
-	gchar *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "CreateNode", error, G_TYPE_STRING, uuid, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	gchar *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "CreateNode", error, G_TYPE_STRING, uuid, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
@@ -488,15 +486,13 @@ void device_disconnect(Device *self, GError **error)
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Disconnect", error, G_TYPE_INVALID, G_TYPE_INVALID);
 }
 
-/* dict DiscoverServices(string pattern) */
+/* dict{u,s} DiscoverServices(string pattern) */
 GHashTable *device_discover_services(Device *self, const gchar *pattern, GError **error)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "DiscoverServices", error, G_TYPE_STRING, pattern, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	GHashTable *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "DiscoverServices", error, G_TYPE_STRING, pattern, G_TYPE_INVALID, DBUS_TYPE_G_UINT_STRING_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
@@ -506,10 +502,8 @@ GHashTable *device_get_properties(Device *self, GError **error)
 {
 	g_assert(DEVICE_IS(self));
 
-	GHashTable *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	GHashTable *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
@@ -519,10 +513,8 @@ GPtrArray *device_list_nodes(Device *self, GError **error)
 {
 	g_assert(DEVICE_IS(self));
 
-	GPtrArray *ret;
-	if (!dbus_g_proxy_call(self->priv->dbus_g_proxy, "ListNodes", error, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_ARRAY, &ret, G_TYPE_INVALID)) {
-		return NULL;
-	}
+	GPtrArray *ret = NULL;
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "ListNodes", error, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_ARRAY, &ret, G_TYPE_INVALID);
 
 	return ret;
 }

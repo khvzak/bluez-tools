@@ -171,7 +171,7 @@ gboolean agent_confirm_mode_change(Agent *self, const gchar *mode, GError **erro
 
 gboolean agent_cancel(Agent *self, GError **error)
 {
-	g_print("Cancelled\n");
+	g_print("Request cancelled\n");
 	return TRUE;
 }
 

@@ -167,7 +167,17 @@ int main(int argc, char *argv[])
 		Device *device = find_device(adapter, services_arg, &error);
 		exit_if_error(error);
 
-		// TODO: Add services scan
+		g_print("Discovering services...\n");
+		GHashTable *device_services = device_discover_services(device, NULL, &error);
+		exit_if_error(error);
+
+		GHashTableIter iter;
+		gpointer key, value;
+
+		g_hash_table_iter_init(&iter, device_services);
+		while (g_hash_table_iter_next(&iter, &key, &value)) {
+			g_print("%d -> %s\n", (guint)key, value);
+		}
 
 		g_object_unref(device);
 	} else if (set_arg) {

@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
 
 	g_print("Agent unregistered\n");
 
+	g_main_loop_unref(mainloop);
 	g_object_unref(agent);
 	g_object_unref(adapter);
 	g_object_unref(manager);

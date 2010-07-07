@@ -40,6 +40,9 @@ sub parse_doc_api {
         # adapter-api.txt
         s/PaireableTimeout/PairableTimeout/;
         
+        # device-api.txt
+        s/dict (DiscoverServices\(string pattern\))$/dict{u,s} $1/;
+        
         if (/^(.+) hierarchy$/) {
             my $hierarchy = $1;
             $section = 'hierarchy';
@@ -172,7 +175,7 @@ sub get_g_type {
     
     $g_type = 'void ' if $bluez_type eq 'void';
     $g_type = 'gchar *' if $bluez_type eq 'object' || $bluez_type eq 'string';
-    $g_type = 'GHashTable *' if $bluez_type eq 'dict';
+    $g_type = 'GHashTable *' if $bluez_type =~ /^dict/;
     $g_type = 'GValue *' if $bluez_type eq 'variant';
     $g_type = 'guint8 ' if $bluez_type eq 'uint8';
     $g_type = 'gboolean ' if $bluez_type eq 'boolean';
@@ -196,11 +199,25 @@ sub get_g_type_name {
     $g_type_name = 'G_TYPE_BOOLEAN' if $bluez_type eq 'boolean';
     $g_type_name = 'G_TYPE_UINT' if $bluez_type eq 'uint32';
     $g_type_name = 'DBUS_TYPE_G_STRING_VARIANT_HASHTABLE' if $bluez_type eq 'dict';
+    $g_type_name = 'DBUS_TYPE_G_UINT_STRING_HASHTABLE' if $bluez_type eq 'dict{u,s}';
     $g_type_name = 'DBUS_TYPE_G_OBJECT_ARRAY' if $bluez_type eq 'array{object}';
     
     die "unknown bluez type (2): $bluez_type\n" unless defined $g_type_name;
     
     return $g_type_name;
+}
+
+sub get_default_value {
+    my $c_type = shift;
+    my $default_value;
+    
+    $default_value = 'NULL' if $c_type =~ /\*$/;
+    $default_value = 'FALSE' if $c_type eq 'gboolean';
+    $default_value = '0' if $c_type =~ /int/;
+    
+    die "unknown C type (3): $c_type\n" unless defined $default_value;
+    
+    return $default_value;
 }
 
 sub generate_header {
@@ -528,7 +545,7 @@ EOT
              "\tdbus_g_proxy_end_call(self->priv->dbus_g_proxy, self->priv->".(join '_', (map lc $_, @a))."_call, error, G_TYPE_INVALID);\n".
              "\tself->priv->".(join '_', (map lc $_, @a))."_call = NULL;\n"
              :
-             "\t".get_g_type($m{'ret'})."ret = ".($m{'ret'} eq 'uint32' || $m{'ret'} eq 'boolean' ? "0" : "NULL").";\n".
+             "\t".get_g_type($m{'ret'})."ret = ".get_default_value(get_g_type($m{'ret'})).";\n".
              "\tdbus_g_proxy_end_call(self->priv->dbus_g_proxy, self->priv->".(join '_', (map lc $_, @a))."_call, error, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID);\n".
              "\tself->priv->".(join '_', (map lc $_, @a))."_call = NULL;\n\n".
              "\treturn ret;\n"
@@ -547,10 +564,8 @@ EOT
             ($m{'ret'} eq 'void' ?
              "\tdbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, G_TYPE_INVALID);\n"
              :
-             "\t".get_g_type($m{'ret'})."ret;\n".
-             "\tif (!dbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID)) {\n".
-             "\t\treturn NULL;\n".
-             "\t}\n\n".
+             "\t".get_g_type($m{'ret'})."ret = ".get_default_value(get_g_type($m{'ret'})).";\n".
+             "\tdbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID);\n\n".
              "\treturn ret;\n"
             ).
             "}\n\n";
