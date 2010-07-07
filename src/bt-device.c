@@ -128,9 +128,10 @@ int main(int argc, char *argv[])
 		gchar *created_device = adapter_create_paired_device_end(adapter, &error);
 		exit_if_error(error);
 
+		g_print("Done\n");
 		g_main_loop_unref(mainloop);
-		g_object_unref(agent);
 		g_free(created_device);
+		g_object_unref(agent);
 	} else if (remove_arg) {
 		Device *device = find_device(adapter, remove_arg, &error);
 		exit_if_error(error);
@@ -176,9 +177,10 @@ int main(int argc, char *argv[])
 
 		g_hash_table_iter_init(&iter, device_services);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
-			g_print("%d -> %s\n", (guint)key, value);
+			g_print("%d -> %s\n", key, value);
 		}
 
+		g_print("Done\n");
 		g_object_unref(device);
 	} else if (set_arg) {
 		set_device_arg = argv[1];

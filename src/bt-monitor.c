@@ -318,6 +318,9 @@ int main(int argc, char *argv[])
 
 	// TODO: Add SIGINT handler (Ctrl+C)
 
+	g_main_loop_unref(mainloop);
+	g_object_unref(manager);
+
 	exit(EXIT_SUCCESS);
 }
 
