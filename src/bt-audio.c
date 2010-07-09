@@ -33,10 +33,10 @@
 static void audio_property_changed(Audio *audio, const gchar *name, const GValue *value, gpointer data)
 {
 	GMainLoop *mainloop = data;
-	if (g_strcmp0(name, "state") == 0) {
-		if (g_strcmp0(g_value_get_string(value), "connecting") == 0) {
+	if (g_strcmp0(name, "State") == 0) {
+		if (g_ascii_strcasecmp(g_value_get_string(value), "connecting") == 0) {
 			g_print("Connecting to an audio service\n");
-		} else if (g_strcmp0(g_value_get_string(value), "connected") == 0) {
+		} else if (g_ascii_strcasecmp(g_value_get_string(value), "connected") == 0) {
 			g_print("Audio service is connected\n");
 			g_main_loop_quit(mainloop);
 		} else {
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 		if (g_strcmp0(audio_get_state(audio), "connected") == 0) {
 			g_print("Audio service is already connected\n");
 		} else if (g_strcmp0(audio_get_state(audio), "connecting") == 0) {
-			//g_print("Audio service is already connecting\n");
+			g_print("Audio service is already in connection state\n");
 		} else {
 			audio_connect(audio, &error);
 			exit_if_error(error);
