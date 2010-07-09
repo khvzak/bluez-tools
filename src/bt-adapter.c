@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 		const gchar **uuids = adapter_get_uuids(adapter);
 		for (int j = 0; uuids[j] != NULL; j++) {
 			if (j > 0) g_print(", ");
-			g_print("%s", uuid2service(uuids[j]));
+			g_print("%s", get_uuid_name(uuids[j]));
 		}
 		g_print("]\n");
 

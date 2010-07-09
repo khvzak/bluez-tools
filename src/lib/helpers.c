@@ -25,10 +25,90 @@
 #include <config.h>
 #endif
 
+#include <glib.h>
 #include <string.h>
 
 #include "manager.h"
 #include "helpers.h"
+
+/* UUID Name lookup table */
+typedef struct {
+	gchar *uuid;
+	gchar *name;
+} uuid_name_lookup_table_t;
+
+static uuid_name_lookup_table_t uuid_name_lookup_table[] = {
+	{"00001000-0000-1000-8000-00805f9b34fb", "ServiceDiscoveryServer"},
+	{"00001001-0000-1000-8000-00805f9b34fb", "BrowseGroupDescriptor"},
+	{"00001002-0000-1000-8000-00805f9b34fb", "PublicBrowseGroup"},
+	{"00001101-0000-1000-8000-00805f9b34fb", "SerialPort"},
+	{"00001102-0000-1000-8000-00805f9b34fb", "LANAccessUsingPPP"},
+	{"00001103-0000-1000-8000-00805f9b34fb", "DialupNetworking"},
+	{"00001104-0000-1000-8000-00805f9b34fb", "IrMCSync"},
+	{"00001105-0000-1000-8000-00805f9b34fb", "OBEXObjectPush"},
+	{"00001106-0000-1000-8000-00805f9b34fb", "OBEXFileTransfer"},
+	{"00001107-0000-1000-8000-00805f9b34fb", "IrMCSyncCommand"},
+	{"00001108-0000-1000-8000-00805f9b34fb", "Headset"},
+	{"00001109-0000-1000-8000-00805f9b34fb", "CordlessTelephony"},
+	{"0000110a-0000-1000-8000-00805f9b34fb", "AudioSource"},
+	{"0000110b-0000-1000-8000-00805f9b34fb", "AudioSink"},
+	{"0000110c-0000-1000-8000-00805f9b34fb", "AVRemoteControlTarget"},
+	{"0000110d-0000-1000-8000-00805f9b34fb", "AdvancedAudioDistribution"},
+	{"0000110e-0000-1000-8000-00805f9b34fb", "AVRemoteControl"},
+	{"0000110f-0000-1000-8000-00805f9b34fb", "VideoConferencing"},
+	{"00001110-0000-1000-8000-00805f9b34fb", "Intercom"},
+	{"00001111-0000-1000-8000-00805f9b34fb", "Fax"},
+	{"00001112-0000-1000-8000-00805f9b34fb", "HeadsetAudioGateway"},
+	{"00001113-0000-1000-8000-00805f9b34fb", "WAP"},
+	{"00001114-0000-1000-8000-00805f9b34fb", "WAPClient"},
+	{"00001115-0000-1000-8000-00805f9b34fb", "PANU"},
+	{"00001116-0000-1000-8000-00805f9b34fb", "NAP"},
+	{"00001117-0000-1000-8000-00805f9b34fb", "GN"},
+	{"00001118-0000-1000-8000-00805f9b34fb", "DirectPrinting"},
+	{"00001119-0000-1000-8000-00805f9b34fb", "ReferencePrinting"},
+	{"0000111a-0000-1000-8000-00805f9b34fb", "Imaging"},
+	{"0000111b-0000-1000-8000-00805f9b34fb", "ImagingResponder"},
+	{"0000111c-0000-1000-8000-00805f9b34fb", "ImagingAutomaticArchive"},
+	{"0000111d-0000-1000-8000-00805f9b34fb", "ImagingReferenceObjects"},
+	{"0000111e-0000-1000-8000-00805f9b34fb", "Handsfree"},
+	{"0000111f-0000-1000-8000-00805f9b34fb", "HandsfreeAudioGateway"},
+	{"00001120-0000-1000-8000-00805f9b34fb", "DirectPrintingReferenceObjects"},
+	{"00001121-0000-1000-8000-00805f9b34fb", "ReflectedUI"},
+	{"00001122-0000-1000-8000-00805f9b34fb", "BasicPringing"},
+	{"00001123-0000-1000-8000-00805f9b34fb", "PrintingStatus"},
+	{"00001124-0000-1000-8000-00805f9b34fb", "HumanInterfaceDevice"},
+	{"00001125-0000-1000-8000-00805f9b34fb", "HardcopyCableReplacement"},
+	{"00001126-0000-1000-8000-00805f9b34fb", "HCRPrint"},
+	{"00001127-0000-1000-8000-00805f9b34fb", "HCRScan"},
+	{"00001128-0000-1000-8000-00805f9b34fb", "CommonISDNAccess"},
+	{"00001129-0000-1000-8000-00805f9b34fb", "VideoConferencingGW"},
+	{"0000112a-0000-1000-8000-00805f9b34fb", "UDIMT"},
+	{"0000112b-0000-1000-8000-00805f9b34fb", "UDITA"},
+	{"0000112c-0000-1000-8000-00805f9b34fb", "AudioVideo"},
+	{"0000112d-0000-1000-8000-00805f9b34fb", "SIMAccess"},
+	{"00001200-0000-1000-8000-00805f9b34fb", "PnPInformation"},
+	{"00001201-0000-1000-8000-00805f9b34fb", "GenericNetworking"},
+	{"00001202-0000-1000-8000-00805f9b34fb", "GenericFileTransfer"},
+	{"00001203-0000-1000-8000-00805f9b34fb", "GenericAudio"},
+	{"00001204-0000-1000-8000-00805f9b34fb", "GenericTelephony"},
+
+	// Custom:
+	{"0000112f-0000-1000-8000-00805f9b34fb", "PhoneBookAccess"},
+	{"831c4071-7bc8-4a9c-a01c-15df25a4adbc", "ActiveSync"},
+};
+
+#define UUID_NAME_LOOKUP_TABLE_SIZE \
+	(sizeof(uuid_name_lookup_table)/sizeof(uuid_name_lookup_table_t))
+
+const gchar *get_uuid_name(const gchar *uuid)
+{
+	for (int i = 0; i < UUID_NAME_LOOKUP_TABLE_SIZE; i++) {
+		if (g_strcmp0(uuid_name_lookup_table[i].uuid, uuid) == 0)
+			return uuid_name_lookup_table[i].name;
+	}
+
+	return uuid;
+}
 
 Adapter *find_adapter(const gchar *name, GError **error)
 {
@@ -77,76 +157,6 @@ Adapter *find_adapter(const gchar *name, GError **error)
 	if (adapter_path) g_free(adapter_path);
 
 	return adapter;
-}
-
-const gchar *uuid2service(const gchar *uuid)
-{
-	static GHashTable *t = NULL;
-	if (t == NULL) {
-		t = g_hash_table_new(g_str_hash, g_str_equal);
-		g_hash_table_insert(t, "00001000-0000-1000-8000-00805f9b34fb", "ServiceDiscoveryServer");
-		g_hash_table_insert(t, "00001001-0000-1000-8000-00805f9b34fb", "BrowseGroupDescriptor");
-		g_hash_table_insert(t, "00001002-0000-1000-8000-00805f9b34fb", "PublicBrowseGroup");
-		g_hash_table_insert(t, "00001101-0000-1000-8000-00805f9b34fb", "SerialPort");
-		g_hash_table_insert(t, "00001102-0000-1000-8000-00805f9b34fb", "LANAccessUsingPPP");
-		g_hash_table_insert(t, "00001103-0000-1000-8000-00805f9b34fb", "DialupNetworking");
-		g_hash_table_insert(t, "00001104-0000-1000-8000-00805f9b34fb", "IrMCSync");
-		g_hash_table_insert(t, "00001105-0000-1000-8000-00805f9b34fb", "OBEXObjectPush");
-		g_hash_table_insert(t, "00001106-0000-1000-8000-00805f9b34fb", "OBEXFileTransfer");
-		g_hash_table_insert(t, "00001107-0000-1000-8000-00805f9b34fb", "IrMCSyncCommand");
-		g_hash_table_insert(t, "00001108-0000-1000-8000-00805f9b34fb", "Headset");
-		g_hash_table_insert(t, "00001109-0000-1000-8000-00805f9b34fb", "CordlessTelephony");
-		g_hash_table_insert(t, "0000110a-0000-1000-8000-00805f9b34fb", "AudioSource");
-		g_hash_table_insert(t, "0000110b-0000-1000-8000-00805f9b34fb", "AudioSink");
-		g_hash_table_insert(t, "0000110c-0000-1000-8000-00805f9b34fb", "AVRemoteControlTarget");
-		g_hash_table_insert(t, "0000110d-0000-1000-8000-00805f9b34fb", "AdvancedAudioDistribution");
-		g_hash_table_insert(t, "0000110e-0000-1000-8000-00805f9b34fb", "AVRemoteControl");
-		g_hash_table_insert(t, "0000110f-0000-1000-8000-00805f9b34fb", "VideoConferencing");
-		g_hash_table_insert(t, "00001110-0000-1000-8000-00805f9b34fb", "Intercom");
-		g_hash_table_insert(t, "00001111-0000-1000-8000-00805f9b34fb", "Fax");
-		g_hash_table_insert(t, "00001112-0000-1000-8000-00805f9b34fb", "HeadsetAudioGateway");
-		g_hash_table_insert(t, "00001113-0000-1000-8000-00805f9b34fb", "WAP");
-		g_hash_table_insert(t, "00001114-0000-1000-8000-00805f9b34fb", "WAPClient");
-		g_hash_table_insert(t, "00001115-0000-1000-8000-00805f9b34fb", "PANU");
-		g_hash_table_insert(t, "00001116-0000-1000-8000-00805f9b34fb", "NAP");
-		g_hash_table_insert(t, "00001117-0000-1000-8000-00805f9b34fb", "GN");
-		g_hash_table_insert(t, "00001118-0000-1000-8000-00805f9b34fb", "DirectPrinting");
-		g_hash_table_insert(t, "00001119-0000-1000-8000-00805f9b34fb", "ReferencePrinting");
-		g_hash_table_insert(t, "0000111a-0000-1000-8000-00805f9b34fb", "Imaging");
-		g_hash_table_insert(t, "0000111b-0000-1000-8000-00805f9b34fb", "ImagingResponder");
-		g_hash_table_insert(t, "0000111c-0000-1000-8000-00805f9b34fb", "ImagingAutomaticArchive");
-		g_hash_table_insert(t, "0000111d-0000-1000-8000-00805f9b34fb", "ImagingReferenceObjects");
-		g_hash_table_insert(t, "0000111e-0000-1000-8000-00805f9b34fb", "Handsfree");
-		g_hash_table_insert(t, "0000111f-0000-1000-8000-00805f9b34fb", "HandsfreeAudioGateway");
-		g_hash_table_insert(t, "00001120-0000-1000-8000-00805f9b34fb", "DirectPrintingReferenceObjects");
-		g_hash_table_insert(t, "00001121-0000-1000-8000-00805f9b34fb", "ReflectedUI");
-		g_hash_table_insert(t, "00001122-0000-1000-8000-00805f9b34fb", "BasicPringing");
-		g_hash_table_insert(t, "00001123-0000-1000-8000-00805f9b34fb", "PrintingStatus");
-		g_hash_table_insert(t, "00001124-0000-1000-8000-00805f9b34fb", "HumanInterfaceDevice");
-		g_hash_table_insert(t, "00001125-0000-1000-8000-00805f9b34fb", "HardcopyCableReplacement");
-		g_hash_table_insert(t, "00001126-0000-1000-8000-00805f9b34fb", "HCRPrint");
-		g_hash_table_insert(t, "00001127-0000-1000-8000-00805f9b34fb", "HCRScan");
-		g_hash_table_insert(t, "00001128-0000-1000-8000-00805f9b34fb", "CommonISDNAccess");
-		g_hash_table_insert(t, "00001129-0000-1000-8000-00805f9b34fb", "VideoConferencingGW");
-		g_hash_table_insert(t, "0000112a-0000-1000-8000-00805f9b34fb", "UDIMT");
-		g_hash_table_insert(t, "0000112b-0000-1000-8000-00805f9b34fb", "UDITA");
-		g_hash_table_insert(t, "0000112c-0000-1000-8000-00805f9b34fb", "AudioVideo");
-		g_hash_table_insert(t, "0000112d-0000-1000-8000-00805f9b34fb", "SIMAccess");
-		g_hash_table_insert(t, "00001200-0000-1000-8000-00805f9b34fb", "PnPInformation");
-		g_hash_table_insert(t, "00001201-0000-1000-8000-00805f9b34fb", "GenericNetworking");
-		g_hash_table_insert(t, "00001202-0000-1000-8000-00805f9b34fb", "GenericFileTransfer");
-		g_hash_table_insert(t, "00001203-0000-1000-8000-00805f9b34fb", "GenericAudio");
-		g_hash_table_insert(t, "00001204-0000-1000-8000-00805f9b34fb", "GenericTelephony");
-		// Manualy added
-		g_hash_table_insert(t, "0000112f-0000-1000-8000-00805f9b34fb", "PhoneBookAccess");
-		g_hash_table_insert(t, "831c4071-7bc8-4a9c-a01c-15df25a4adbc", "ActiveSync");
-	}
-
-	if (g_hash_table_lookup(t, uuid) != NULL) {
-		return g_hash_table_lookup(t, uuid);
-	} else {
-		return uuid;
-	}
 }
 
 Device *find_device(Adapter *adapter, const gchar *name, GError **error)

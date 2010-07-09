@@ -24,6 +24,7 @@
 #ifndef __HELPERS_H
 #define __HELPERS_H
 
+#include <stdio.h>
 #include <glib.h>
 
 #include "adapter.h"
@@ -31,16 +32,24 @@
 
 /* Adapter helpers */
 Adapter *find_adapter(const gchar *name, GError **error);
-const gchar *uuid2service(const gchar *uuid);
 
 /* Device helpers */
 Device *find_device(Adapter *adapter, const gchar *name, GError **error);
 
+/* Others helpers */
 #define exit_if_error(error) G_STMT_START{ \
 if (error) { \
 	g_printerr("%s\n", error->message); \
 	exit(EXIT_FAILURE); \
 }; }G_STMT_END
+
+inline int xtoi(const gchar *str) {
+	int i = 0;
+	sscanf(str, "0x%x", &i);
+	return i;
+}
+
+const gchar *get_uuid_name(const gchar *uuid);
 
 #endif /* __HELPERS_H */
 

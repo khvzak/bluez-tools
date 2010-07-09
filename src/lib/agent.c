@@ -138,7 +138,7 @@ gboolean agent_authorize(Agent *self, const gchar *device, const gchar *uuid, GE
 	g_object_unref(device_obj);
 
 	gchar yn[4] = {0,};
-	g_print("Authorize a connection to: %s (yes/no)? ", uuid2service(uuid));
+	g_print("Authorize a connection to: %s (yes/no)? ", get_uuid_name(uuid));
 	scanf("%3s", yn);
 	if (g_strcmp0(yn, "y") == 0 || g_strcmp0(yn, "yes") == 0) {
 		return TRUE;

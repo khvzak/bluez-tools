@@ -21,7 +21,8 @@ lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/input.c lib/input.h \
 		lib/manager.c lib/manager.h \
 		lib/network.c lib/network.h \
-		lib/serial.c lib/serial.h
+		lib/serial.c lib/serial.h \
+		lib/sdp.c lib/sdp.h
 
 bin_PROGRAMS = bt-monitor bt-adapter bt-agent bt-device bt-input bt-audio bt-network bt-serial
 bt_monitor_SOURCES = $(lib_sources) bt-monitor.c
