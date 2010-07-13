@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include "dbus-common.h"
 #include "marshallers.h"
 #include "network_hub.h"
@@ -35,6 +37,10 @@
 
 struct _NetworkHubPrivate {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Introspection data */
+	DBusGProxy *introspection_g_proxy;
+	gchar *introspection_xml;
 
 	/* Properties */
 	gboolean enabled;
@@ -66,6 +72,10 @@ static void network_hub_dispose(GObject *gobject)
 
 	/* Proxy free */
 	g_object_unref(self->priv->dbus_g_proxy);
+
+	/* Introspection data free */
+	g_free(self->priv->introspection_xml);
+	g_object_unref(self->priv->introspection_g_proxy);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(network_hub_parent_class)->dispose(gobject);
@@ -109,13 +119,35 @@ static void network_hub_init(NetworkHub *self)
 	g_assert(conn != NULL);
 }
 
-static void network_hub_post_init(NetworkHub *self)
+static void network_hub_post_init(NetworkHub *self, const gchar *dbus_object_path)
 {
-	g_assert(self->priv->dbus_g_proxy != NULL);
+	g_assert(dbus_object_path != NULL);
+	g_assert(strlen(dbus_object_path) > 0);
+	g_assert(self->priv->dbus_g_proxy == NULL);
+
+	GError *error = NULL;
+
+	/* Getting introspection XML */
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_xml = NULL;
+	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
+
+	gchar *test_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_HUB_INTERFACE, "\">");
+	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+		g_critical("Interface \"%s\" does not exist in \"%s\"", BLUEZ_DBUS_NETWORK_HUB_INTERFACE, dbus_object_path);
+		g_assert(FALSE);
+	}
+	g_free(test_intf_regex_str);
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_NETWORK_HUB_INTERFACE);
 
 	/* Properties init */
-	GError *error = NULL;
 	GHashTable *properties = network_hub_get_properties(self, &error);
+	if (error != NULL) {
+		g_critical("%s", error->message);
+	}
 	g_assert(error == NULL);
 	g_assert(properties != NULL);
 
@@ -173,38 +205,30 @@ static void _network_hub_get_property(GObject *object, guint property_id, GValue
 static void _network_hub_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
 	NetworkHub *self = NETWORK_HUB(object);
+	GError *error = NULL;
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-	{
-		const gchar *dbus_object_path = g_value_get_string(value);
-		g_assert(dbus_object_path != NULL);
-		g_assert(self->priv->dbus_g_proxy == NULL);
-		self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_NETWORK_HUB_INTERFACE);
-		network_hub_post_init(self);
-	}
+		network_hub_post_init(self, g_value_get_string(value));
 		break;
 
 	case PROP_ENABLED:
-	{
-		GError *error = NULL;
 		network_hub_set_property(self, "Enabled", value, &error);
-		g_assert(error == NULL);
-	}
 		break;
 
 	case PROP_NAME:
-	{
-		GError *error = NULL;
 		network_hub_set_property(self, "Name", value, &error);
-		g_assert(error == NULL);
-	}
 		break;
 
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
 		break;
 	}
+
+	if (error != NULL) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
 }
 
 /* Methods */
@@ -255,6 +279,9 @@ void network_hub_set_enabled(NetworkHub *self, const gboolean value)
 	network_hub_set_property(self, "Enabled", &t, &error);
 	g_value_unset(&t);
 
+	if (error != NULL) {
+		g_critical("%s", error->message);
+	}
 	g_assert(error == NULL);
 }
 
@@ -277,6 +304,9 @@ void network_hub_set_name(NetworkHub *self, const gchar *value)
 	network_hub_set_property(self, "Name", &t, &error);
 	g_value_unset(&t);
 
+	if (error != NULL) {
+		g_critical("%s", error->message);
+	}
 	g_assert(error == NULL);
 }
 

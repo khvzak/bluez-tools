@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include "dbus-common.h"
 #include "marshallers.h"
 #include "serial.h"
@@ -35,6 +37,10 @@
 
 struct _SerialPrivate {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Introspection data */
+	DBusGProxy *introspection_g_proxy;
+	gchar *introspection_xml;
 };
 
 G_DEFINE_TYPE(Serial, serial, G_TYPE_OBJECT);
@@ -54,6 +60,10 @@ static void serial_dispose(GObject *gobject)
 
 	/* Proxy free */
 	g_object_unref(self->priv->dbus_g_proxy);
+
+	/* Introspection data free */
+	g_free(self->priv->introspection_xml);
+	g_object_unref(self->priv->introspection_g_proxy);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(serial_parent_class)->dispose(gobject);
@@ -85,9 +95,29 @@ static void serial_init(Serial *self)
 	g_assert(conn != NULL);
 }
 
-static void serial_post_init(Serial *self)
+static void serial_post_init(Serial *self, const gchar *dbus_object_path)
 {
-	g_assert(self->priv->dbus_g_proxy != NULL);
+	g_assert(dbus_object_path != NULL);
+	g_assert(strlen(dbus_object_path) > 0);
+	g_assert(self->priv->dbus_g_proxy == NULL);
+
+	GError *error = NULL;
+
+	/* Getting introspection XML */
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_xml = NULL;
+	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
+
+	gchar *test_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_SERIAL_INTERFACE, "\">");
+	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+		g_critical("Interface \"%s\" does not exist in \"%s\"", BLUEZ_DBUS_SERIAL_INTERFACE, dbus_object_path);
+		g_assert(FALSE);
+	}
+	g_free(test_intf_regex_str);
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_SERIAL_INTERFACE);
 }
 
 static void _serial_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
@@ -108,22 +138,22 @@ static void _serial_get_property(GObject *object, guint property_id, GValue *val
 static void _serial_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
 	Serial *self = SERIAL(object);
+	GError *error = NULL;
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-	{
-		const gchar *dbus_object_path = g_value_get_string(value);
-		g_assert(dbus_object_path != NULL);
-		g_assert(self->priv->dbus_g_proxy == NULL);
-		self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_SERIAL_INTERFACE);
-		serial_post_init(self);
-	}
+		serial_post_init(self, g_value_get_string(value));
 		break;
 
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
 		break;
 	}
+
+	if (error != NULL) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
 }
 
 /* Methods */

@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include "dbus-common.h"
 #include "marshallers.h"
 #include "manager.h"
@@ -36,6 +38,10 @@
 
 struct _ManagerPrivate {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Introspection data */
+	DBusGProxy *introspection_g_proxy;
+	gchar *introspection_xml;
 
 	/* Properties */
 	GPtrArray *adapters;
@@ -83,6 +89,10 @@ static void manager_dispose(GObject *gobject)
 
 	/* Proxy free */
 	g_object_unref(self->priv->dbus_g_proxy);
+
+	/* Introspection data free */
+	g_free(self->priv->introspection_xml);
+	g_object_unref(self->priv->introspection_g_proxy);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(manager_parent_class)->dispose(gobject);
@@ -142,9 +152,24 @@ static void manager_init(Manager *self)
 
 	g_assert(conn != NULL);
 
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_MANAGER_PATH, BLUEZ_DBUS_MANAGER_INTERFACE);
+	GError *error = NULL;
+	
+	/* Getting introspection XML */
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_MANAGER_PATH, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_xml = NULL;
+	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
 
-	g_assert(self->priv->dbus_g_proxy != NULL);
+	gchar *test_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_MANAGER_INTERFACE, "\">");
+	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+		g_critical("Interface \"%s\" does not exist in \"%s\"", BLUEZ_DBUS_MANAGER_INTERFACE, BLUEZ_DBUS_MANAGER_PATH);
+		g_assert(FALSE);
+	}
+	g_free(test_intf_regex_str);
+
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_MANAGER_PATH, BLUEZ_DBUS_MANAGER_INTERFACE);
 
 	/* DBus signals connection */
 
@@ -165,8 +190,10 @@ static void manager_init(Manager *self)
 	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
 
 	/* Properties init */
-	GError *error = NULL;
 	GHashTable *properties = manager_get_properties(self, &error);
+	if (error != NULL) {
+		g_critical("%s", error->message);
+	}
 	g_assert(error == NULL);
 	g_assert(properties != NULL);
 
@@ -198,12 +225,18 @@ static void _manager_get_property(GObject *object, guint property_id, GValue *va
 static void _manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
 	Manager *self = MANAGER(object);
+	GError *error = NULL;
 
 	switch (property_id) {
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
 		break;
 	}
+
+	if (error != NULL) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
 }
 
 /* Methods */

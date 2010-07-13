@@ -318,6 +318,8 @@ sub generate_source {
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include "dbus-common.h"
 #include "marshallers.h"
 #include "{\$object}.h"
@@ -328,6 +330,10 @@ sub generate_source {
 
 struct _{\$Object}Private {
 	DBusGProxy *dbus_g_proxy;
+
+	/* Introspection data */
+	DBusGProxy *introspection_g_proxy;
+	gchar *introspection_xml;
 
 	{IF_PROPERTIES}
 	/* Properties */
@@ -382,6 +388,10 @@ static void {\$object}_dispose(GObject *gobject)
 	/* Proxy free */
 	g_object_unref(self->priv->dbus_g_proxy);
 
+	/* Introspection data free */
+	g_free(self->priv->introspection_xml);
+	g_object_unref(self->priv->introspection_g_proxy);
+
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS({\$object}_parent_class)->dispose(gobject);
 }
@@ -420,9 +430,24 @@ static void {\$object}_init({\$Object} *self)
 	g_assert(conn != NULL);
 
 	{IF_INIT}
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_{\$OBJECT}_PATH, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
+	GError *error = NULL;
+	
+	/* Getting introspection XML */
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_{\$OBJECT}_PATH, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_xml = NULL;
+	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
 
-	g_assert(self->priv->dbus_g_proxy != NULL);
+	gchar *test_intf_regex_str = g_strconcat("<interface name=\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, "\\">");
+	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, BLUEZ_DBUS_{\$OBJECT}_PATH);
+		g_assert(FALSE);
+	}
+	g_free(test_intf_regex_str);
+
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_{\$OBJECT}_PATH, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
 
 	{IF_SIGNALS}
 	/* DBus signals connection */
@@ -438,9 +463,29 @@ static void {\$object}_init({\$Object} *self)
 }
 
 {IF_POST_INIT}
-static void {\$object}_post_init({\$Object} *self)
+static void {\$object}_post_init({\$Object} *self, const gchar *dbus_object_path)
 {
-	g_assert(self->priv->dbus_g_proxy != NULL);
+	g_assert(dbus_object_path != NULL);
+	g_assert(strlen(dbus_object_path) > 0);
+	g_assert(self->priv->dbus_g_proxy == NULL);
+
+	GError *error = NULL;
+
+	/* Getting introspection XML */
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_xml = NULL;
+	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
+
+	gchar *test_intf_regex_str = g_strconcat("<interface name=\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, "\\">");
+	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, dbus_object_path);
+		g_assert(FALSE);
+	}
+	g_free(test_intf_regex_str);
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
 
 	{IF_SIGNALS}
 	/* DBus signals connection */
@@ -471,6 +516,7 @@ static void _{\$object}_get_property(GObject *object, guint property_id, GValue 
 static void _{\$object}_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
 	{\$Object} *self = {\$OBJECT}(object);
+	GError *error = NULL;
 
 	switch (property_id) {
 	{SET_PROPERTIES}
@@ -479,6 +525,11 @@ static void _{\$object}_set_property(GObject *object, guint property_id, const G
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
 		break;
 	}
+
+	if (error != NULL) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
 }
 
 {IF_ASYNC_CALLS}
@@ -654,8 +705,10 @@ EOT
     my $set_properties = "";
     my $properties_access_methods = "";
     my $properties_init =
-    "\tGError *error = NULL;\n".
     "\tGHashTable *properties = {\$object}_get_properties(self, &error);\n".
+    "\tif (error != NULL) {\n".
+    "\t\tg_critical(\"%s\", error->message);\n".
+    "\t}\n".
     "\tg_assert(error == NULL);\n".
     "\tg_assert(properties != NULL);\n\n";
     my $properties_free = "";
@@ -674,13 +727,7 @@ EOT
         
         $set_properties .=
         "\tcase PROP_DBUS_OBJECT_PATH:\n".
-        "\t{\n".
-        "\t\tconst gchar *dbus_object_path = g_value_get_string(value);\n".
-        "\t\tg_assert(dbus_object_path != NULL);\n".
-        "\t\tg_assert(self->priv->dbus_g_proxy == NULL);\n".
-        "\t\tself->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);\n".
-        "\t\t{\$object}_post_init(self);\n".
-        "\t}\n".
+	"\t\t{\$object}_post_init(self, g_value_get_string(value));\n".
         "\t\tbreak;\n\n";
         
         $properties_access_methods .=
@@ -796,11 +843,7 @@ EOT
 	if ($p{'mode'} eq 'readwrite') {
 	    $set_properties .=
 	    "\tcase $enum:\n".
-	    "\t{\n".
-	    "\t\tGError *error = NULL;\n".
-	    "\t\t{\$object}_set_property(self, \"$property\", value, &error);\n".
-            "\t\tg_assert(error == NULL);\n".
-	    "\t}\n".
+            "\t\t{\$object}_set_property(self, \"$property\", value, &error);\n".
 	    "\t\tbreak;\n\n";
             
             $properties_access_methods .=
@@ -822,6 +865,9 @@ EOT
              ))."(&t, value);\n".
             "\t{\$object}_set_property(self, \"$property\", &t, &error);\n".
             "\tg_value_unset(&t);\n\n".
+            "\tif (error != NULL) {\n".
+            "\t\tg_critical(\"%s\", error->message);\n".
+            "\t}\n".
             "\tg_assert(error == NULL);\n".
             "}\n\n";
 	}
