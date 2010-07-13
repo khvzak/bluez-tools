@@ -42,6 +42,9 @@
 #include "input.h"
 #include "manager.h"
 #include "network.h"
+#include "network_hub.h"
+#include "network_peer.h"
+#include "network_router.h"
 #include "serial.h"
 
 #endif /* __BLUEZ_DBUS_H */

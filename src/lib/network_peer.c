@@ -27,38 +27,38 @@
 
 #include "dbus-common.h"
 #include "marshallers.h"
-#include "peer.h"
+#include "network_peer.h"
 
-#define BLUEZ_DBUS_PEER_INTERFACE "org.bluez.network.Peer"
+#define BLUEZ_DBUS_NETWORK_PEER_INTERFACE "org.bluez.NetworkPeer"
 
-#define PEER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), PEER_TYPE, PeerPrivate))
+#define NETWORK_PEER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), NETWORK_PEER_TYPE, NetworkPeerPrivate))
 
-struct _PeerPrivate {
+struct _NetworkPeerPrivate {
 	DBusGProxy *dbus_g_proxy;
 
 	/* Properties */
-	gboolean enable;
+	gboolean enabled;
 	gchar *name;
 	gchar *uuid;
 };
 
-G_DEFINE_TYPE(Peer, peer, G_TYPE_OBJECT);
+G_DEFINE_TYPE(NetworkPeer, network_peer, G_TYPE_OBJECT);
 
 enum {
 	PROP_0,
 
 	PROP_DBUS_OBJECT_PATH, /* readwrite, construct only */
-	PROP_ENABLE, /* readwrite */
+	PROP_ENABLED, /* readwrite */
 	PROP_NAME, /* readwrite */
 	PROP_UUID /* readonly */
 };
 
-static void _peer_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
-static void _peer_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+static void _network_peer_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _network_peer_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
-static void peer_dispose(GObject *gobject)
+static void network_peer_dispose(GObject *gobject)
 {
-	Peer *self = PEER(gobject);
+	NetworkPeer *self = NETWORK_PEER(gobject);
 
 	/* Properties free */
 	g_free(self->priv->name);
@@ -68,62 +68,62 @@ static void peer_dispose(GObject *gobject)
 	g_object_unref(self->priv->dbus_g_proxy);
 
 	/* Chain up to the parent class */
-	G_OBJECT_CLASS(peer_parent_class)->dispose(gobject);
+	G_OBJECT_CLASS(network_peer_parent_class)->dispose(gobject);
 }
 
-static void peer_class_init(PeerClass *klass)
+static void network_peer_class_init(NetworkPeerClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-	gobject_class->dispose = peer_dispose;
+	gobject_class->dispose = network_peer_dispose;
 
-	g_type_class_add_private(klass, sizeof(PeerPrivate));
+	g_type_class_add_private(klass, sizeof(NetworkPeerPrivate));
 
 	/* Properties registration */
 	GParamSpec *pspec;
 
-	gobject_class->get_property = _peer_get_property;
-	gobject_class->set_property = _peer_set_property;
+	gobject_class->get_property = _network_peer_get_property;
+	gobject_class->set_property = _network_peer_set_property;
 
 	/* object DBusObjectPath [readwrite, construct only] */
 	pspec = g_param_spec_string("DBusObjectPath", "dbus_object_path", "Adapter D-Bus object path", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 	g_object_class_install_property(gobject_class, PROP_DBUS_OBJECT_PATH, pspec);
 
-	/* boolean Enable [readwrite] */
-	pspec = g_param_spec_boolean("Enable", NULL, NULL, FALSE, G_PARAM_READWRITE);
-	g_object_class_install_property(gobject_class, PROP_ENABLE, pspec);
+	/* boolean Enabled [readwrite] */
+	pspec = g_param_spec_boolean("Enabled", NULL, NULL, FALSE, G_PARAM_READWRITE);
+	g_object_class_install_property(gobject_class, PROP_ENABLED, pspec);
 
 	/* string Name [readwrite] */
 	pspec = g_param_spec_string("Name", NULL, NULL, NULL, G_PARAM_READWRITE);
 	g_object_class_install_property(gobject_class, PROP_NAME, pspec);
 
-	/* string UUID [readonly] */
-	pspec = g_param_spec_string("UUID", NULL, NULL, NULL, G_PARAM_READABLE);
+	/* string Uuid [readonly] */
+	pspec = g_param_spec_string("Uuid", NULL, NULL, NULL, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_UUID, pspec);
 }
 
-static void peer_init(Peer *self)
+static void network_peer_init(NetworkPeer *self)
 {
-	self->priv = PEER_GET_PRIVATE(self);
+	self->priv = NETWORK_PEER_GET_PRIVATE(self);
 
 	g_assert(conn != NULL);
 }
 
-static void peer_post_init(Peer *self)
+static void network_peer_post_init(NetworkPeer *self)
 {
 	g_assert(self->priv->dbus_g_proxy != NULL);
 
 	/* Properties init */
 	GError *error = NULL;
-	GHashTable *properties = peer_get_properties(self, &error);
+	GHashTable *properties = network_peer_get_properties(self, &error);
 	g_assert(error == NULL);
 	g_assert(properties != NULL);
 
-	/* boolean Enable [readwrite] */
-	if (g_hash_table_lookup(properties, "Enable")) {
-		self->priv->enable = g_value_get_boolean(g_hash_table_lookup(properties, "Enable"));
+	/* boolean Enabled [readwrite] */
+	if (g_hash_table_lookup(properties, "Enabled")) {
+		self->priv->enabled = g_value_get_boolean(g_hash_table_lookup(properties, "Enabled"));
 	} else {
-		self->priv->enable = FALSE;
+		self->priv->enabled = FALSE;
 	}
 
 	/* string Name [readwrite] */
@@ -133,9 +133,9 @@ static void peer_post_init(Peer *self)
 		self->priv->name = g_strdup("undefined");
 	}
 
-	/* string UUID [readonly] */
-	if (g_hash_table_lookup(properties, "UUID")) {
-		self->priv->uuid = g_value_dup_string(g_hash_table_lookup(properties, "UUID"));
+	/* string Uuid [readonly] */
+	if (g_hash_table_lookup(properties, "Uuid")) {
+		self->priv->uuid = g_value_dup_string(g_hash_table_lookup(properties, "Uuid"));
 	} else {
 		self->priv->uuid = g_strdup("undefined");
 	}
@@ -143,25 +143,25 @@ static void peer_post_init(Peer *self)
 	g_hash_table_unref(properties);
 }
 
-static void _peer_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
+static void _network_peer_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
 {
-	Peer *self = PEER(object);
+	NetworkPeer *self = NETWORK_PEER(object);
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		g_value_set_string(value, peer_get_dbus_object_path(self));
+		g_value_set_string(value, network_peer_get_dbus_object_path(self));
 		break;
 
-	case PROP_ENABLE:
-		g_value_set_boolean(value, peer_get_enable(self));
+	case PROP_ENABLED:
+		g_value_set_boolean(value, network_peer_get_enabled(self));
 		break;
 
 	case PROP_NAME:
-		g_value_set_string(value, peer_get_name(self));
+		g_value_set_string(value, network_peer_get_name(self));
 		break;
 
 	case PROP_UUID:
-		g_value_set_string(value, peer_get_uuid(self));
+		g_value_set_string(value, network_peer_get_uuid(self));
 		break;
 
 	default:
@@ -170,9 +170,9 @@ static void _peer_get_property(GObject *object, guint property_id, GValue *value
 	}
 }
 
-static void _peer_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+static void _network_peer_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
-	Peer *self = PEER(object);
+	NetworkPeer *self = NETWORK_PEER(object);
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
@@ -180,15 +180,15 @@ static void _peer_set_property(GObject *object, guint property_id, const GValue 
 		const gchar *dbus_object_path = g_value_get_string(value);
 		g_assert(dbus_object_path != NULL);
 		g_assert(self->priv->dbus_g_proxy == NULL);
-		self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_PEER_INTERFACE);
-		peer_post_init(self);
+		self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_NETWORK_PEER_INTERFACE);
+		network_peer_post_init(self);
 	}
 		break;
 
-	case PROP_ENABLE:
+	case PROP_ENABLED:
 	{
 		GError *error = NULL;
-		peer_set_property(self, "Enable", value, &error);
+		network_peer_set_property(self, "Enabled", value, &error);
 		g_assert(error == NULL);
 	}
 		break;
@@ -196,7 +196,7 @@ static void _peer_set_property(GObject *object, guint property_id, const GValue 
 	case PROP_NAME:
 	{
 		GError *error = NULL;
-		peer_set_property(self, "Name", value, &error);
+		network_peer_set_property(self, "Name", value, &error);
 		g_assert(error == NULL);
 	}
 		break;
@@ -210,9 +210,9 @@ static void _peer_set_property(GObject *object, guint property_id, const GValue 
 /* Methods */
 
 /* dict GetProperties() */
-GHashTable *peer_get_properties(Peer *self, GError **error)
+GHashTable *network_peer_get_properties(NetworkPeer *self, GError **error)
 {
-	g_assert(PEER_IS(self));
+	g_assert(NETWORK_PEER_IS(self));
 
 	GHashTable *ret = NULL;
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
@@ -221,68 +221,68 @@ GHashTable *peer_get_properties(Peer *self, GError **error)
 }
 
 /* void SetProperty(string name, variant value) */
-void peer_set_property(Peer *self, const gchar *name, const GValue *value, GError **error)
+void network_peer_set_property(NetworkPeer *self, const gchar *name, const GValue *value, GError **error)
 {
-	g_assert(PEER_IS(self));
+	g_assert(NETWORK_PEER_IS(self));
 
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "SetProperty", error, G_TYPE_STRING, name, G_TYPE_VALUE, value, G_TYPE_INVALID, G_TYPE_INVALID);
 }
 
 /* Properties access methods */
-const gchar *peer_get_dbus_object_path(Peer *self)
+const gchar *network_peer_get_dbus_object_path(NetworkPeer *self)
 {
-	g_assert(PEER_IS(self));
+	g_assert(NETWORK_PEER_IS(self));
 
 	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
 }
 
-const gboolean peer_get_enable(Peer *self)
+const gboolean network_peer_get_enabled(NetworkPeer *self)
 {
-	g_assert(PEER_IS(self));
+	g_assert(NETWORK_PEER_IS(self));
 
-	return self->priv->enable;
+	return self->priv->enabled;
 }
 
-void peer_set_enable(Peer *self, const gboolean value)
+void network_peer_set_enabled(NetworkPeer *self, const gboolean value)
 {
-	g_assert(PEER_IS(self));
+	g_assert(NETWORK_PEER_IS(self));
 
 	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_BOOLEAN);
 	g_value_set_boolean(&t, value);
-	peer_set_property(self, "Enable", &t, &error);
+	network_peer_set_property(self, "Enabled", &t, &error);
 	g_value_unset(&t);
 
 	g_assert(error == NULL);
 }
 
-const gchar *peer_get_name(Peer *self)
+const gchar *network_peer_get_name(NetworkPeer *self)
 {
-	g_assert(PEER_IS(self));
+	g_assert(NETWORK_PEER_IS(self));
 
 	return self->priv->name;
 }
 
-void peer_set_name(Peer *self, const gchar *value)
+void network_peer_set_name(NetworkPeer *self, const gchar *value)
 {
-	g_assert(PEER_IS(self));
+	g_assert(NETWORK_PEER_IS(self));
 
 	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_STRING);
 	g_value_set_string(&t, value);
-	peer_set_property(self, "Name", &t, &error);
+	network_peer_set_property(self, "Name", &t, &error);
 	g_value_unset(&t);
 
 	g_assert(error == NULL);
 }
 
-const gchar *peer_get_uuid(Peer *self)
+const gchar *network_peer_get_uuid(NetworkPeer *self)
 {
-	g_assert(PEER_IS(self));
+	g_assert(NETWORK_PEER_IS(self));
 
 	return self->priv->uuid;
 }

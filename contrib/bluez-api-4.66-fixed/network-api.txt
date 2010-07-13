@@ -64,7 +64,7 @@ Network Hub hierarchy
 =================
 
 Service		org.bluez
-Interface	org.bluez.network.Hub
+Interface	org.bluez.NetworkHub
 Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		dict GetProperties()
@@ -85,11 +85,11 @@ Properties	string Name [readwrite]
 
 			The Bluetooth network server name.
 
-		boolean Enable [readwrite]
+		boolean Enabled [readwrite]
 
 			Indicates if the server is Enabled/Disabled.
 
-		string UUID [readonly]
+		string Uuid [readonly]
 
 			The Bluetooth network server UUID 128 identification.
 
@@ -98,7 +98,7 @@ Network Peer hierarchy
 =================
 
 Service		org.bluez
-Interface	org.bluez.network.Peer
+Interface	org.bluez.NetworkPeer
 Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		dict GetProperties()
@@ -119,11 +119,11 @@ Properties	string Name [readwrite]
 
 			The Bluetooth network server name.
 
-		boolean Enable [readwrite]
+		boolean Enabled [readwrite]
 
 			Indicates if the server is Enabled/Disabled.
 
-		string UUID [readonly]
+		string Uuid [readonly]
 
 			The Bluetooth network server UUID 128 identification.
 
@@ -132,7 +132,7 @@ Network Router hierarchy
 =================
 
 Service		org.bluez
-Interface	org.bluez.network.Router
+Interface	org.bluez.NetworkRouter
 Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		dict GetProperties()
@@ -153,11 +153,11 @@ Properties	string Name [readwrite]
 
 			The Bluetooth network server name.
 
-		boolean Enable [readwrite]
+		boolean Enabled [readwrite]
 
 			Indicates if the server is Enabled/Disabled.
 
-		string UUID [readonly]
+		string Uuid [readonly]
 
 			The Bluetooth network server UUID 128 identification.
 

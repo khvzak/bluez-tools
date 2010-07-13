@@ -71,7 +71,7 @@ Methods		dict GetProperties()
 
 			Possible errors: org.bluez.Error.NotConnected
 
-		array{object} ListNodes()
+		array{object} ListNodes() {deprecated}
 
 			Returns list of device node object paths.
 

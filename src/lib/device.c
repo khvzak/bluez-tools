@@ -511,17 +511,6 @@ GHashTable *device_get_properties(Device *self, GError **error)
 	return ret;
 }
 
-/* array{object} ListNodes() */
-GPtrArray *device_list_nodes(Device *self, GError **error)
-{
-	g_assert(DEVICE_IS(self));
-
-	GPtrArray *ret = NULL;
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "ListNodes", error, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_ARRAY, &ret, G_TYPE_INVALID);
-
-	return ret;
-}
-
 /* void RemoveNode(object node) */
 void device_remove_node(Device *self, const gchar *node, GError **error)
 {

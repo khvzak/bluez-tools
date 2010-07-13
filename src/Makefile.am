@@ -21,6 +21,9 @@ lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/input.c lib/input.h \
 		lib/manager.c lib/manager.h \
 		lib/network.c lib/network.h \
+		lib/network_hub.c lib/network_hub.h \
+		lib/network_peer.c lib/network_peer.h \
+		lib/network_router.c lib/network_router.h \
 		lib/serial.c lib/serial.h \
 		lib/sdp.c lib/sdp.h
 

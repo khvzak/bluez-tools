@@ -62,7 +62,6 @@ gchar *device_create_node(Device *self, const gchar *uuid, GError **error);
 void device_disconnect(Device *self, GError **error);
 GHashTable *device_discover_services(Device *self, const gchar *pattern, GError **error);
 GHashTable *device_get_properties(Device *self, GError **error);
-GPtrArray *device_list_nodes(Device *self, GError **error);
 void device_remove_node(Device *self, const gchar *node, GError **error);
 void device_set_property(Device *self, const gchar *name, const GValue *value, GError **error);
 

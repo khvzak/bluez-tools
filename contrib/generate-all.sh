@@ -25,17 +25,21 @@
 ./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/network-api.txt > ../src/lib/network.c
 
 # network-api.txt
-./gen-dbus-gobject.pl -header bluez-api-4.66-fixed/network-api.txt 2 > ../src/lib/hub.h
-./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/network-api.txt 2 > ../src/lib/hub.c
+./gen-dbus-gobject.pl -header bluez-api-4.66-fixed/network-api.txt 2 > ../src/lib/network_hub.h
+./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/network-api.txt 2 > ../src/lib/network_hub.c
 
 # network-api.txt
-./gen-dbus-gobject.pl -header bluez-api-4.66-fixed/network-api.txt 3 > ../src/lib/peer.h
-./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/network-api.txt 3 > ../src/lib/peer.c
+./gen-dbus-gobject.pl -header bluez-api-4.66-fixed/network-api.txt 3 > ../src/lib/network_peer.h
+./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/network-api.txt 3 > ../src/lib/network_peer.c
 
 # network-api.txt
-./gen-dbus-gobject.pl -header bluez-api-4.66-fixed/network-api.txt 4 > ../src/lib/router.h
-./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/network-api.txt 4 > ../src/lib/router.c
+./gen-dbus-gobject.pl -header bluez-api-4.66-fixed/network-api.txt 4 > ../src/lib/network_router.h
+./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/network-api.txt 4 > ../src/lib/network_router.c
 
 # serial-api.txt
 ./gen-dbus-gobject.pl -header bluez-api-4.66-fixed/serial-api.txt > ../src/lib/serial.h
 ./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/serial-api.txt > ../src/lib/serial.c
+
+# service-api.txt
+#./gen-dbus-gobject.pl -header bluez-api-4.66-fixed/service-api.txt > ../src/lib/service.h
+#./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/service-api.txt > ../src/lib/service.c

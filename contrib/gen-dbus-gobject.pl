@@ -267,8 +267,8 @@ EOT
     
     my $intf = $node->{'intf'};
     my $obj = (split /\./, $intf)[-1];
-    my $obj_lc = lc $obj;
-    my $obj_uc = uc $obj;
+    my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
+    my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     
     my $method_defs = "";
     
@@ -506,8 +506,8 @@ EOT
 
     my $intf = $node->{'intf'};
     my $obj = (split /\./, $intf)[-1];
-    my $obj_lc = lc $obj;
-    my $obj_uc = uc $obj;
+    my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
+    my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     
     my $bluez_dbus_object_defs = "";
     $bluez_dbus_object_defs .= "#define BLUEZ_DBUS_{\$OBJECT}_PATH \"$node->{'objectPath'}\"\n"  if defined $node->{'objectPath'};

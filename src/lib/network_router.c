@@ -27,38 +27,38 @@
 
 #include "dbus-common.h"
 #include "marshallers.h"
-#include "hub.h"
+#include "network_router.h"
 
-#define BLUEZ_DBUS_HUB_INTERFACE "org.bluez.network.Hub"
+#define BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE "org.bluez.NetworkRouter"
 
-#define HUB_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), HUB_TYPE, HubPrivate))
+#define NETWORK_ROUTER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), NETWORK_ROUTER_TYPE, NetworkRouterPrivate))
 
-struct _HubPrivate {
+struct _NetworkRouterPrivate {
 	DBusGProxy *dbus_g_proxy;
 
 	/* Properties */
-	gboolean enable;
+	gboolean enabled;
 	gchar *name;
 	gchar *uuid;
 };
 
-G_DEFINE_TYPE(Hub, hub, G_TYPE_OBJECT);
+G_DEFINE_TYPE(NetworkRouter, network_router, G_TYPE_OBJECT);
 
 enum {
 	PROP_0,
 
 	PROP_DBUS_OBJECT_PATH, /* readwrite, construct only */
-	PROP_ENABLE, /* readwrite */
+	PROP_ENABLED, /* readwrite */
 	PROP_NAME, /* readwrite */
 	PROP_UUID /* readonly */
 };
 
-static void _hub_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
-static void _hub_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+static void _network_router_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _network_router_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
-static void hub_dispose(GObject *gobject)
+static void network_router_dispose(GObject *gobject)
 {
-	Hub *self = HUB(gobject);
+	NetworkRouter *self = NETWORK_ROUTER(gobject);
 
 	/* Properties free */
 	g_free(self->priv->name);
@@ -68,62 +68,62 @@ static void hub_dispose(GObject *gobject)
 	g_object_unref(self->priv->dbus_g_proxy);
 
 	/* Chain up to the parent class */
-	G_OBJECT_CLASS(hub_parent_class)->dispose(gobject);
+	G_OBJECT_CLASS(network_router_parent_class)->dispose(gobject);
 }
 
-static void hub_class_init(HubClass *klass)
+static void network_router_class_init(NetworkRouterClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-	gobject_class->dispose = hub_dispose;
+	gobject_class->dispose = network_router_dispose;
 
-	g_type_class_add_private(klass, sizeof(HubPrivate));
+	g_type_class_add_private(klass, sizeof(NetworkRouterPrivate));
 
 	/* Properties registration */
 	GParamSpec *pspec;
 
-	gobject_class->get_property = _hub_get_property;
-	gobject_class->set_property = _hub_set_property;
+	gobject_class->get_property = _network_router_get_property;
+	gobject_class->set_property = _network_router_set_property;
 
 	/* object DBusObjectPath [readwrite, construct only] */
 	pspec = g_param_spec_string("DBusObjectPath", "dbus_object_path", "Adapter D-Bus object path", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 	g_object_class_install_property(gobject_class, PROP_DBUS_OBJECT_PATH, pspec);
 
-	/* boolean Enable [readwrite] */
-	pspec = g_param_spec_boolean("Enable", NULL, NULL, FALSE, G_PARAM_READWRITE);
-	g_object_class_install_property(gobject_class, PROP_ENABLE, pspec);
+	/* boolean Enabled [readwrite] */
+	pspec = g_param_spec_boolean("Enabled", NULL, NULL, FALSE, G_PARAM_READWRITE);
+	g_object_class_install_property(gobject_class, PROP_ENABLED, pspec);
 
 	/* string Name [readwrite] */
 	pspec = g_param_spec_string("Name", NULL, NULL, NULL, G_PARAM_READWRITE);
 	g_object_class_install_property(gobject_class, PROP_NAME, pspec);
 
-	/* string UUID [readonly] */
-	pspec = g_param_spec_string("UUID", NULL, NULL, NULL, G_PARAM_READABLE);
+	/* string Uuid [readonly] */
+	pspec = g_param_spec_string("Uuid", NULL, NULL, NULL, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_UUID, pspec);
 }
 
-static void hub_init(Hub *self)
+static void network_router_init(NetworkRouter *self)
 {
-	self->priv = HUB_GET_PRIVATE(self);
+	self->priv = NETWORK_ROUTER_GET_PRIVATE(self);
 
 	g_assert(conn != NULL);
 }
 
-static void hub_post_init(Hub *self)
+static void network_router_post_init(NetworkRouter *self)
 {
 	g_assert(self->priv->dbus_g_proxy != NULL);
 
 	/* Properties init */
 	GError *error = NULL;
-	GHashTable *properties = hub_get_properties(self, &error);
+	GHashTable *properties = network_router_get_properties(self, &error);
 	g_assert(error == NULL);
 	g_assert(properties != NULL);
 
-	/* boolean Enable [readwrite] */
-	if (g_hash_table_lookup(properties, "Enable")) {
-		self->priv->enable = g_value_get_boolean(g_hash_table_lookup(properties, "Enable"));
+	/* boolean Enabled [readwrite] */
+	if (g_hash_table_lookup(properties, "Enabled")) {
+		self->priv->enabled = g_value_get_boolean(g_hash_table_lookup(properties, "Enabled"));
 	} else {
-		self->priv->enable = FALSE;
+		self->priv->enabled = FALSE;
 	}
 
 	/* string Name [readwrite] */
@@ -133,9 +133,9 @@ static void hub_post_init(Hub *self)
 		self->priv->name = g_strdup("undefined");
 	}
 
-	/* string UUID [readonly] */
-	if (g_hash_table_lookup(properties, "UUID")) {
-		self->priv->uuid = g_value_dup_string(g_hash_table_lookup(properties, "UUID"));
+	/* string Uuid [readonly] */
+	if (g_hash_table_lookup(properties, "Uuid")) {
+		self->priv->uuid = g_value_dup_string(g_hash_table_lookup(properties, "Uuid"));
 	} else {
 		self->priv->uuid = g_strdup("undefined");
 	}
@@ -143,25 +143,25 @@ static void hub_post_init(Hub *self)
 	g_hash_table_unref(properties);
 }
 
-static void _hub_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
+static void _network_router_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
 {
-	Hub *self = HUB(object);
+	NetworkRouter *self = NETWORK_ROUTER(object);
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		g_value_set_string(value, hub_get_dbus_object_path(self));
+		g_value_set_string(value, network_router_get_dbus_object_path(self));
 		break;
 
-	case PROP_ENABLE:
-		g_value_set_boolean(value, hub_get_enable(self));
+	case PROP_ENABLED:
+		g_value_set_boolean(value, network_router_get_enabled(self));
 		break;
 
 	case PROP_NAME:
-		g_value_set_string(value, hub_get_name(self));
+		g_value_set_string(value, network_router_get_name(self));
 		break;
 
 	case PROP_UUID:
-		g_value_set_string(value, hub_get_uuid(self));
+		g_value_set_string(value, network_router_get_uuid(self));
 		break;
 
 	default:
@@ -170,9 +170,9 @@ static void _hub_get_property(GObject *object, guint property_id, GValue *value,
 	}
 }
 
-static void _hub_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+static void _network_router_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
-	Hub *self = HUB(object);
+	NetworkRouter *self = NETWORK_ROUTER(object);
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
@@ -180,15 +180,15 @@ static void _hub_set_property(GObject *object, guint property_id, const GValue *
 		const gchar *dbus_object_path = g_value_get_string(value);
 		g_assert(dbus_object_path != NULL);
 		g_assert(self->priv->dbus_g_proxy == NULL);
-		self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_HUB_INTERFACE);
-		hub_post_init(self);
+		self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE);
+		network_router_post_init(self);
 	}
 		break;
 
-	case PROP_ENABLE:
+	case PROP_ENABLED:
 	{
 		GError *error = NULL;
-		hub_set_property(self, "Enable", value, &error);
+		network_router_set_property(self, "Enabled", value, &error);
 		g_assert(error == NULL);
 	}
 		break;
@@ -196,7 +196,7 @@ static void _hub_set_property(GObject *object, guint property_id, const GValue *
 	case PROP_NAME:
 	{
 		GError *error = NULL;
-		hub_set_property(self, "Name", value, &error);
+		network_router_set_property(self, "Name", value, &error);
 		g_assert(error == NULL);
 	}
 		break;
@@ -210,9 +210,9 @@ static void _hub_set_property(GObject *object, guint property_id, const GValue *
 /* Methods */
 
 /* dict GetProperties() */
-GHashTable *hub_get_properties(Hub *self, GError **error)
+GHashTable *network_router_get_properties(NetworkRouter *self, GError **error)
 {
-	g_assert(HUB_IS(self));
+	g_assert(NETWORK_ROUTER_IS(self));
 
 	GHashTable *ret = NULL;
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
@@ -221,68 +221,68 @@ GHashTable *hub_get_properties(Hub *self, GError **error)
 }
 
 /* void SetProperty(string name, variant value) */
-void hub_set_property(Hub *self, const gchar *name, const GValue *value, GError **error)
+void network_router_set_property(NetworkRouter *self, const gchar *name, const GValue *value, GError **error)
 {
-	g_assert(HUB_IS(self));
+	g_assert(NETWORK_ROUTER_IS(self));
 
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "SetProperty", error, G_TYPE_STRING, name, G_TYPE_VALUE, value, G_TYPE_INVALID, G_TYPE_INVALID);
 }
 
 /* Properties access methods */
-const gchar *hub_get_dbus_object_path(Hub *self)
+const gchar *network_router_get_dbus_object_path(NetworkRouter *self)
 {
-	g_assert(HUB_IS(self));
+	g_assert(NETWORK_ROUTER_IS(self));
 
 	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
 }
 
-const gboolean hub_get_enable(Hub *self)
+const gboolean network_router_get_enabled(NetworkRouter *self)
 {
-	g_assert(HUB_IS(self));
+	g_assert(NETWORK_ROUTER_IS(self));
 
-	return self->priv->enable;
+	return self->priv->enabled;
 }
 
-void hub_set_enable(Hub *self, const gboolean value)
+void network_router_set_enabled(NetworkRouter *self, const gboolean value)
 {
-	g_assert(HUB_IS(self));
+	g_assert(NETWORK_ROUTER_IS(self));
 
 	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_BOOLEAN);
 	g_value_set_boolean(&t, value);
-	hub_set_property(self, "Enable", &t, &error);
+	network_router_set_property(self, "Enabled", &t, &error);
 	g_value_unset(&t);
 
 	g_assert(error == NULL);
 }
 
-const gchar *hub_get_name(Hub *self)
+const gchar *network_router_get_name(NetworkRouter *self)
 {
-	g_assert(HUB_IS(self));
+	g_assert(NETWORK_ROUTER_IS(self));
 
 	return self->priv->name;
 }
 
-void hub_set_name(Hub *self, const gchar *value)
+void network_router_set_name(NetworkRouter *self, const gchar *value)
 {
-	g_assert(HUB_IS(self));
+	g_assert(NETWORK_ROUTER_IS(self));
 
 	GError *error = NULL;
 
 	GValue t = {0};
 	g_value_init(&t, G_TYPE_STRING);
 	g_value_set_string(&t, value);
-	hub_set_property(self, "Name", &t, &error);
+	network_router_set_property(self, "Name", &t, &error);
 	g_value_unset(&t);
 
 	g_assert(error == NULL);
 }
 
-const gchar *hub_get_uuid(Hub *self)
+const gchar *network_router_get_uuid(NetworkRouter *self)
 {
-	g_assert(HUB_IS(self));
+	g_assert(NETWORK_ROUTER_IS(self));
 
 	return self->priv->uuid;
 }
