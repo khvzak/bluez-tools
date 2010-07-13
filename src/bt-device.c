@@ -166,7 +166,7 @@ static gchar *info_arg = NULL;
 static gchar *services_arg = NULL;
 static gboolean set_arg = FALSE;
 static gchar *set_device_arg = NULL;
-static gchar *set_name_arg = NULL;
+static gchar *set_property_arg = NULL;
 static gchar *set_value_arg = NULL;
 
 static GOptionEntry entries[] = {
@@ -192,12 +192,11 @@ int main(int argc, char *argv[])
 	g_option_context_set_summary(context, "device summary");
 	g_option_context_set_description(context,
 			"Set Options:\n"
-			"  --set <device#id> <Name> <Value>\n"
-			"  Where `Name` is device property name:\n"
+			"  --set <device#id> <property> <value>\n"
+			"  Where `property` is one of:\n"
 			"     Alias\n"
 			"     Trusted\n"
-			"     Blocked\n"
-			"  And `Value` is property value to set\n\n"
+			"     Blocked\n\n"
 			"device desc"
 			);
 
@@ -310,7 +309,7 @@ int main(int argc, char *argv[])
 		g_object_unref(device);
 	} else if (set_arg) {
 		set_device_arg = argv[1];
-		set_name_arg = argv[2];
+		set_property_arg = argv[2];
 		set_value_arg = argv[3];
 
 		Device *device = find_device(adapter, set_device_arg, &error);
@@ -318,12 +317,12 @@ int main(int argc, char *argv[])
 
 		GValue v = {0,};
 
-		if (g_strcmp0(set_name_arg, "Alias") == 0) {
+		if (g_strcmp0(set_property_arg, "Alias") == 0) {
 			g_value_init(&v, G_TYPE_STRING);
 			g_value_set_string(&v, set_value_arg);
 		} else if (
-				g_strcmp0(set_name_arg, "Trusted") == 0 ||
-				g_strcmp0(set_name_arg, "Blocked") == 0
+				g_strcmp0(set_property_arg, "Trusted") == 0 ||
+				g_strcmp0(set_property_arg, "Blocked") == 0
 				) {
 			g_value_init(&v, G_TYPE_BOOLEAN);
 
@@ -332,25 +331,28 @@ int main(int argc, char *argv[])
 			} else if (g_strcmp0(set_value_arg, "1") == 0 || g_ascii_strcasecmp(set_value_arg, "TRUE") == 0 || g_ascii_strcasecmp(set_value_arg, "ON") == 0) {
 				g_value_set_boolean(&v, TRUE);
 			} else {
-				g_print("Invalid value: %s\n", set_value_arg);
+				g_print("%s: Invalid boolean value: %s\n", g_get_prgname(), set_value_arg);
+				g_print("Try `%s --help` for more information.\n", g_get_prgname());
+				exit(EXIT_FAILURE);
 			}
 		} else {
-			g_print("Invalid property: %s\n", set_name_arg);
+			g_print("%s: Invalid property: %s\n", g_get_prgname(), set_property_arg);
+			g_print("Try `%s --help` for more information.\n", g_get_prgname());
 			exit(EXIT_FAILURE);
 		}
 
 		GHashTable *props = device_get_properties(device, &error);
 		exit_if_error(error);
-		GValue *old_value = g_hash_table_lookup(props, set_name_arg);
+		GValue *old_value = g_hash_table_lookup(props, set_property_arg);
 		g_assert(old_value != NULL);
 		if (G_VALUE_HOLDS_STRING(old_value)) {
-			g_print("%s: %s -> %s\n", set_name_arg, g_value_get_string(old_value), g_value_get_string(&v));
+			g_print("%s: %s -> %s\n", set_property_arg, g_value_get_string(old_value), g_value_get_string(&v));
 		} else if (G_VALUE_HOLDS_BOOLEAN(old_value)) {
-			g_print("%s: %d -> %d\n", set_name_arg, g_value_get_boolean(old_value), g_value_get_boolean(&v));
+			g_print("%s: %d -> %d\n", set_property_arg, g_value_get_boolean(old_value), g_value_get_boolean(&v));
 		}
 		g_hash_table_unref(props);
 
-		device_set_property(device, set_name_arg, &v, &error);
+		device_set_property(device, set_property_arg, &v, &error);
 		exit_if_error(error);
 
 		g_value_unset(&v);

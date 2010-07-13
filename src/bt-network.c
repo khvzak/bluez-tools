@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 			"  Where `property` is one of:\n"
 			"     Name\n"
 			"     Enabled\n"
-			"  By default - show current status\n\n"
+			"  By default - show status\n\n"
 			"network desc"
 			);
 

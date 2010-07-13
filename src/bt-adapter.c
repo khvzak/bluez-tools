@@ -75,7 +75,7 @@ static gchar *adapter_arg = NULL;
 static gboolean info_arg = FALSE;
 static gboolean discover_arg = FALSE;
 static gboolean set_arg = FALSE;
-static gchar *set_name_arg = NULL;
+static gchar *set_property_arg = NULL;
 static gchar *set_value_arg = NULL;
 
 static GOptionEntry entries[] = {
@@ -99,15 +99,14 @@ int main(int argc, char *argv[])
 	g_option_context_set_summary(context, "adapter summary");
 	g_option_context_set_description(context,
 			"Set Options:\n"
-			"  --set <Name> <Value>\n"
-			"  Where `Name` is adapter property name:\n"
+			"  --set <property> <value>\n"
+			"  Where `property` is one of:\n"
 			"     Name\n"
 			"     Discoverable\n"
 			"     DiscoverableTimeout\n"
 			"     Pairable\n"
 			"     PairableTimeout\n"
-			"     Powered\n"
-			"  And `Value` is property value to set\n\n"
+			"     Powered\n\n"
 			"adapter desc"
 			);
 
@@ -200,7 +199,7 @@ int main(int argc, char *argv[])
 		g_hash_table_unref(found_devices);
 		g_object_unref(adapter);
 	} else if (set_arg) {
-		set_name_arg = argv[1];
+		set_property_arg = argv[1];
 		set_value_arg = argv[2];
 
 		Adapter *adapter = find_adapter(adapter_arg, &error);
@@ -208,13 +207,13 @@ int main(int argc, char *argv[])
 
 		GValue v = {0,};
 
-		if (g_strcmp0(set_name_arg, "Name") == 0) {
+		if (g_strcmp0(set_property_arg, "Name") == 0) {
 			g_value_init(&v, G_TYPE_STRING);
 			g_value_set_string(&v, set_value_arg);
 		} else if (
-				g_strcmp0(set_name_arg, "Discoverable") == 0 ||
-				g_strcmp0(set_name_arg, "Pairable") == 0 ||
-				g_strcmp0(set_name_arg, "Powered") == 0
+				g_strcmp0(set_property_arg, "Discoverable") == 0 ||
+				g_strcmp0(set_property_arg, "Pairable") == 0 ||
+				g_strcmp0(set_property_arg, "Powered") == 0
 				) {
 			g_value_init(&v, G_TYPE_BOOLEAN);
 
@@ -223,33 +222,36 @@ int main(int argc, char *argv[])
 			} else if (g_strcmp0(set_value_arg, "1") == 0 || g_ascii_strcasecmp(set_value_arg, "TRUE") == 0 || g_ascii_strcasecmp(set_value_arg, "ON") == 0) {
 				g_value_set_boolean(&v, TRUE);
 			} else {
-				g_print("Invalid value: %s\n", set_value_arg);
+				g_print("%s: Invalid boolean value: %s\n", g_get_prgname(), set_value_arg);
+				g_print("Try `%s --help` for more information.\n", g_get_prgname());
+				exit(EXIT_FAILURE);
 			}
 		} else if (
-				g_strcmp0(set_name_arg, "DiscoverableTimeout") == 0 ||
-				g_strcmp0(set_name_arg, "PairableTimeout") == 0
+				g_strcmp0(set_property_arg, "DiscoverableTimeout") == 0 ||
+				g_strcmp0(set_property_arg, "PairableTimeout") == 0
 				) {
 			g_value_init(&v, G_TYPE_UINT);
 			g_value_set_uint(&v, (guint) atoi(set_value_arg));
 		} else {
-			g_print("Invalid property: %s\n", set_name_arg);
+			g_print("%s: Invalid property: %s\n", g_get_prgname(), set_property_arg);
+			g_print("Try `%s --help` for more information.\n", g_get_prgname());
 			exit(EXIT_FAILURE);
 		}
 
 		GHashTable *props = adapter_get_properties(adapter, &error);
 		exit_if_error(error);
-		GValue *old_value = g_hash_table_lookup(props, set_name_arg);
+		GValue *old_value = g_hash_table_lookup(props, set_property_arg);
 		g_assert(old_value != NULL);
 		if (G_VALUE_HOLDS_STRING(old_value)) {
-			g_print("%s: %s -> %s\n", set_name_arg, g_value_get_string(old_value), g_value_get_string(&v));
+			g_print("%s: %s -> %s\n", set_property_arg, g_value_get_string(old_value), g_value_get_string(&v));
 		} else if (G_VALUE_HOLDS_BOOLEAN(old_value)) {
-			g_print("%s: %d -> %d\n", set_name_arg, g_value_get_boolean(old_value), g_value_get_boolean(&v));
+			g_print("%s: %d -> %d\n", set_property_arg, g_value_get_boolean(old_value), g_value_get_boolean(&v));
 		} else if (G_VALUE_HOLDS_UINT(old_value)) {
-			g_print("%s: %d -> %d\n", set_name_arg, g_value_get_uint(old_value), g_value_get_uint(&v));
+			g_print("%s: %d -> %d\n", set_property_arg, g_value_get_uint(old_value), g_value_get_uint(&v));
 		}
 		g_hash_table_unref(props);
 
-		adapter_set_property(adapter, set_name_arg, &v, &error);
+		adapter_set_property(adapter, set_property_arg, &v, &error);
 		exit_if_error(error);
 
 		g_value_unset(&v);
