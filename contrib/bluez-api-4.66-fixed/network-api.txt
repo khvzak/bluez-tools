@@ -60,11 +60,11 @@ Properties	boolean Connected [readonly]
 			Indicates the connection role when available.
 
 
-Network Hub/Peer/Router hierarchy
+Network Hub hierarchy
 =================
 
 Service		org.bluez
-Interface	org.bluez.network.{Hub, Peer, Router}
+Interface	org.bluez.network.Hub
 Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		dict GetProperties()
@@ -81,14 +81,83 @@ Methods		dict GetProperties()
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
 
-Properties	string Name[readwrite]
+Properties	string Name [readwrite]
 
 			The Bluetooth network server name.
 
-		boolean Enable[readwrite]
+		boolean Enable [readwrite]
 
 			Indicates if the server is Enabled/Disabled.
 
-		string Uuid[readonly]
+		string UUID [readonly]
 
 			The Bluetooth network server UUID 128 identification.
+
+
+Network Peer hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.network.Peer
+Object path	/org/bluez/{hci0,hci1,...}
+
+Methods		dict GetProperties()
+
+			Returns all properties for the GN/PANU/NAP server. See the
+			properties section for available properties.
+
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed a read-write are changeable.
+			On success this will emit a PropertyChanged signal.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+
+Properties	string Name [readwrite]
+
+			The Bluetooth network server name.
+
+		boolean Enable [readwrite]
+
+			Indicates if the server is Enabled/Disabled.
+
+		string UUID [readonly]
+
+			The Bluetooth network server UUID 128 identification.
+
+
+Network Router hierarchy
+=================
+
+Service		org.bluez
+Interface	org.bluez.network.Router
+Object path	/org/bluez/{hci0,hci1,...}
+
+Methods		dict GetProperties()
+
+			Returns all properties for the GN/PANU/NAP server. See the
+			properties section for available properties.
+
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed a read-write are changeable.
+			On success this will emit a PropertyChanged signal.
+
+			Possible Errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.InvalidArguments
+
+Properties	string Name [readwrite]
+
+			The Bluetooth network server name.
+
+		boolean Enable [readwrite]
+
+			Indicates if the server is Enabled/Disabled.
+
+		string UUID [readonly]
+
+			The Bluetooth network server UUID 128 identification.
+

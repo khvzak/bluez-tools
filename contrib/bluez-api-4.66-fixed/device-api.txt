@@ -31,7 +31,7 @@ Methods		dict GetProperties()
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
 
-		dict DiscoverServices(string pattern)
+		dict{u,s} DiscoverServices(string pattern)
 
 			This method starts the service discovery to retrieve
 			remote service records. The pattern parameter can

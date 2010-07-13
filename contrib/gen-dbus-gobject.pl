@@ -26,22 +26,22 @@ sub parse_doc_api {
         # On-fly patches:
         
         # audio-api.txt
-        s/void (PropertyChanged\(string name, variant value\))$/$1/;
-        s/(string State)$/$1 [readonly]/;
-        s/void (AnswerRequested\(\))/$1/;
-        s/^p(roperties\tstring State \[readonly\])$/P$1/;
-        s/ ( \[(readonly|readwrite)\])$/$1/;
-        s/void (Ring\(string number\))$/$1/;
-        s/void (CallTerminated\(\))$/$1/;
-        s/void (CallStarted\(\))$/$1/;
-        s/void (CallEnded\(\))$/$1/;
-        s/^p(roperties\tboolean Connected \[readonly\])$/P$1/;
+        #s/void (PropertyChanged\(string name, variant value\))$/$1/;
+        #s/(string State)$/$1 [readonly]/;
+        #s/void (AnswerRequested\(\))/$1/;
+        #s/^p(roperties\tstring State \[readonly\])$/P$1/;
+        #s/ ( \[(readonly|readwrite)\])$/$1/;
+        #s/void (Ring\(string number\))$/$1/;
+        #s/void (CallTerminated\(\))$/$1/;
+        #s/void (CallStarted\(\))$/$1/;
+        #s/void (CallEnded\(\))$/$1/;
+        #s/^p(roperties\tboolean Connected \[readonly\])$/P$1/;
         
         # adapter-api.txt
-        s/PaireableTimeout/PairableTimeout/;
+        #s/PaireableTimeout/PairableTimeout/;
         
         # device-api.txt
-        s/dict (DiscoverServices\(string pattern\))$/dict{u,s} $1/;
+        #s /dict (DiscoverServices\(string pattern\))$/dict{u,s} $1/;
         
         if (/^(.+) hierarchy$/) {
             my $hierarchy = $1;
@@ -93,7 +93,7 @@ sub parse_doc_api {
             if ($decl =~ /,$/) {
                 my $add_str = <INPUT>;
                 # adapter-api.txt patch
-                $add_str =~ s/(string capability\))$/$1 [async]/;
+                #$add_str =~ s/(string capability\))$/$1 [async]/;
                 if ($add_str =~ /\s+(.+)\)( \[(\w+)\])?$/) {
                     $decl .= " $1)";
                     $args .= " $1";

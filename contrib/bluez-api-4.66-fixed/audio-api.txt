@@ -27,12 +27,12 @@ Methods		void Connect()
 			Returns all properties for the interface. See the
 			properties section for available properties.
 
-Signals		void PropertyChanged(string name, variant value)
+Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
 			property.
 
-Properties	string State
+Properties	string State [readonly]
 
 			Possible values: "disconnected", "connecting",
 			"connected"
@@ -128,31 +128,31 @@ Methods		void Connect()
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
 
-Signals		void AnswerRequested()
+Signals		AnswerRequested()
 
 			Sent when the answer button is pressed on the headset
 
-		void Connected() {deprecated}
+		Connected() {deprecated}
 
 			Sent when the device has been connected to.
 
-		void Disconnected() {deprecated}
+		Disconnected() {deprecated}
 
 			Sent when the device has been disconnected from.
 
-		void Stopped() {deprecated}
+		Stopped() {deprecated}
 
 			Sent when the audio connection is closed
 
-		void Playing() {deprecated}
+		Playing() {deprecated}
 
 			Sent when the audio connection is opened
 
-		void SpeakerGainChanged(uint16 gain) {deprecated}
+		SpeakerGainChanged(uint16 gain) {deprecated}
 
 			The speaker gain changed.
 
-		void MicrophoneGainChanged(uint16 gain) {deprecated}
+		MicrophoneGainChanged(uint16 gain) {deprecated}
 
 			The microphone gain changed.
 
@@ -161,7 +161,7 @@ Signals		void AnswerRequested()
 			This signal indicates a changed value of the given
 			property.
 
-properties	string State [readonly]
+Properties	string State [readonly]
 
 			Possible values: "disconnected", "connecting",
 			"connected", "playing"
@@ -191,16 +191,16 @@ properties	string State [readonly]
 			Indicates if there is a active connection to the
 			HSP/HFP connection on the remote device.
 
-		boolean Playing  [readonly]
+		boolean Playing [readonly]
 
 			Indicates if an audio connection to the headset
 			is active.
 
-		uint16 SpeakerGain  [readwrite]
+		uint16 SpeakerGain [readwrite]
 
 			The speaker gain when available.
 
-		uint16 MicrophoneGain  [readwrite]
+		uint16 MicrophoneGain [readwrite]
 
 			The speaker gain when available.
 
@@ -233,20 +233,20 @@ Methods		void Connect()
 
 			Possible Errors: org.bluez.Error.InvalidArguments
 
-Signals		void Connected() {deprecated}
+Signals		Connected() {deprecated}
 
 			Sent when a successful connection has been made to the
 			remote A2DP Sink
 
-		void Disconnected() {deprecated}
+		Disconnected() {deprecated}
 
 			Sent when the device has been disconnected from.
 
-		void Playing() {deprecated}
+		Playing() {deprecated}
 
 			Sent when a stream with remote device is started.
 
-		void Stopped() {deprecated}
+		Stopped() {deprecated}
 
 			Sent when a stream with remote device is suspended.
 
@@ -255,7 +255,7 @@ Signals		void Connected() {deprecated}
 			This signal indicates a changed value of the given
 			property.
 
-properties	string State [readonly]
+Properties	string State [readonly]
 
 			Possible values: "disconnected", "connecting",
 			"connected", "playing"
@@ -285,7 +285,7 @@ properties	string State [readonly]
 			Indicates if a stream is setup to a A2DP sink on
 			the remote device.
 
-		boolean Playing  [readonly]
+		boolean Playing [readonly]
 
 			Indicates if a stream is active to a A2DP sink on
 			the remote device.
@@ -318,7 +318,7 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-properties	string State [readonly]
+Properties	string State [readonly]
 
 			Possible values: "disconnected", "connecting",
 			"connected", "playing"
@@ -396,22 +396,22 @@ Methods		void Connect()
 			Returns all properties for the interface. See the
 			properties section for available properties.
 
-Signals		void Ring(string number)
+Signals		Ring(string number)
 
 			Someone's calling from 'number'.
 			Caller number is provided as received from AG.
 
-		void CallTerminated()
+		CallTerminated()
 
 			Call failed to set up. It means that we tried to call
 			someone or someone tried to call us but call was not
 			accepted.
 
-		void CallStarted()
+		CallStarted()
 
 			Call set up successfully.
 
-		void CallEnded()
+		CallEnded()
 
 			Call was started and now ended. In contrast with
 			CallTerminated where call didn't started
@@ -421,7 +421,7 @@ Signals		void Ring(string number)
 			This signal indicates a changed value of the given
 			property.
 
-properties	boolean Connected [readonly]
+Properties	boolean Connected [readonly]
 
 			Indicates if there is an active connection to the
 			AG service on the remote device.
@@ -449,10 +449,10 @@ properties	boolean Connected [readonly]
 			Battery Charge indicator of AG, the value ranges from
 			0 to 5.
 
-		uint16 SpeakerGain  [readonly]
+		uint16 SpeakerGain [readonly]
 
 			The speaker gain when available.
 
-		uint16 MicrophoneGain  [readonly]
+		uint16 MicrophoneGain [readonly]
 
 			The speaker gain when available.
