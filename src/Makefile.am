@@ -11,16 +11,10 @@ AM_LDFLAGS = $(DBUS_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS) $(GIO_LIBS) $(DBUS_GLIB_L
 #lib/marshallers.c: lib/marshallers.list
 #			glib-genmarshal $(GENMARSHAL_FLAGS) --body lib/marshallers.list > lib/marshallers.c
 
-BUILT_SOURCES = $(top_srcdir)/.version
-
-$(top_srcdir)/.version:
-	echo $(VERSION) > $@-t && mv $@-t $@
-dist-hook:
-	echo $(VERSION) > $(distdir)/.tarball-version
-
 lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/dbus-common.c lib/dbus-common.h \
 		lib/helpers.c lib/helpers.h \
+		lib/bluez-dbus.h \
 		lib/adapter.c lib/adapter.h \
 		lib/agent.c lib/agent.h \
 		lib/audio.c lib/audio.h \
@@ -45,4 +39,4 @@ bt_network_SOURCES = $(lib_sources) bt-network.c
 bt_serial_SOURCES = $(lib_sources) bt-serial.c
 
 #CLEANFILES = Makefile.in lib/marshallers.c lib/marshallers.h
-CLEANFILES = $(top_srcdir)/.version
+
