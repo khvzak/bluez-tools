@@ -41,6 +41,8 @@ static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTa
 
 	if (g_hash_table_size(found_devices) == 0) g_print("\n");
 
+	// TODO: Translate class of adapter ?
+
 	g_print("[%s]\n", address);
 	g_print("  Name: %s\n", g_value_get_string(g_hash_table_lookup(values, "Name")));
 	g_print("  Alias: %s\n", g_value_get_string(g_hash_table_lookup(values, "Alias")));
@@ -80,10 +82,10 @@ static gchar *set_value_arg = NULL;
 
 static GOptionEntry entries[] = {
 	{"list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List all available adapters", NULL},
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
 	{"info", 'i', 0, G_OPTION_ARG_NONE, &info_arg, "Show adapter info", NULL},
 	{"discover", 'd', 0, G_OPTION_ARG_NONE, &discover_arg, "Discover remote devices", NULL},
-	{"set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set property", NULL},
+	{"set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set adapter property", NULL},
 	{NULL}
 };
 
@@ -96,7 +98,7 @@ int main(int argc, char *argv[])
 
 	context = g_option_context_new("- a bluetooth adapter manager");
 	g_option_context_add_main_entries(context, entries, NULL);
-	g_option_context_set_summary(context, "adapter summary");
+	g_option_context_set_summary(context, "Version "PACKAGE_VERSION);
 	g_option_context_set_description(context,
 			"Set Options:\n"
 			"  --set <property> <value>\n"
@@ -107,7 +109,7 @@ int main(int argc, char *argv[])
 			"     Pairable\n"
 			"     PairableTimeout\n"
 			"     Powered\n\n"
-			"adapter desc"
+			"Report bugs to <"PACKAGE_BUGREPORT">."
 			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {

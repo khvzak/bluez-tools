@@ -54,9 +54,9 @@ static gchar *service_property_arg = NULL;
 static gchar *service_value_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
 	{"connect", 'c', 0, G_OPTION_ARG_NONE, &connect_arg, "Connect to a network device", NULL},
-	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from a network device", "device#id"},
+	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from a network device", "<name|mac>"},
 	{"service", 's', 0, G_OPTION_ARG_NONE, &service_arg, "Manage GN/PANU/NAP services", NULL},
 	{NULL}
 };
@@ -70,10 +70,10 @@ int main(int argc, char *argv[])
 
 	context = g_option_context_new("- a bluetooth network manager");
 	g_option_context_add_main_entries(context, entries, NULL);
-	g_option_context_set_summary(context, "network summary");
+	g_option_context_set_summary(context, "Version "PACKAGE_VERSION);
 	g_option_context_set_description(context,
 			"Connect Options:\n"
-			"  -c, --connect <device#id> <pattern>\n"
+			"  -c, --connect <name|mac> <pattern>\n"
 			"  Where `pattern` is:\n"
 			"     UUID 128 bit string\n"
 			"     Profile short name: gn, panu or nap\n"
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 			"     Name\n"
 			"     Enabled\n"
 			"  By default - show status\n\n"
-			"network desc"
+			"Report bugs to <"PACKAGE_BUGREPORT">."
 			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
@@ -123,7 +123,10 @@ int main(int argc, char *argv[])
 		Device *device = find_device(adapter, connect_device_arg != NULL ? connect_device_arg : disconnect_arg, &error);
 		exit_if_error(error);
 
-		// TODO: Test to NETWORK service
+		if (!intf_is_supported(device_get_dbus_object_path(device), NETWORK_INTF)) {
+			g_printerr("Network service is not supported by this device\n");
+			exit(EXIT_FAILURE);
+		}
 
 		GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 
@@ -140,7 +143,7 @@ int main(int argc, char *argv[])
 				g_free(intf);
 			}
 			g_print("Interface: %s\n", network_get_interface(network));
-			g_print("UUID: %s\n", network_get_uuid(network));
+			g_print("UUID: %s (%s)\n", get_uuid_name(network_get_uuid(network)), network_get_uuid(network));
 		} else if (disconnect_arg) {
 			if (network_get_connected(network) == FALSE) {
 				g_print("Network service is already disconnected\n");
@@ -185,6 +188,11 @@ int main(int argc, char *argv[])
 		}
 
 		if (g_ascii_strcasecmp(service_name_arg, "GN") == 0) {
+			if (!intf_is_supported(adapter_get_dbus_object_path(adapter), NETWORK_HUB_INTF)) {
+				g_printerr("GN service is not supported by this adapter\n");
+				exit(EXIT_FAILURE);
+			}
+
 			NetworkHub *hub = g_object_new(NETWORK_HUB_TYPE, "DBusObjectPath", adapter_get_dbus_object_path(adapter), NULL);
 
 			if (service_property_arg == NULL) {
@@ -210,6 +218,11 @@ int main(int argc, char *argv[])
 
 			g_object_unref(hub);
 		} else if (g_ascii_strcasecmp(service_name_arg, "PANU") == 0) {
+			if (!intf_is_supported(adapter_get_dbus_object_path(adapter), NETWORK_PEER_INTF)) {
+				g_printerr("PANU service is not supported by this adapter\n");
+				exit(EXIT_FAILURE);
+			}
+
 			NetworkPeer *peer = g_object_new(NETWORK_PEER_TYPE, "DBusObjectPath", adapter_get_dbus_object_path(adapter), NULL);
 
 			if (service_property_arg == NULL) {
@@ -235,6 +248,11 @@ int main(int argc, char *argv[])
 
 			g_object_unref(peer);
 		} else if (g_ascii_strcasecmp(service_name_arg, "NAP") == 0) {
+			if (!intf_is_supported(adapter_get_dbus_object_path(adapter), NETWORK_ROUTER_INTF)) {
+				g_printerr("NAP service is not supported by this adapter\n");
+				exit(EXIT_FAILURE);
+			}
+
 			NetworkRouter *router = g_object_new(NETWORK_ROUTER_TYPE, "DBusObjectPath", adapter_get_dbus_object_path(adapter), NULL);
 
 			if (service_property_arg == NULL) {

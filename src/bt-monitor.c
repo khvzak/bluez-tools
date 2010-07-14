@@ -254,7 +254,7 @@ static void release_device(Device *device)
 }
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
 	{NULL}
 };
 
@@ -267,8 +267,8 @@ int main(int argc, char *argv[])
 
 	context = g_option_context_new("- a bluetooth monitor");
 	g_option_context_add_main_entries(context, entries, NULL);
-	g_option_context_set_summary(context, "monitor summary");
-	g_option_context_set_description(context, "monitor desc");
+	g_option_context_set_summary(context, "Version "PACKAGE_VERSION);
+	g_option_context_set_description(context, "Report bugs to <"PACKAGE_BUGREPORT">.");
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("%s: %s\n", g_get_prgname(), error->message);

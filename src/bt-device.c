@@ -170,13 +170,13 @@ static gchar *set_property_arg = NULL;
 static gchar *set_value_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
 	{"list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List added devices", NULL},
-	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to a device", "device#id"},
-	{"remove", 'r', 0, G_OPTION_ARG_STRING, &remove_arg, "Remove device", "device#id"},
-	{"info", 'i', 0, G_OPTION_ARG_STRING, &info_arg, "Get info about device", "device#id"},
-	{"services", 's', 0, G_OPTION_ARG_STRING, &services_arg, "Discover device services", "device#id"},
-	{"set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set property", NULL},
+	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to a device", "<mac>"},
+	{"remove", 'r', 0, G_OPTION_ARG_STRING, &remove_arg, "Remove device", "<name|mac>"},
+	{"info", 'i', 0, G_OPTION_ARG_STRING, &info_arg, "Get info about device", "<name|mac>"},
+	{"services", 's', 0, G_OPTION_ARG_STRING, &services_arg, "Discover device services", "<name|mac>"},
+	{"set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set device property", NULL},
 	{NULL}
 };
 
@@ -189,15 +189,15 @@ int main(int argc, char *argv[])
 
 	context = g_option_context_new("- a bluetooth device manager");
 	g_option_context_add_main_entries(context, entries, NULL);
-	g_option_context_set_summary(context, "device summary");
+	g_option_context_set_summary(context, "Version "PACKAGE_VERSION);
 	g_option_context_set_description(context,
 			"Set Options:\n"
-			"  --set <device#id> <property> <value>\n"
+			"  --set <name|mac> <property> <value>\n"
 			"  Where `property` is one of:\n"
 			"     Alias\n"
 			"     Trusted\n"
 			"     Blocked\n\n"
-			"device desc"
+			"Report bugs to <"PACKAGE_BUGREPORT">."
 			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
@@ -266,11 +266,12 @@ int main(int argc, char *argv[])
 		Device *device = find_device(adapter, info_arg, &error);
 		exit_if_error(error);
 
+		// TODO: Translate class of device ?
+
 		g_print("[%s]\n", device_get_address(device));
 		g_print("  Name: %s\n", device_get_name(device));
 		g_print("  Alias: %s [rw]\n", device_get_alias(device));
 		g_print("  Address: %s\n", device_get_address(device));
-		// TODO: Add class to type conv
 		g_print("  Class: %x\n", device_get_class(device));
 		g_print("  Paired: %d\n", device_get_paired(device));
 		g_print("  Trusted: %d [rw]\n", device_get_trusted(device));
@@ -296,14 +297,16 @@ int main(int argc, char *argv[])
 		GHashTableIter iter;
 		gpointer key, value;
 
+		// TOOD: Add verbose option
+
 		g_hash_table_iter_init(&iter, device_services);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
-			//GMarkupParser xml_parser = {xml_start_element, xml_end_element, NULL, NULL, NULL};
-			//GMarkupParseContext *xml_parse_context = g_markup_parse_context_new(&xml_parser, 0, NULL, NULL);
-			//g_markup_parse_context_parse(xml_parse_context, value, strlen(value), &error);
-			//exit_if_error(error);
-			//g_markup_parse_context_free(xml_parse_context);
-			g_print("%s", value);
+			GMarkupParser xml_parser = {xml_start_element, xml_end_element, NULL, NULL, NULL};
+			GMarkupParseContext *xml_parse_context = g_markup_parse_context_new(&xml_parser, 0, NULL, NULL);
+			g_markup_parse_context_parse(xml_parse_context, value, strlen(value), &error);
+			exit_if_error(error);
+			g_markup_parse_context_free(xml_parse_context);
+			//g_print("%s", value);
 		}
 
 		g_print("Done\n");

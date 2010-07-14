@@ -45,4 +45,4 @@ bt_network_SOURCES = $(lib_sources) bt-network.c
 bt_serial_SOURCES = $(lib_sources) bt-serial.c
 
 #CLEANFILES = Makefile.in lib/marshallers.c lib/marshallers.h
-
+CLEANFILES = $(top_srcdir)/.version

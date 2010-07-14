@@ -39,7 +39,7 @@ static gchar *disconnect_device_arg = NULL;
 static gchar *disconnect_tty_device_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
 	{"connect", 'c', 0, G_OPTION_ARG_NONE, &connect_arg, "Connect to a serial device", NULL},
 	{"disconnect", 'd', 0, G_OPTION_ARG_NONE, &disconnect_arg, "Disconnect from a serial device", NULL},
 	{NULL}
@@ -54,19 +54,19 @@ int main(int argc, char *argv[])
 
 	context = g_option_context_new(" - a bluetooth serial manager");
 	g_option_context_add_main_entries(context, entries, NULL);
-	g_option_context_set_summary(context, "serial summary");
+	g_option_context_set_summary(context, "Version "PACKAGE_VERSION);
 	g_option_context_set_description(context,
 			"Connect Options:\n"
-			"  -c, --connect <device#id> <pattern>\n"
+			"  -c, --connect <name|mac> <pattern>\n"
 			"  Where `pattern` is:\n"
 			"     UUID 128 bit string\n"
 			"     Profile short name, e.g: spp, dun\n"
 			"     RFCOMM channel, 1-30\n\n"
 			"Disconnect Options:\n"
-			"  -d, --disconnect <device#id> <tty_device>\n"
+			"  -d, --disconnect <name|mac> <tty_device>\n"
 			"  Where `tty_device` is:\n"
 			"     RFCOMM TTY device that has been connected\n\n"
-			"serial desc"
+			"Report bugs to <"PACKAGE_BUGREPORT">."
 			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
@@ -107,7 +107,10 @@ int main(int argc, char *argv[])
 	Device *device = find_device(adapter, connect_device_arg != NULL ? connect_device_arg : disconnect_device_arg, &error);
 	exit_if_error(error);
 
-	// TODO: Test to Serial service
+	if (!intf_is_supported(device_get_dbus_object_path(device), SERIAL_INTF)) {
+		g_printerr("Serial service is not supported by this device\n");
+		exit(EXIT_FAILURE);
+	}
 
 	Serial *serial = g_object_new(SERIAL_TYPE, "DBusObjectPath", device_get_dbus_object_path(device), NULL);
 

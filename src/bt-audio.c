@@ -51,9 +51,9 @@ static gchar *connect_arg = NULL;
 static gchar *disconnect_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "adapter#id"},
-	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to an audio device", "device#id"},
-	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from an audio device", "device#id"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
+	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to an audio device", "<name|mac>"},
+	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from an audio device", "<name|mac>"},
 	{NULL}
 };
 
@@ -66,8 +66,8 @@ int main(int argc, char *argv[])
 
 	context = g_option_context_new("- a bluetooth generic audio manager");
 	g_option_context_add_main_entries(context, entries, NULL);
-	g_option_context_set_summary(context, "audio summary");
-	g_option_context_set_description(context, "audio desc");
+	g_option_context_set_summary(context, "Version "PACKAGE_VERSION);
+	g_option_context_set_description(context, "Report bugs to <"PACKAGE_BUGREPORT">.");
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("%s: %s\n", g_get_prgname(), error->message);
@@ -91,7 +91,10 @@ int main(int argc, char *argv[])
 	Device *device = find_device(adapter, connect_arg != NULL ? connect_arg : disconnect_arg, &error);
 	exit_if_error(error);
 
-	// TODO: Test to AUDIO service
+	if (!intf_is_supported(device_get_dbus_object_path(device), AUDIO_INTF)) {
+		g_printerr("Audio service is not supported by this device\n");
+		exit(EXIT_FAILURE);
+	}
 
 	GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 
