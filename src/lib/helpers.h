@@ -29,6 +29,23 @@
 
 #include "adapter.h"
 #include "device.h"
+#include "audio.h"
+#include "input.h"
+#include "network.h"
+#include "network_hub.h"
+#include "network_peer.h"
+#include "network_router.h"
+#include "serial.h"
+
+enum {
+	AUDIO_INTF,
+	INPUT_INTF,
+	NETWORK_INTF,
+	NETWORK_HUB_INTF,
+	NETWORK_PEER_INTF,
+	NETWORK_ROUTER_INTF,
+	SERIAL_INTF,
+};
 
 /* Adapter helpers */
 Adapter *find_adapter(const gchar *name, GError **error);
@@ -50,6 +67,9 @@ inline int xtoi(const gchar *str) {
 }
 
 const gchar *get_uuid_name(const gchar *uuid);
+
+/* Interface helpers */
+gboolean intf_is_supported(const gchar *dbus_object_path, int intf_id);
 
 #endif /* __HELPERS_H */
 

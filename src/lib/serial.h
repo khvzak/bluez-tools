@@ -26,6 +26,8 @@
 
 #include <glib-object.h>
 
+#define BLUEZ_DBUS_SERIAL_INTERFACE "org.bluez.Serial"
+
 /*
  * Type macros
  */

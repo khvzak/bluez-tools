@@ -26,6 +26,8 @@
 
 #include <glib-object.h>
 
+#define BLUEZ_DBUS_AUDIO_INTERFACE "org.bluez.Audio"
+
 /*
  * Type macros
  */

@@ -31,8 +31,6 @@
 #include "marshallers.h"
 #include "network_hub.h"
 
-#define BLUEZ_DBUS_NETWORK_HUB_INTERFACE "org.bluez.NetworkHub"
-
 #define NETWORK_HUB_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), NETWORK_HUB_TYPE, NetworkHubPrivate))
 
 struct _NetworkHubPrivate {
@@ -135,12 +133,12 @@ static void network_hub_post_init(NetworkHub *self, const gchar *dbus_object_pat
 	}
 	g_assert(error == NULL);
 
-	gchar *test_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_HUB_INTERFACE, "\">");
-	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+	gchar *check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_HUB_INTERFACE, "\">", NULL);
+	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
 		g_critical("Interface \"%s\" does not exist in \"%s\"", BLUEZ_DBUS_NETWORK_HUB_INTERFACE, dbus_object_path);
 		g_assert(FALSE);
 	}
-	g_free(test_intf_regex_str);
+	g_free(check_intf_regex_str);
 	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_NETWORK_HUB_INTERFACE);
 
 	/* Properties init */

@@ -31,9 +31,6 @@
 #include "marshallers.h"
 #include "manager.h"
 
-#define BLUEZ_DBUS_MANAGER_PATH "/"
-#define BLUEZ_DBUS_MANAGER_INTERFACE "org.bluez.Manager"
-
 #define MANAGER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), MANAGER_TYPE, ManagerPrivate))
 
 struct _ManagerPrivate {
@@ -162,12 +159,12 @@ static void manager_init(Manager *self)
 	}
 	g_assert(error == NULL);
 
-	gchar *test_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_MANAGER_INTERFACE, "\">");
-	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+	gchar *check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_MANAGER_INTERFACE, "\">", NULL);
+	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
 		g_critical("Interface \"%s\" does not exist in \"%s\"", BLUEZ_DBUS_MANAGER_INTERFACE, BLUEZ_DBUS_MANAGER_PATH);
 		g_assert(FALSE);
 	}
-	g_free(test_intf_regex_str);
+	g_free(check_intf_regex_str);
 
 	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_MANAGER_PATH, BLUEZ_DBUS_MANAGER_INTERFACE);
 

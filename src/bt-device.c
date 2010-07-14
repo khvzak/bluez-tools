@@ -298,11 +298,12 @@ int main(int argc, char *argv[])
 
 		g_hash_table_iter_init(&iter, device_services);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
-			GMarkupParser xml_parser = {xml_start_element, xml_end_element, NULL, NULL, NULL};
-			GMarkupParseContext *xml_parse_context = g_markup_parse_context_new(&xml_parser, 0, NULL, NULL);
-			g_markup_parse_context_parse(xml_parse_context, value, strlen(value), &error);
-			exit_if_error(error);
-			g_markup_parse_context_free(xml_parse_context);
+			//GMarkupParser xml_parser = {xml_start_element, xml_end_element, NULL, NULL, NULL};
+			//GMarkupParseContext *xml_parse_context = g_markup_parse_context_new(&xml_parser, 0, NULL, NULL);
+			//g_markup_parse_context_parse(xml_parse_context, value, strlen(value), &error);
+			//exit_if_error(error);
+			//g_markup_parse_context_free(xml_parse_context);
+			g_print("%s", value);
 		}
 
 		g_print("Done\n");

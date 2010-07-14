@@ -26,6 +26,8 @@
 
 #include <glib-object.h>
 
+#define BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE "org.bluez.NetworkRouter"
+
 /*
  * Type macros
  */

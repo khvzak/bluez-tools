@@ -26,6 +26,8 @@
 
 #include <glib-object.h>
 
+#define BLUEZ_DBUS_NETWORK_HUB_INTERFACE "org.bluez.NetworkHub"
+
 /*
  * Type macros
  */

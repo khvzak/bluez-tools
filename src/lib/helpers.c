@@ -26,8 +26,10 @@
 #endif
 
 #include <glib.h>
+#include <dbus/dbus-glib.h>
 #include <string.h>
 
+#include "dbus-common.h"
 #include "manager.h"
 #include "helpers.h"
 
@@ -206,5 +208,59 @@ Device *find_device(Adapter *adapter, const gchar *name, GError **error)
 	if (device_path) g_free(device_path);
 
 	return device;
+}
+
+gboolean intf_is_supported(const gchar *dbus_object_path, int intf_id)
+{
+	g_assert(conn != NULL);
+	g_assert(dbus_object_path != NULL);
+	g_assert(strlen(dbus_object_path) > 0);
+	gboolean intf_supported = FALSE;
+
+	/* Getting introspection XML */
+	DBusGProxy *introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, "org.freedesktop.DBus.Introspectable");
+	gchar *introspection_xml = NULL;
+	GError *error = NULL;
+	if (!dbus_g_proxy_call(introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &introspection_xml, G_TYPE_INVALID)) {
+		g_critical("%s", error->message);
+	}
+	g_assert(error == NULL);
+
+	gchar *check_intf_regex_str = NULL;
+	switch (intf_id) {
+	case AUDIO_INTF:
+		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_AUDIO_INTERFACE, "\">", NULL);
+		break;
+	case INPUT_INTF:
+		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_INPUT_INTERFACE, "\">", NULL);
+		break;
+	case NETWORK_INTF:
+		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_INTERFACE, "\">", NULL);
+		break;
+	case NETWORK_HUB_INTF:
+		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_HUB_INTERFACE, "\">", NULL);
+		break;
+	case NETWORK_PEER_INTF:
+		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_PEER_INTERFACE, "\">", NULL);
+		break;
+	case NETWORK_ROUTER_INTF:
+		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE, "\">", NULL);
+		break;
+	case SERIAL_INTF:
+		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_SERIAL_INTERFACE, "\">", NULL);
+		break;
+	default:
+		check_intf_regex_str = g_strconcat("<interface name=\"", "undefined", "\">", NULL);
+	}
+
+	if (g_regex_match_simple(check_intf_regex_str, introspection_xml, 0, 0)) {
+		intf_supported = TRUE;
+	}
+
+	g_free(check_intf_regex_str);
+	g_free(introspection_xml);
+	g_object_unref(introspection_g_proxy);
+
+	return intf_supported;
 }
 

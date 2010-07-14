@@ -26,6 +26,8 @@
 
 #include <glib-object.h>
 
+#define BLUEZ_DBUS_DEVICE_INTERFACE "org.bluez.Device"
+
 /*
  * Type macros
  */

@@ -31,8 +31,6 @@
 #include "marshallers.h"
 #include "network_peer.h"
 
-#define BLUEZ_DBUS_NETWORK_PEER_INTERFACE "org.bluez.NetworkPeer"
-
 #define NETWORK_PEER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), NETWORK_PEER_TYPE, NetworkPeerPrivate))
 
 struct _NetworkPeerPrivate {
@@ -135,12 +133,12 @@ static void network_peer_post_init(NetworkPeer *self, const gchar *dbus_object_p
 	}
 	g_assert(error == NULL);
 
-	gchar *test_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_PEER_INTERFACE, "\">");
-	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+	gchar *check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_PEER_INTERFACE, "\">", NULL);
+	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
 		g_critical("Interface \"%s\" does not exist in \"%s\"", BLUEZ_DBUS_NETWORK_PEER_INTERFACE, dbus_object_path);
 		g_assert(FALSE);
 	}
-	g_free(test_intf_regex_str);
+	g_free(check_intf_regex_str);
 	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_NETWORK_PEER_INTERFACE);
 
 	/* Properties init */

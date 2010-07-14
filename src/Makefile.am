@@ -1,8 +1,8 @@
 AM_CPPFLAGS = $(DBUS_CFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS) $(GIO_CFLAGS) $(DBUS_GLIB_CFLAGS)
 AM_LDFLAGS = $(DBUS_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS) $(GIO_LIBS) $(DBUS_GLIB_LIBS)
 
-BUILT_SOURCES = lib/marshallers.c lib/marshallers.h
-
+#BUILT_SOURCES = lib/marshallers.c lib/marshallers.h
+#
 #GENMARSHAL_FLAGS = --prefix="g_cclosure_bluez_marshal" --g-fatal-warnings
 #
 #lib/marshallers.h: lib/marshallers.list
@@ -10,6 +10,13 @@ BUILT_SOURCES = lib/marshallers.c lib/marshallers.h
 #
 #lib/marshallers.c: lib/marshallers.list
 #			glib-genmarshal $(GENMARSHAL_FLAGS) --body lib/marshallers.list > lib/marshallers.c
+
+BUILT_SOURCES = $(top_srcdir)/.version
+
+$(top_srcdir)/.version:
+	echo $(VERSION) > $@-t && mv $@-t $@
+dist-hook:
+	echo $(VERSION) > $(distdir)/.tarball-version
 
 lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/dbus-common.c lib/dbus-common.h \

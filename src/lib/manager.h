@@ -26,6 +26,9 @@
 
 #include <glib-object.h>
 
+#define BLUEZ_DBUS_MANAGER_PATH "/"
+#define BLUEZ_DBUS_MANAGER_INTERFACE "org.bluez.Manager"
+
 /*
  * Type macros
  */

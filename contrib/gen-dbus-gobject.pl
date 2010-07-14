@@ -1,5 +1,26 @@
 #!/usr/bin/perl -w
 
+#
+#  bluez-tools - a set of tools to manage bluetooth devices for linux
+#
+#  Copyright (C) 2010  Alexander Orlenko <zxteam@gmail.com>
+#
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#
+
 use strict;
 
 die "usage: -header|source FILE <hid>\n" unless $ARGV[0] && $ARGV[1] && $ARGV[0] =~ /^-(header|source)$/;
@@ -229,6 +250,8 @@ sub generate_header {
 
 #include <glib-object.h>
 
+{BLUEZ_DBUS_OBJECT_DEFS}
+
 /*
  * Type macros
  */
@@ -270,6 +293,10 @@ EOT
     my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     
+    my $bluez_dbus_object_defs = "";
+    $bluez_dbus_object_defs .= "#define BLUEZ_DBUS_{\$OBJECT}_PATH \"$node->{'objectPath'}\"\n"  if defined $node->{'objectPath'};
+    $bluez_dbus_object_defs .= "#define BLUEZ_DBUS_{\$OBJECT}_INTERFACE \"$node->{'intf'}\"";
+    
     my $method_defs = "";
     
     for my $method (sort keys %{$node->{$intf}{'methods'}}) {
@@ -302,6 +329,7 @@ EOT
     $method_defs =~ s/\s+$//s;
     
     my $output = "$HEADER\n$HEADER_TEMPLATE\n";
+    $output =~ s/{BLUEZ_DBUS_OBJECT_DEFS}/$bluez_dbus_object_defs/;
     $output =~ s/{METHOD_DEFS}/$method_defs/;
     $output =~ s/{\$OBJECT}/$obj_uc/g;
     $output =~ s/{\$Object}/$obj/g;
@@ -323,8 +351,6 @@ sub generate_source {
 #include "dbus-common.h"
 #include "marshallers.h"
 #include "{\$object}.h"
-
-{BLUEZ_DBUS_OBJECT_DEFS}
 
 #define {\$OBJECT}_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), {\$OBJECT}_TYPE, {\$Object}Private))
 
@@ -440,12 +466,12 @@ static void {\$object}_init({\$Object} *self)
 	}
 	g_assert(error == NULL);
 
-	gchar *test_intf_regex_str = g_strconcat("<interface name=\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, "\\">");
-	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+	gchar *check_intf_regex_str = g_strconcat("<interface name=\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, "\\">", NULL);
+	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
 		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, BLUEZ_DBUS_{\$OBJECT}_PATH);
 		g_assert(FALSE);
 	}
-	g_free(test_intf_regex_str);
+	g_free(check_intf_regex_str);
 
 	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_{\$OBJECT}_PATH, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
 
@@ -479,12 +505,12 @@ static void {\$object}_post_init({\$Object} *self, const gchar *dbus_object_path
 	}
 	g_assert(error == NULL);
 
-	gchar *test_intf_regex_str = g_strconcat("<interface name=\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, "\\">");
-	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+	gchar *check_intf_regex_str = g_strconcat("<interface name=\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, "\\">", NULL);
+	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
 		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, dbus_object_path);
 		g_assert(FALSE);
 	}
-	g_free(test_intf_regex_str);
+	g_free(check_intf_regex_str);
 	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
 
 	{IF_SIGNALS}
@@ -559,10 +585,6 @@ EOT
     my $obj = (split /\./, $intf)[-1];
     my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
-    
-    my $bluez_dbus_object_defs = "";
-    $bluez_dbus_object_defs .= "#define BLUEZ_DBUS_{\$OBJECT}_PATH \"$node->{'objectPath'}\"\n"  if defined $node->{'objectPath'};
-    $bluez_dbus_object_defs .= "#define BLUEZ_DBUS_{\$OBJECT}_INTERFACE \"$node->{'intf'}\"";
     
     my $methods = "";
     my $async_flag = 0;
@@ -910,7 +932,6 @@ EOT
     } else {
         $output =~ s/\s+\{IF_ASYNC_CALLS\}.+?\{FI_ASYNC_CALLS\}//gs;
     }
-    $output =~ s/{BLUEZ_DBUS_OBJECT_DEFS}/$bluez_dbus_object_defs/;
     $output =~ s/{ENUM_SIGNALS}/$enum_signals/;
     $output =~ s/{SIGNALS_HANDLERS_DEF}/$signals_handlers_def/;
     $output =~ s/{SIGNALS_REGISTRATION}/$signals_registration/;

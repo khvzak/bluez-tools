@@ -31,8 +31,6 @@
 #include "marshallers.h"
 #include "network_router.h"
 
-#define BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE "org.bluez.NetworkRouter"
-
 #define NETWORK_ROUTER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), NETWORK_ROUTER_TYPE, NetworkRouterPrivate))
 
 struct _NetworkRouterPrivate {
@@ -135,12 +133,12 @@ static void network_router_post_init(NetworkRouter *self, const gchar *dbus_obje
 	}
 	g_assert(error == NULL);
 
-	gchar *test_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE, "\">");
-	if (!g_regex_match_simple(test_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
+	gchar *check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE, "\">", NULL);
+	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
 		g_critical("Interface \"%s\" does not exist in \"%s\"", BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE, dbus_object_path);
 		g_assert(FALSE);
 	}
-	g_free(test_intf_regex_str);
+	g_free(check_intf_regex_str);
 	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE);
 
 	/* Properties init */

@@ -26,6 +26,8 @@
 
 #include <glib-object.h>
 
+#define BLUEZ_DBUS_NETWORK_PEER_INTERFACE "org.bluez.NetworkPeer"
+
 /*
  * Type macros
  */
