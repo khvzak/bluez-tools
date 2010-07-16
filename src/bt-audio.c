@@ -32,7 +32,9 @@
 
 static void audio_property_changed(Audio *audio, const gchar *name, const GValue *value, gpointer data)
 {
+	g_assert(data != NULL);
 	GMainLoop *mainloop = data;
+
 	if (g_strcmp0(name, "State") == 0) {
 		if (g_ascii_strcasecmp(g_value_get_string(value), "connecting") == 0) {
 			g_print("Connecting to an audio service\n");
@@ -102,9 +104,9 @@ int main(int argc, char *argv[])
 	g_signal_connect(audio, "PropertyChanged", G_CALLBACK(audio_property_changed), mainloop);
 
 	if (connect_arg) {
-		if (g_strcmp0(audio_get_state(audio), "connected") == 0) {
+		if (g_ascii_strcasecmp(audio_get_state(audio), "connected") == 0) {
 			g_print("Audio service is already connected\n");
-		} else if (g_strcmp0(audio_get_state(audio), "connecting") == 0) {
+		} else if (g_ascii_strcasecmp(audio_get_state(audio), "connecting") == 0) {
 			g_print("Audio service is already in connection state\n");
 		} else {
 			audio_connect(audio, &error);
@@ -112,7 +114,7 @@ int main(int argc, char *argv[])
 			g_main_loop_run(mainloop);
 		}
 	} else if (disconnect_arg) {
-		if (g_strcmp0(audio_get_state(audio), "disconnected") == 0) {
+		if (g_ascii_strcasecmp(audio_get_state(audio), "disconnected") == 0) {
 			g_print("Audio service is already disconnected\n");
 		} else {
 			audio_disconnect(audio, &error);
@@ -125,6 +127,7 @@ int main(int argc, char *argv[])
 	g_object_unref(audio);
 	g_object_unref(device);
 	g_object_unref(adapter);
+	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);
 }

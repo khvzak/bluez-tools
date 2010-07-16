@@ -31,8 +31,8 @@
 /* Local includes */
 #include "dbus-common.h"
 #include "helpers.h"
-#include "sdp.h"
 #include "marshallers.h"
+#include "sdp.h"
 
 /* Bluez DBus Interfaces */
 #include "adapter.h"

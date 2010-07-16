@@ -26,6 +26,8 @@
 #endif
 
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
 #include <glib.h>
 
 #include "dbus-common.h"
@@ -67,6 +69,8 @@ static void agent_init(Agent *self)
 	g_assert(conn != NULL);
 
 	dbus_g_connection_register_g_object(conn, DBUS_AGENT_PATH, G_OBJECT(self));
+
+	g_print("Agent registered\n");
 }
 
 /* Methods */
@@ -85,7 +89,10 @@ gboolean agent_request_pin_code(Agent *self, const gchar *device, gchar **ret, G
 
 	*ret = g_new0(gchar, 17);
 	g_print("Enter PIN code: ");
-	scanf("%16s", *ret);
+	errno = 0;
+	if (scanf("%16s", *ret) == EOF && errno) {
+		g_warning("%s\n", strerror(errno));
+	}
 	return TRUE;
 }
 
@@ -96,7 +103,10 @@ gboolean agent_request_passkey(Agent *self, const gchar *device, guint *ret, GEr
 	g_object_unref(device_obj);
 
 	g_print("Enter passkey: ");
-	scanf("%u", ret);
+	errno = 0;
+	if (scanf("%u", ret) == EOF && errno) {
+		g_warning("%s\n", strerror(errno));
+	}
 	return TRUE;
 }
 
@@ -118,7 +128,10 @@ gboolean agent_request_confirmation(Agent *self, const gchar *device, guint pass
 
 	gchar yn[4] = {0,};
 	g_print("Confirm passkey: %u (yes/no)? ", passkey);
-	scanf("%3s", yn);
+	errno = 0;
+	if (scanf("%3s", yn) == EOF && errno) {
+		g_warning("%s\n", strerror(errno));
+	}
 	if (g_strcmp0(yn, "y") == 0 || g_strcmp0(yn, "yes") == 0) {
 		return TRUE;
 	} else {
@@ -138,8 +151,11 @@ gboolean agent_authorize(Agent *self, const gchar *device, const gchar *uuid, GE
 	g_object_unref(device_obj);
 
 	gchar yn[4] = {0,};
-	g_print("Authorize a connection to: %s (yes/no)? ", get_uuid_name(uuid));
-	scanf("%3s", yn);
+	g_print("Authorize a connection to: %s (yes/no)? ", uuid2name(uuid));
+	errno = 0;
+	if (scanf("%3s", yn) == EOF && errno) {
+		g_warning("%s\n", strerror(errno));
+	}
 	if (g_strcmp0(yn, "y") == 0 || g_strcmp0(yn, "yes") == 0) {
 		return TRUE;
 	} else {
@@ -156,7 +172,10 @@ gboolean agent_confirm_mode_change(Agent *self, const gchar *mode, GError **erro
 {
 	gchar yn[4] = {0,};
 	g_print("Confirm mode change: %s (yes/no)? ", mode);
-	scanf("%3s", yn);
+	errno = 0;
+	if (scanf("%3s", yn) == EOF && errno) {
+		g_warning("%s\n", strerror(errno));
+	}
 	if (g_strcmp0(yn, "y") == 0 || g_strcmp0(yn, "yes") == 0) {
 		return TRUE;
 	} else {

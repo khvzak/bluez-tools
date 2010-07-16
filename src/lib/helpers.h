@@ -38,6 +38,8 @@
 #include "serial.h"
 
 enum {
+	DEVICE_INTF,
+
 	AUDIO_INTF,
 	INPUT_INTF,
 	NETWORK_INTF,
@@ -66,7 +68,8 @@ inline int xtoi(const gchar *str) {
 	return i;
 }
 
-const gchar *get_uuid_name(const gchar *uuid);
+const gchar *uuid2name(const gchar *uuid);
+const gchar *name2uuid(const gchar *name);
 
 /* Interface helpers */
 gboolean intf_is_supported(const gchar *dbus_object_path, int intf_id);

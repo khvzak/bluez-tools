@@ -32,8 +32,8 @@
 
 static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTable *values, gpointer data)
 {
+	g_assert(data != NULL);
 	GHashTable *found_devices = data;
-	g_assert(found_devices != NULL);
 
 	if (g_hash_table_lookup(found_devices, address) != NULL) {
 		return;
@@ -41,12 +41,11 @@ static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTa
 
 	if (g_hash_table_size(found_devices) == 0) g_print("\n");
 
-	// TODO: Translate class of adapter ?
-
 	g_print("[%s]\n", address);
 	g_print("  Name: %s\n", g_value_get_string(g_hash_table_lookup(values, "Name")));
 	g_print("  Alias: %s\n", g_value_get_string(g_hash_table_lookup(values, "Alias")));
 	g_print("  Address: %s\n", g_value_get_string(g_hash_table_lookup(values, "Address")));
+	g_print("  Icon: %s\n", g_value_get_string(g_hash_table_lookup(values, "Icon")));
 	g_print("  Class: 0x%x\n", g_value_get_uint(g_hash_table_lookup(values, "Class")));
 	g_print("  LegacyPairing: %d\n", g_value_get_boolean(g_hash_table_lookup(values, "LegacyPairing")));
 	g_print("  Paired: %d\n", g_value_get_boolean(g_hash_table_lookup(values, "Paired")));
@@ -56,17 +55,21 @@ static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTa
 	g_hash_table_insert(found_devices, g_strdup(address), g_value_dup_string(g_hash_table_lookup(values, "Alias")));
 }
 
+/*
 static void adapter_device_disappeared(Adapter *adapter, const gchar *address, gpointer data)
 {
+	g_assert(data != NULL);
 	GHashTable *found_devices = data;
-	g_assert(found_devices != NULL);
 
 	g_print("Device disappeared: %s (%s)\n", g_value_get_string(g_hash_table_lookup(found_devices, address)), address);
 }
+*/
 
 static void adapter_property_changed(Adapter *adapter, const gchar *name, const GValue *value, gpointer data)
 {
+	g_assert(data != NULL);
 	GMainLoop *mainloop = data;
+
 	if (g_strcmp0(name, "Discovering") == 0 && g_value_get_boolean(value) == FALSE) {
 		g_main_loop_quit(mainloop);
 	}
@@ -169,7 +172,7 @@ int main(int argc, char *argv[])
 		const gchar **uuids = adapter_get_uuids(adapter);
 		for (int j = 0; uuids[j] != NULL; j++) {
 			if (j > 0) g_print(", ");
-			g_print("%s", get_uuid_name(uuids[j]));
+			g_print("%s", uuid2name(uuids[j]));
 		}
 		g_print("]\n");
 
@@ -186,7 +189,7 @@ int main(int argc, char *argv[])
 		GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 
 		g_signal_connect(adapter, "DeviceFound", G_CALLBACK(adapter_device_found), found_devices);
-		g_signal_connect(adapter, "DeviceDisappeared", G_CALLBACK(adapter_device_disappeared), found_devices);
+		//g_signal_connect(adapter, "DeviceDisappeared", G_CALLBACK(adapter_device_disappeared), found_devices);
 		g_signal_connect(adapter, "PropertyChanged", G_CALLBACK(adapter_property_changed), mainloop);
 
 		g_print("Searching...\n");
@@ -261,6 +264,7 @@ int main(int argc, char *argv[])
 	}
 
 	g_object_unref(manager);
+	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);
 }

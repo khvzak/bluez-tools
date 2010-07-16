@@ -32,7 +32,9 @@
 
 static void input_property_changed(Input *input, const gchar *name, const GValue *value, gpointer data)
 {
+	g_assert(data != NULL);
 	GMainLoop *mainloop = data;
+
 	if (g_strcmp0(name, "Connected") == 0) {
 		if (g_value_get_boolean(value) == TRUE) {
 			g_print("Input service is connected\n");
@@ -120,6 +122,7 @@ int main(int argc, char *argv[])
 	g_object_unref(input);
 	g_object_unref(device);
 	g_object_unref(adapter);
+	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);
 }

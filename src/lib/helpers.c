@@ -37,84 +37,103 @@
 typedef struct {
 	gchar *uuid;
 	gchar *name;
+	gchar *alt_name;
 } uuid_name_lookup_table_t;
 
 static uuid_name_lookup_table_t uuid_name_lookup_table[] = {
-	{"00001000-0000-1000-8000-00805F9B34FB", "ServiceDiscoveryServerService"},
-	{"00001001-0000-1000-8000-00805F9B34FB", "BrowseGroupDescriptorService"},
-	{"00001002-0000-1000-8000-00805F9B34FB", "PublicBrowseGroupService"},
-	{"00001101-0000-1000-8000-00805F9B34FB", "SerialPortService"},
-	{"00001102-0000-1000-8000-00805F9B34FB", "LANAccessUsingPPPService"},
-	{"00001103-0000-1000-8000-00805F9B34FB", "DialupNetworkingService"},
-	{"00001104-0000-1000-8000-00805F9B34FB", "IrMCSyncService"},
-	{"00001105-0000-1000-8000-00805F9B34FB", "OBEXObjectPushService"},
-	{"00001106-0000-1000-8000-00805F9B34FB", "OBEXFileTransferService"},
-	{"00001107-0000-1000-8000-00805F9B34FB", "IrMCSyncCommandService"},
-	{"00001108-0000-1000-8000-00805F9B34FB", "HeadsetService"},
-	{"00001109-0000-1000-8000-00805F9B34FB", "CordlessTelephonyService"},
-	{"0000110A-0000-1000-8000-00805F9B34FB", "AudioSourceService"},
-	{"0000110B-0000-1000-8000-00805F9B34FB", "AudioSinkService"},
-	{"0000110C-0000-1000-8000-00805F9B34FB", "AVRemoteControlTargetService"},
-	{"0000110D-0000-1000-8000-00805F9B34FB", "AdvancedAudioDistributionService"},
-	{"0000110E-0000-1000-8000-00805F9B34FB", "AVRemoteControlService"},
-	{"0000110F-0000-1000-8000-00805F9B34FB", "VideoConferencingService"},
-	{"00001110-0000-1000-8000-00805F9B34FB", "IntercomService"},
-	{"00001111-0000-1000-8000-00805F9B34FB", "FaxService"},
-	{"00001112-0000-1000-8000-00805F9B34FB", "HeadsetAudioGatewayService"},
-	{"00001113-0000-1000-8000-00805F9B34FB", "WAPService"},
-	{"00001114-0000-1000-8000-00805F9B34FB", "WAPClientService"},
-	{"00001115-0000-1000-8000-00805F9B34FB", "PANUService"},
-	{"00001116-0000-1000-8000-00805F9B34FB", "NAPService"},
-	{"00001117-0000-1000-8000-00805F9B34FB", "GNService"},
-	{"00001118-0000-1000-8000-00805F9B34FB", "DirectPrintingService"},
-	{"00001119-0000-1000-8000-00805F9B34FB", "ReferencePrintingService"},
-	{"0000111A-0000-1000-8000-00805F9B34FB", "ImagingService"},
-	{"0000111B-0000-1000-8000-00805F9B34FB", "ImagingResponderService"},
-	{"0000111C-0000-1000-8000-00805F9B34FB", "ImagingAutomaticArchiveService"},
-	{"0000111D-0000-1000-8000-00805F9B34FB", "ImagingReferenceObjectsService"},
-	{"0000111E-0000-1000-8000-00805F9B34FB", "HandsfreeService"},
-	{"0000111F-0000-1000-8000-00805F9B34FB", "HandsfreeAudioGatewayService"},
-	{"00001120-0000-1000-8000-00805F9B34FB", "DirectPrintingReferenceObjectsService"},
-	{"00001121-0000-1000-8000-00805F9B34FB", "ReflectedUIService"},
-	{"00001122-0000-1000-8000-00805F9B34FB", "BasicPringingService"},
-	{"00001123-0000-1000-8000-00805F9B34FB", "PrintingStatusService"},
-	{"00001124-0000-1000-8000-00805F9B34FB", "HumanInterfaceDeviceService"},
-	{"00001125-0000-1000-8000-00805F9B34FB", "HardcopyCableReplacementService"},
-	{"00001126-0000-1000-8000-00805F9B34FB", "HCRPrintService"},
-	{"00001127-0000-1000-8000-00805F9B34FB", "HCRScanService"},
-	{"00001128-0000-1000-8000-00805F9B34FB", "CommonISDNAccessService"},
-	{"00001129-0000-1000-8000-00805F9B34FB", "VideoConferencingGWService"},
-	{"0000112A-0000-1000-8000-00805F9B34FB", "UDIMTService"},
-	{"0000112B-0000-1000-8000-00805F9B34FB", "UDITAService"},
-	{"0000112C-0000-1000-8000-00805F9B34FB", "AudioVideoService"},
-	{"00001200-0000-1000-8000-00805F9B34FB", "PnPInformationService"},
-	{"00001201-0000-1000-8000-00805F9B34FB", "GenericNetworkingService"},
-	{"00001202-0000-1000-8000-00805F9B34FB", "GenericFileTransferService"},
-	{"00001203-0000-1000-8000-00805F9B34FB", "GenericAudioService"},
-	{"00001203-0000-1000-8000-00805F9B34FB", "GenericAudioService"},
-	{"00001204-0000-1000-8000-00805F9B34FB", "GenericTelephonyService"},
-	{"00001205-0000-1000-8000-00805F9B34FB", "UPnPService"},
-	{"00001206-0000-1000-8000-00805F9B34FB", "UPnPIpService"},
-	{"00001300-0000-1000-8000-00805F9B34FB", "ESdpUPnPIpPanService"},
-	{"00001301-0000-1000-8000-00805F9B34FB", "ESdpUPnPIpLapService"},
-	{"00001302-0000-1000-8000-00805F9B34FB", "EdpUPnpIpL2CAPService"},
+	{"00001000-0000-1000-8000-00805F9B34FB", "ServiceDiscoveryServer", NULL},
+	{"00001001-0000-1000-8000-00805F9B34FB", "BrowseGroupDescriptor", NULL},
+	{"00001002-0000-1000-8000-00805F9B34FB", "PublicBrowseGroup", NULL},
+	{"00001101-0000-1000-8000-00805F9B34FB", "SerialPort", "Serial"},
+	{"00001102-0000-1000-8000-00805F9B34FB", "LANAccessUsingPPP", NULL},
+	{"00001103-0000-1000-8000-00805F9B34FB", "DialupNetworking", "DUN"},
+	{"00001104-0000-1000-8000-00805F9B34FB", "IrMCSync", NULL},
+	{"00001105-0000-1000-8000-00805F9B34FB", "OBEXObjectPush", NULL},
+	{"00001106-0000-1000-8000-00805F9B34FB", "OBEXFileTransfer", NULL},
+	{"00001107-0000-1000-8000-00805F9B34FB", "IrMCSyncCommand", NULL},
+	{"00001108-0000-1000-8000-00805F9B34FB", "Headset", NULL},
+	{"00001109-0000-1000-8000-00805F9B34FB", "CordlessTelephony", NULL},
+	{"0000110A-0000-1000-8000-00805F9B34FB", "AudioSource", NULL},
+	{"0000110B-0000-1000-8000-00805F9B34FB", "AudioSink", NULL},
+	{"0000110C-0000-1000-8000-00805F9B34FB", "AVRemoteControlTarget", NULL},
+	{"0000110D-0000-1000-8000-00805F9B34FB", "AdvancedAudioDistribution", "A2DP"},
+	{"0000110E-0000-1000-8000-00805F9B34FB", "AVRemoteControl", NULL},
+	{"0000110F-0000-1000-8000-00805F9B34FB", "VideoConferencing", NULL},
+	{"00001110-0000-1000-8000-00805F9B34FB", "Intercom", NULL},
+	{"00001111-0000-1000-8000-00805F9B34FB", "Fax", NULL},
+	{"00001112-0000-1000-8000-00805F9B34FB", "HeadsetAudioGateway", NULL},
+	{"00001113-0000-1000-8000-00805F9B34FB", "WAP", NULL},
+	{"00001114-0000-1000-8000-00805F9B34FB", "WAPClient", NULL},
+	{"00001115-0000-1000-8000-00805F9B34FB", "PANU", NULL},
+	{"00001116-0000-1000-8000-00805F9B34FB", "NAP", NULL},
+	{"00001117-0000-1000-8000-00805F9B34FB", "GN", NULL},
+	{"00001118-0000-1000-8000-00805F9B34FB", "DirectPrinting", NULL},
+	{"00001119-0000-1000-8000-00805F9B34FB", "ReferencePrinting", NULL},
+	{"0000111A-0000-1000-8000-00805F9B34FB", "Imaging", NULL},
+	{"0000111B-0000-1000-8000-00805F9B34FB", "ImagingResponder", NULL},
+	{"0000111C-0000-1000-8000-00805F9B34FB", "ImagingAutomaticArchive", NULL},
+	{"0000111D-0000-1000-8000-00805F9B34FB", "ImagingReferenceObjects", NULL},
+	{"0000111E-0000-1000-8000-00805F9B34FB", "Handsfree", NULL},
+	{"0000111F-0000-1000-8000-00805F9B34FB", "HandsfreeAudioGateway", NULL},
+	{"00001120-0000-1000-8000-00805F9B34FB", "DirectPrintingReferenceObjects", NULL},
+	{"00001121-0000-1000-8000-00805F9B34FB", "ReflectedUI", NULL},
+	{"00001122-0000-1000-8000-00805F9B34FB", "BasicPringing", NULL},
+	{"00001123-0000-1000-8000-00805F9B34FB", "PrintingStatus", NULL},
+	{"00001124-0000-1000-8000-00805F9B34FB", "HumanInterfaceDevice", "HID"},
+	{"00001125-0000-1000-8000-00805F9B34FB", "HardcopyCableReplacement", NULL},
+	{"00001126-0000-1000-8000-00805F9B34FB", "HCRPrint", NULL},
+	{"00001127-0000-1000-8000-00805F9B34FB", "HCRScan", NULL},
+	{"00001128-0000-1000-8000-00805F9B34FB", "CommonISDNAccess", NULL},
+	{"00001129-0000-1000-8000-00805F9B34FB", "VideoConferencingGW", NULL},
+	{"0000112A-0000-1000-8000-00805F9B34FB", "UDIMT", NULL},
+	{"0000112B-0000-1000-8000-00805F9B34FB", "UDITA", NULL},
+	{"0000112C-0000-1000-8000-00805F9B34FB", "AudioVideo", NULL},
+	{"00001200-0000-1000-8000-00805F9B34FB", "PnPInformation", NULL},
+	{"00001201-0000-1000-8000-00805F9B34FB", "GenericNetworking", NULL},
+	{"00001202-0000-1000-8000-00805F9B34FB", "GenericFileTransfer", NULL},
+	{"00001203-0000-1000-8000-00805F9B34FB", "GenericAudio", NULL},
+	{"00001204-0000-1000-8000-00805F9B34FB", "GenericTelephony", NULL},
+	{"00001205-0000-1000-8000-00805F9B34FB", "UPnP", NULL},
+	{"00001206-0000-1000-8000-00805F9B34FB", "UPnPIp", NULL},
+	{"00001300-0000-1000-8000-00805F9B34FB", "ESdpUPnPIpPan", NULL},
+	{"00001301-0000-1000-8000-00805F9B34FB", "ESdpUPnPIpLap", NULL},
+	{"00001302-0000-1000-8000-00805F9B34FB", "EdpUPnpIpL2CAP", NULL},
 
 	// Custom:
-	{"0000112F-0000-1000-8000-00805F9B34FB", "PhoneBookAccessService"},
-	{"831C4071-7BC8-4A9C-A01C-15DF25A4ADBC", "ActiveSyncService"},
+	{"0000112F-0000-1000-8000-00805F9B34FB", "PhoneBookAccess", NULL},
+	{"831C4071-7BC8-4A9C-A01C-15DF25A4ADBC", "ActiveSync", NULL},
 };
 
 #define UUID_NAME_LOOKUP_TABLE_SIZE \
 	(sizeof(uuid_name_lookup_table)/sizeof(uuid_name_lookup_table_t))
 
-const gchar *get_uuid_name(const gchar *uuid)
+const gchar *uuid2name(const gchar *uuid)
 {
+	if (uuid == NULL || strlen(uuid) == 0)
+		return NULL;
+
 	for (int i = 0; i < UUID_NAME_LOOKUP_TABLE_SIZE; i++) {
 		if (g_ascii_strcasecmp(uuid_name_lookup_table[i].uuid, uuid) == 0)
 			return uuid_name_lookup_table[i].name;
 	}
 
 	return uuid;
+}
+
+const gchar *name2uuid(const gchar *name)
+{
+	if (name == NULL || strlen(name) == 0)
+		return NULL;
+
+	for (int i = 0; i < UUID_NAME_LOOKUP_TABLE_SIZE; i++) {
+		if (
+				g_ascii_strcasecmp(uuid_name_lookup_table[i].name, name) == 0 ||
+				(uuid_name_lookup_table[i].alt_name && g_ascii_strcasecmp(uuid_name_lookup_table[i].alt_name, name) == 0)
+				)
+			return uuid_name_lookup_table[i].uuid;
+	}
+
+	return name;
 }
 
 Adapter *find_adapter(const gchar *name, GError **error)
@@ -228,6 +247,9 @@ gboolean intf_is_supported(const gchar *dbus_object_path, int intf_id)
 
 	gchar *check_intf_regex_str = NULL;
 	switch (intf_id) {
+	case DEVICE_INTF:
+		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_DEVICE_INTERFACE, "\">", NULL);
+		break;
 	case AUDIO_INTF:
 		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_AUDIO_INTERFACE, "\">", NULL);
 		break;

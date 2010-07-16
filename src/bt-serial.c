@@ -128,6 +128,7 @@ int main(int argc, char *argv[])
 	g_object_unref(serial);
 	g_object_unref(device);
 	g_object_unref(adapter);
+	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);
 }

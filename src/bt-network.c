@@ -32,7 +32,9 @@
 
 static void network_property_changed(Network *network, const gchar *name, const GValue *value, gpointer data)
 {
+	g_assert(data != NULL);
 	GMainLoop *mainloop = data;
+	
 	if (g_strcmp0(name, "Connected") == 0) {
 		if (g_value_get_boolean(value) == TRUE) {
 			g_print("Network service is connected\n");
@@ -143,7 +145,7 @@ int main(int argc, char *argv[])
 				g_free(intf);
 			}
 			g_print("Interface: %s\n", network_get_interface(network));
-			g_print("UUID: %s (%s)\n", get_uuid_name(network_get_uuid(network)), network_get_uuid(network));
+			g_print("UUID: %s (%s)\n", uuid2name(network_get_uuid(network)), network_get_uuid(network));
 		} else if (disconnect_arg) {
 			if (network_get_connected(network) == FALSE) {
 				g_print("Network service is already disconnected\n");
@@ -199,7 +201,7 @@ int main(int argc, char *argv[])
 				g_print("[Service: GN]\n");
 				g_print("  Name: %s\n", network_hub_get_name(hub));
 				g_print("  Enabled: %d\n", network_hub_get_enabled(hub));
-				g_print("  UUID: %s (%s)\n", get_uuid_name(network_hub_get_uuid(hub)), network_hub_get_uuid(hub));
+				g_print("  UUID: %s (%s)\n", uuid2name(network_hub_get_uuid(hub)), network_hub_get_uuid(hub));
 			} else {
 				GHashTable *props = network_hub_get_properties(hub, &error);
 				exit_if_error(error);
@@ -229,7 +231,7 @@ int main(int argc, char *argv[])
 				g_print("[Service: PANU]\n");
 				g_print("  Name: %s\n", network_peer_get_name(peer));
 				g_print("  Enabled: %d\n", network_peer_get_enabled(peer));
-				g_print("  UUID: %s (%s)\n", get_uuid_name(network_peer_get_uuid(peer)), network_peer_get_uuid(peer));
+				g_print("  UUID: %s (%s)\n", uuid2name(network_peer_get_uuid(peer)), network_peer_get_uuid(peer));
 			} else {
 				GHashTable *props = network_peer_get_properties(peer, &error);
 				exit_if_error(error);
@@ -259,12 +261,12 @@ int main(int argc, char *argv[])
 				g_print("[Service: NAP]\n");
 				g_print("  Name: %s\n", network_router_get_name(router));
 				g_print("  Enabled: %d\n", network_router_get_enabled(router));
-				g_print("  UUID: %s (%s)\n", get_uuid_name(network_router_get_uuid(router)), network_router_get_uuid(router));
+				g_print("  UUID: %s (%s)\n", uuid2name(network_router_get_uuid(router)), network_router_get_uuid(router));
 			} else {
 				GHashTable *props = network_router_get_properties(router, &error);
 				exit_if_error(error);
 				GValue *old_value = g_hash_table_lookup(props, service_property_arg);
-				//g_assert(old_value != NULL);
+				g_assert(old_value != NULL);
 				if (G_VALUE_HOLDS_STRING(old_value)) {
 					g_print("%s: %s -> %s\n", service_property_arg, g_value_get_string(old_value), g_value_get_string(&v));
 				} else if (G_VALUE_HOLDS_BOOLEAN(old_value)) {
@@ -289,6 +291,7 @@ int main(int argc, char *argv[])
 	}
 
 	g_object_unref(adapter);
+	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);
 }

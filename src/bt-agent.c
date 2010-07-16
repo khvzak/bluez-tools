@@ -72,23 +72,19 @@ int main(int argc, char *argv[])
 	adapter_register_agent(adapter, DBUS_AGENT_PATH, "DisplayYesNo", &error);
 	exit_if_error(error);
 
-	g_print("Agent registered\n");
-
 	GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(mainloop);
 
-	// It is unnecessary...
 	// TODO: Add SIGINT handler (Ctrl+C)
 
 	adapter_unregister_agent(adapter, DBUS_AGENT_PATH, &error);
 	exit_if_error(error);
 
-	g_print("Agent unregistered\n");
-
 	g_main_loop_unref(mainloop);
 	g_object_unref(agent);
 	g_object_unref(adapter);
 	g_object_unref(manager);
+	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);
 }

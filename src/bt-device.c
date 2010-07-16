@@ -31,143 +31,204 @@
 
 #include "lib/bluez-dbus.h"
 
-static void create_paired_device_done(gpointer data)
-{
-	GMainLoop *mainloop = data;
-	g_main_loop_quit(mainloop);
-}
+enum {
+	REC,
+	ATTR,
+	SEQ,
+	ELEM,
 
-static int rec_elem_num = 0;
-static int attr_elem_num = 0;
-static int seq_elem_num = 0;
-static int int_elem_num = 0;
+	ATTR_ID,
+	UUID_ID,
 
-static int current_attr_id = -1;
-static int current_uuid_id = -1;
+	LAST_E
+};
 
-void xml_start_element(GMarkupParseContext *context,
-		const gchar *element_name,
-		const gchar **attribute_names,
-		const gchar **attribute_values,
-		gpointer user_data,
-		GError **error)
-{
-	GPatternSpec *int_pattern = g_pattern_spec_new("*int*");
-
-	if (g_strcmp0(element_name, "record") == 0) {
-		rec_elem_num++;
-
-		attr_elem_num = 0;
-		seq_elem_num = 0;
-		int_elem_num = 0;
-
-		current_attr_id = -1;
-		current_uuid_id = -1;
-
-		if (rec_elem_num == 1) g_print("\n");
-	} else if (g_strcmp0(element_name, "attribute") == 0 && g_strcmp0(attribute_names[0], "id") == 0) {
-		int attr_id = xtoi(attribute_values[0]);
-		const gchar *attr_name = sdp_get_attr_id_name(attr_id);
-		current_attr_id = attr_id;
-		attr_elem_num++;
-
-		if (attr_elem_num > 1) g_print("\n");
-		if (attr_name == NULL) {
-			g_print("AttrID-%s: ", attribute_values[0]);
-		} else {
-			g_print("%s: ", attr_name);
-		}
-	} else if (g_strcmp0(element_name, "sequence") == 0) {
-		seq_elem_num++;
-		int_elem_num = 0;
-		if (seq_elem_num > 1) {
-			g_print("\n");
-			for (int i = 0; i < seq_elem_num; i++) g_print(" ");
-		}
-	} else if ((g_pattern_match(int_pattern, strlen(element_name), element_name, NULL)) && g_strcmp0(attribute_names[0], "value") == 0) {
-		int_elem_num++;
-
-		if (int_elem_num > 1) g_print(", ");
-		if (current_uuid_id == SDP_UUID_RFCOMM) {
-			g_print("Channel: %d", xtoi(attribute_values[0]));
-		} else {
-			g_print("0x%x", xtoi(attribute_values[0]));
-		}
-	} else if (g_strcmp0(element_name, "uuid") == 0 && g_strcmp0(attribute_names[0], "value") == 0) {
-		int uuid_id = -1;
-		const gchar *uuid_name;
-		int_elem_num++;
-
-		if (attribute_values[0][0] == '0' && attribute_values[0][1] == 'x') {
-			uuid_id = xtoi(attribute_values[0]);
-			uuid_name = sdp_get_uuid_name(uuid_id);
-			current_uuid_id = uuid_id;
-		} else {
-			uuid_name = get_uuid_name(attribute_values[0]);
-		}
-
-		if (int_elem_num > 1) g_print(", ");
-		if (uuid_name == NULL) {
-			g_print("\"UUID-%s\"", attribute_values[0]);
-		} else {
-			g_print("\"%s\"", uuid_name);
-		}
-	} else if (g_strcmp0(element_name, "text") == 0 && g_strcmp0(attribute_names[0], "value") == 0) {
-		int_elem_num++;
-
-		if (int_elem_num > 1) g_print(", ");
-		g_print("\"%s\"", attribute_values[0]);
-	} else if (g_strcmp0(element_name, "boolean") == 0 && g_strcmp0(attribute_names[0], "value") == 0) {
-		int_elem_num++;
-
-		if (int_elem_num > 1) g_print(", ");
-		g_print("%s", attribute_values[0]);
-	} else {
-		if (error)
-			*error = g_error_new(G_MARKUP_ERROR, G_MARKUP_ERROR_UNKNOWN_ELEMENT, "Invalid XML element: %s", element_name);
-	}
-
-	g_pattern_spec_free(int_pattern);
-}
-
-void xml_end_element(GMarkupParseContext *context,
-		const gchar *element_name,
-		gpointer user_data,
-		GError **error)
-{
-	if (g_strcmp0(element_name, "record") == 0) {
-		attr_elem_num = 0;
-		seq_elem_num = 0;
-		int_elem_num = 0;
-
-		current_attr_id = -1;
-		current_uuid_id = -1;
-
-		g_print("\n\n");
-	} else if (g_strcmp0(element_name, "attribute") == 0) {
-		seq_elem_num = 0;
-		int_elem_num = 0;
-
-		current_attr_id = -1;
-		current_uuid_id = -1;
-	} else if (g_strcmp0(element_name, "sequence") == 0) {
-		seq_elem_num--;
-		int_elem_num = 0;
-
-		current_uuid_id = -1;
-	}
-}
+static int xml_t[LAST_E] = {0, 0, 0, 0, -1, -1};
 
 static gchar *adapter_arg = NULL;
 static gboolean list_arg = FALSE;
 static gchar *connect_arg = NULL;
 static gchar *remove_arg = NULL;
 static gchar *info_arg = NULL;
-static gchar *services_arg = NULL;
+static gboolean services_arg = FALSE;
+static gchar *services_device_arg = NULL;
+static gchar *services_pattern_arg = NULL;
 static gboolean set_arg = FALSE;
 static gchar *set_device_arg = NULL;
 static gchar *set_property_arg = NULL;
 static gchar *set_value_arg = NULL;
+static gboolean verbose_arg = FALSE;
+
+static gboolean is_verbose_attr(int attr_id)
+{
+	if (
+			attr_id == SDP_ATTR_ID_SERVICE_CLASS_ID_LIST ||
+			attr_id == SDP_ATTR_ID_PROTOCOL_DESCRIPTOR_LIST ||
+			attr_id == SDP_ATTR_ID_BLUETOOTH_PROFILE_DESCRIPTOR_LIST ||
+			attr_id == SDP_ATTR_ID_DOCUMENTATION_URL ||
+			attr_id == SDP_ATTR_ID_SERVICE_NAME ||
+			attr_id == SDP_ATTR_ID_SERVICE_DESCRIPTION ||
+			attr_id == SDP_ATTR_ID_PROVIDER_NAME ||
+			attr_id == SDP_ATTR_ID_SECURITY_DESCRIPTION
+			)
+		return FALSE;
+
+	return TRUE;
+}
+
+static const gchar *xml_get_attr_value(const gchar *attr_name, const gchar **attribute_names, const gchar **attribute_values)
+{
+	for (int i = 0; attribute_names[i] != NULL; i++) {
+		if (g_strcmp0(attribute_names[i], attr_name) == 0) {
+			return attribute_values[i];
+		}
+	}
+
+	return NULL;
+}
+
+static void xml_start_element(GMarkupParseContext *context,
+		const gchar *element_name,
+		const gchar **attribute_names,
+		const gchar **attribute_values,
+		gpointer user_data,
+		GError **error)
+{
+	const gchar *id_t = xml_get_attr_value("id", attribute_names, attribute_values);
+	const gchar *value_t = xml_get_attr_value("value", attribute_names, attribute_values);
+
+	if (g_strcmp0(element_name, "record") == 0) {
+		xml_t[REC]++;
+	} else if (g_strcmp0(element_name, "attribute") == 0 && id_t) {
+		int attr_id = xtoi(id_t);
+		const gchar *attr_name = sdp_get_attr_id_name(attr_id);
+
+		xml_t[ATTR]++;
+		xml_t[ATTR_ID] = attr_id;
+
+		if (!verbose_arg && is_verbose_attr(xml_t[ATTR_ID])) return;
+
+		if (attr_name == NULL) {
+			g_print("AttrID-%s: ", id_t);
+		} else {
+			g_print("%s: ", attr_name);
+		}
+	} else if (g_strcmp0(element_name, "sequence") == 0) {
+		xml_t[SEQ]++;
+	} else if (g_pattern_match_simple("*int*", element_name) && value_t) {
+		xml_t[ELEM]++;
+
+		if (!verbose_arg && is_verbose_attr(xml_t[ATTR_ID])) return;
+
+		if (xml_t[ELEM] == 1 && xml_t[SEQ] > 1) {
+			g_print("\n");
+			for (int i = 0; i < xml_t[SEQ]; i++) g_print("  ");
+		} else if (xml_t[ELEM] > 1) {
+			g_print(", ");
+		}
+
+		if (xml_t[UUID_ID] == SDP_UUID_RFCOMM) {
+			g_print("Channel: %d", xtoi(value_t));
+		} else {
+			g_print("0x%x", xtoi(value_t));
+		}
+	} else if (g_strcmp0(element_name, "uuid") == 0 && value_t) {
+		int uuid_id = -1;
+		const gchar *uuid_name;
+
+		if (value_t[0] == '0' && value_t[1] == 'x') {
+			uuid_id = xtoi(value_t);
+			uuid_name = sdp_get_uuid_name(uuid_id);
+		} else {
+			uuid_name = uuid2name(value_t);
+		}
+
+		xml_t[ELEM]++;
+		xml_t[UUID_ID] = uuid_id;
+
+		if (!verbose_arg && is_verbose_attr(xml_t[ATTR_ID])) return;
+
+		if (xml_t[ELEM] == 1 && xml_t[SEQ] > 1) {
+			g_print("\n");
+			for (int i = 0; i < xml_t[SEQ]; i++) g_print("  ");
+		} else if (xml_t[ELEM] > 1) {
+			g_print(", ");
+		}
+
+		if (uuid_name == NULL) {
+			g_print("\"UUID-%s\"", value_t);
+		} else {
+			g_print("\"%s\"", uuid_name);
+		}
+	} else if (g_strcmp0(element_name, "text") == 0 && value_t) {
+		xml_t[ELEM]++;
+
+		if (!verbose_arg && is_verbose_attr(xml_t[ATTR_ID])) return;
+
+		if (xml_t[ELEM] == 1 && xml_t[SEQ] > 1) {
+			g_print("\n");
+			for (int i = 0; i < xml_t[SEQ]; i++) g_print("  ");
+		} else if (xml_t[ELEM] > 1) {
+			g_print(", ");
+		}
+
+		g_print("\"%s\"", value_t);
+	} else if (g_strcmp0(element_name, "boolean") == 0 && value_t) {
+		xml_t[ELEM]++;
+
+		if (!verbose_arg && is_verbose_attr(xml_t[ATTR_ID])) return;
+
+		if (xml_t[ELEM] == 1 && xml_t[SEQ] > 1) {
+			g_print("\n");
+			for (int i = 0; i < xml_t[SEQ]; i++) g_print("  ");
+		} else if (xml_t[ELEM] > 1) {
+			g_print(", ");
+		}
+
+		g_print("%s", value_t);
+	} else {
+		if (error)
+			*error = g_error_new(G_MARKUP_ERROR, G_MARKUP_ERROR_UNKNOWN_ELEMENT, "Invalid XML element: %s", element_name);
+	}
+}
+
+static void xml_end_element(GMarkupParseContext *context,
+		const gchar *element_name,
+		gpointer user_data,
+		GError **error)
+{
+	if (g_strcmp0(element_name, "record") == 0) {
+		xml_t[ATTR] = 0;
+		xml_t[SEQ] = 0;
+		xml_t[ELEM] = 0;
+
+		xml_t[ATTR_ID] = -1;
+		xml_t[UUID_ID] = -1;
+	} else if (g_strcmp0(element_name, "attribute") == 0) {
+		xml_t[SEQ] = 0;
+		xml_t[ELEM] = 0;
+
+		int old_attr_id = xml_t[ATTR_ID];
+		xml_t[ATTR_ID] = -1;
+		xml_t[UUID_ID] = -1;
+
+		if (!verbose_arg && is_verbose_attr(old_attr_id)) return;
+
+		g_print("\n");
+	} else if (g_strcmp0(element_name, "sequence") == 0) {
+		xml_t[SEQ]--;
+		xml_t[ELEM] = 0;
+
+		xml_t[UUID_ID] = -1;
+	}
+}
+
+static void create_paired_device_done(gpointer data)
+{
+	g_assert(data != NULL);
+	GMainLoop *mainloop = data;
+	g_main_loop_quit(mainloop);
+}
 
 static GOptionEntry entries[] = {
 	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
@@ -175,8 +236,9 @@ static GOptionEntry entries[] = {
 	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to a device", "<mac>"},
 	{"remove", 'r', 0, G_OPTION_ARG_STRING, &remove_arg, "Remove device", "<name|mac>"},
 	{"info", 'i', 0, G_OPTION_ARG_STRING, &info_arg, "Get info about device", "<name|mac>"},
-	{"services", 's', 0, G_OPTION_ARG_STRING, &services_arg, "Discover device services", "<name|mac>"},
+	{"services", 's', 0, G_OPTION_ARG_NONE, &services_arg, "Discover device services", NULL},
 	{"set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set device property", NULL},
+	{"verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose_arg, "Verbosely list services", NULL},
 	{NULL}
 };
 
@@ -191,6 +253,9 @@ int main(int argc, char *argv[])
 	g_option_context_add_main_entries(context, entries, NULL);
 	g_option_context_set_summary(context, "Version "PACKAGE_VERSION);
 	g_option_context_set_description(context,
+			"Services Options:\n"
+			"  -s, --services <name|mac> [<pattern>]\n"
+			"  Where `pattern` is an optional specific UUID\n\n"
 			"Set Options:\n"
 			"  --set <name|mac> <property> <value>\n"
 			"  Where `property` is one of:\n"
@@ -206,6 +271,10 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	} else if (!list_arg && !connect_arg && !remove_arg && !info_arg && !services_arg && !set_arg) {
 		g_print("%s", g_option_context_get_help(context, FALSE, NULL));
+		exit(EXIT_FAILURE);
+	} else if (services_arg && argc != 2 && argc != 3) {
+		g_print("%s: Invalid arguments for --services\n", g_get_prgname());
+		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
 	} else if (set_arg && argc != 4) {
 		g_print("%s: Invalid arguments for --set\n", g_get_prgname());
@@ -266,12 +335,11 @@ int main(int argc, char *argv[])
 		Device *device = find_device(adapter, info_arg, &error);
 		exit_if_error(error);
 
-		// TODO: Translate class of device ?
-
 		g_print("[%s]\n", device_get_address(device));
 		g_print("  Name: %s\n", device_get_name(device));
 		g_print("  Alias: %s [rw]\n", device_get_alias(device));
 		g_print("  Address: %s\n", device_get_address(device));
+		g_print("  Icon: %s\n", device_get_icon(device));
 		g_print("  Class: %x\n", device_get_class(device));
 		g_print("  Paired: %d\n", device_get_paired(device));
 		g_print("  Trusted: %d [rw]\n", device_get_trusted(device));
@@ -281,32 +349,39 @@ int main(int argc, char *argv[])
 		const gchar **uuids = device_get_uuids(device);
 		for (int j = 0; uuids[j] != NULL; j++) {
 			if (j > 0) g_print(", ");
-			g_print("%s", get_uuid_name(uuids[j]));
+			g_print("%s", uuid2name(uuids[j]));
 		}
 		g_print("]\n");
 
 		g_object_unref(device);
 	} else if (services_arg) {
-		Device *device = find_device(adapter, services_arg, &error);
+		services_device_arg = argv[1];
+		if (argc == 3) {
+			services_pattern_arg = argv[2];
+		}
+
+		Device *device = find_device(adapter, services_device_arg, &error);
 		exit_if_error(error);
 
 		g_print("Discovering services...\n");
-		GHashTable *device_services = device_discover_services(device, NULL, &error);
+		GHashTable *device_services = device_discover_services(device, name2uuid(services_pattern_arg), &error);
 		exit_if_error(error);
 
 		GHashTableIter iter;
 		gpointer key, value;
 
-		// TOOD: Add verbose option
-
 		g_hash_table_iter_init(&iter, device_services);
+		int n = 0;
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
+			n++;
+			if (n == 1) g_print("\n");
+			g_print("[RECORD:%d]\n", (int)key);
 			GMarkupParser xml_parser = {xml_start_element, xml_end_element, NULL, NULL, NULL};
 			GMarkupParseContext *xml_parse_context = g_markup_parse_context_new(&xml_parser, 0, NULL, NULL);
 			g_markup_parse_context_parse(xml_parse_context, value, strlen(value), &error);
 			exit_if_error(error);
 			g_markup_parse_context_free(xml_parse_context);
-			//g_print("%s", value);
+			g_print("\n");
 		}
 
 		g_print("Done\n");
@@ -364,6 +439,7 @@ int main(int argc, char *argv[])
 	}
 
 	g_object_unref(adapter);
+	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);
 }

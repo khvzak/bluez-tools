@@ -38,15 +38,18 @@ static GHashTable *captured_adapters_devices_t = NULL;
 static GHashTable *captured_devices_services_t = NULL;
 
 static void capture_adapter(Adapter *adapter);
-static void capture_device(Device *device);
 static void release_adapter(Adapter *adapter);
-static void release_device(Device *device, gboolean full_release);
+static void capture_device(Device *device);
+static void release_device(Device *device);
+static void reload_device_services(Device *device);
 
 /*
  *  Manager signals
  */
 static void manager_adapter_added(Manager *manager, const gchar *adapter_path, gpointer data)
 {
+	//g_print("manager_adapter_added()\n");
+
 	if (adapter_arg == NULL) {
 		Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
 		g_print("[Manager] Adapter added: %s (%s)\n", adapter_get_name(adapter), adapter_get_address(adapter));
@@ -56,6 +59,8 @@ static void manager_adapter_added(Manager *manager, const gchar *adapter_path, g
 
 static void manager_adapter_removed(Manager *manager, const gchar *adapter_path, gpointer data)
 {
+	//g_print("manager_adapter_removed()\n");
+
 	GSList *t = g_hash_table_lookup(captured_adapters_devices_t, adapter_path);
 	if (t != NULL) {
 		Adapter *adapter = ADAPTER(g_slist_nth_data(t, 0));
@@ -71,6 +76,8 @@ static void manager_adapter_removed(Manager *manager, const gchar *adapter_path,
 
 static void manager_default_adapter_changed(Manager *manager, const gchar *adapter_path, gpointer data)
 {
+	//g_print("manager_default_adapter_changed()\n");
+
 	if (adapter_arg == NULL) {
 		Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", adapter_path, NULL);
 		g_print("[Manager] Default adapter changed: %s (%s)\n", adapter_get_name(adapter), adapter_get_address(adapter));
@@ -80,6 +87,8 @@ static void manager_default_adapter_changed(Manager *manager, const gchar *adapt
 
 static void manager_property_changed(Manager *manager, const gchar *name, const GValue *value, gpointer data)
 {
+	//g_print("manager_property_changed()\n");
+
 	if (adapter_arg == NULL) {
 		// Only one property: Adapters
 		g_print("[Manager] Property changed: %s\n", name);
@@ -91,23 +100,34 @@ static void manager_property_changed(Manager *manager, const gchar *name, const 
  */
 static void adapter_device_created(Adapter *adapter, const gchar *device_path, gpointer data)
 {
-	Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
-	g_print("[Adapter: %s (%s)] Device created: %s (%s)\n", adapter_get_name(adapter), adapter_get_address(adapter), device_get_alias(device), device_get_address(device));
-	capture_device(device);
+	//g_print("adapter_device_created()\n");
+
+	if (intf_is_supported(device_path, DEVICE_INTF)) {
+		Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
+		g_print("[Adapter: %s (%s)] Device created: %s (%s)\n", adapter_get_name(adapter), adapter_get_address(adapter), device_get_alias(device), device_get_address(device));
+		capture_device(device);
+	} else {
+		g_print("[Adapter: %s (%s)]* Device created: %s\n", adapter_get_name(adapter), adapter_get_address(adapter), device_path);
+	}
 }
 
 static void adapter_device_disappeared(Adapter *adapter, const gchar *address, gpointer data)
 {
+	//g_print("adapter_device_disappeared()\n");
+
 	g_print("[Adapter: %s (%s)] Device disappeared: %s\n", adapter_get_name(adapter), adapter_get_address(adapter), address);
 }
 
 static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTable *values, gpointer data)
 {
+	//g_print("adapter_device_found()\n");
+
 	g_print("[Adapter: %s (%s)] Device found:\n", adapter_get_name(adapter), adapter_get_address(adapter));
 	g_print("[%s]\n", address);
 	g_print("  Name: %s\n", g_value_get_string(g_hash_table_lookup(values, "Name")));
 	g_print("  Alias: %s\n", g_value_get_string(g_hash_table_lookup(values, "Alias")));
 	g_print("  Address: %s\n", g_value_get_string(g_hash_table_lookup(values, "Address")));
+	g_print("  Icon: %s\n", g_value_get_string(g_hash_table_lookup(values, "Icon")));
 	g_print("  Class: 0x%x\n", g_value_get_uint(g_hash_table_lookup(values, "Class")));
 	g_print("  LegacyPairing: %d\n", g_value_get_boolean(g_hash_table_lookup(values, "LegacyPairing")));
 	g_print("  Paired: %d\n", g_value_get_boolean(g_hash_table_lookup(values, "Paired")));
@@ -117,16 +137,22 @@ static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTa
 
 static void adapter_device_removed(Adapter *adapter, const gchar *device_path, gpointer data)
 {
+	//g_print("adapter_device_removed()\n");
+
 	GSList *t2 = g_hash_table_lookup(captured_devices_services_t, device_path);
 	if (t2 != NULL) {
 		Device *device = DEVICE(g_slist_nth_data(t2, 0));
 		g_print("[Adapter: %s (%s)] Device removed: %s (%s)\n", adapter_get_name(adapter), adapter_get_address(adapter), device_get_alias(device), device_get_address(device));
-		release_device(device, TRUE);
+		release_device(device);
+	} else {
+		g_print("[Adapter: %s (%s)]* Device removed: %s\n", adapter_get_name(adapter), adapter_get_address(adapter), device_path);
 	}
 }
 
 static void adapter_property_changed(Adapter *adapter, const gchar *name, const GValue *value, gpointer data)
 {
+	//g_print("adapter_property_changed()\n");
+
 	g_print("[Adapter: %s (%s)] Property changed: %s", adapter_get_name(adapter), adapter_get_address(adapter), name);
 	if (G_VALUE_HOLDS_BOOLEAN(value)) {
 		g_print(" -> %d\n", g_value_get_boolean(value));
@@ -146,21 +172,29 @@ static void adapter_property_changed(Adapter *adapter, const gchar *name, const 
  */
 static void device_disconnect_requested(Device *device, gpointer data)
 {
+	//g_print("device_disconnect_requested()\n");
+
 	g_print("[Device: %s (%s)] Disconnect requested\n", device_get_alias(device), device_get_address(device));
 }
 
 static void device_node_created(Device *device, const gchar *node, gpointer data)
 {
+	//g_print("device_node_created()\n");
+
 	g_print("[Device: %s (%s)] Node created: %s\n", device_get_alias(device), device_get_address(device), node);
 }
 
 static void device_node_removed(Device *device, const gchar *node, gpointer data)
 {
+	//g_print("device_node_removed()\n");
+
 	g_print("[Device: %s (%s)] Node removed: %s\n", device_get_alias(device), device_get_address(device), node);
 }
 
 static void device_property_changed(Device *device, const gchar *name, const GValue *value, gpointer data)
 {
+	//g_print("device_property_changed()\n");
+
 	g_print("[Device: %s (%s)] Property changed: %s", device_get_alias(device), device_get_address(device), name);
 	if (G_VALUE_HOLDS_BOOLEAN(value)) {
 		g_print(" -> %d\n", g_value_get_boolean(value));
@@ -173,6 +207,10 @@ static void device_property_changed(Device *device, const gchar *name, const GVa
 	} else {
 		g_print("\n");
 	}
+
+	if (g_strcmp0(name, "UUIDs") == 0) {
+		reload_device_services(device);
+	}
 }
 
 /*
@@ -180,6 +218,8 @@ static void device_property_changed(Device *device, const gchar *name, const GVa
  */
 static void audio_property_changed(Audio *audio, const gchar *name, const GValue *value, gpointer data)
 {
+	//g_print("audio_property_changed()\n");
+
 	Device *device = DEVICE(data);
 	g_print("[Device: %s (%s)] Audio property changed: %s", device_get_alias(device), device_get_address(device), name);
 	if (G_VALUE_HOLDS_BOOLEAN(value)) {
@@ -197,6 +237,8 @@ static void audio_property_changed(Audio *audio, const gchar *name, const GValue
 
 static void input_property_changed(Input *input, const gchar *name, const GValue *value, gpointer data)
 {
+	//g_print("input_property_changed()\n");
+
 	Device *device = DEVICE(data);
 	g_print("[Device: %s (%s)] Input property changed: %s", device_get_alias(device), device_get_address(device), name);
 	if (G_VALUE_HOLDS_BOOLEAN(value)) {
@@ -214,6 +256,8 @@ static void input_property_changed(Input *input, const gchar *name, const GValue
 
 static void network_property_changed(Network *network, const gchar *name, const GValue *value, gpointer data)
 {
+	//g_print("network_property_changed()\n");
+
 	Device *device = DEVICE(data);
 	g_print("[Device: %s (%s)] Network property changed: %s", device_get_alias(device), device_get_address(device), name);
 	if (G_VALUE_HOLDS_BOOLEAN(value)) {
@@ -234,6 +278,8 @@ static void network_property_changed(Network *network, const gchar *name, const 
  */
 static void capture_adapter(Adapter *adapter)
 {
+	//g_print("capture_adapter()\n");
+
 	g_assert(ADAPTER_IS(adapter));
 
 	GSList *t = g_slist_append(NULL, adapter);
@@ -257,16 +303,16 @@ static void capture_adapter(Adapter *adapter)
 
 static void release_adapter(Adapter *adapter)
 {
+	//g_print("release_adapter()\n");
+
 	g_assert(ADAPTER_IS(adapter));
 
 	GSList *t = g_hash_table_lookup(captured_adapters_devices_t, adapter_get_dbus_object_path(adapter));
-
 	while (g_slist_length(t) > 1) {
 		Device *device = DEVICE(g_slist_nth_data(t, 1));
-		t = g_slist_remove(t, device);
-		release_device(device, FALSE);
+		release_device(device);
+		t = g_hash_table_lookup(captured_adapters_devices_t, adapter_get_dbus_object_path(adapter));
 	}
-
 	g_slist_free(t);
 	g_hash_table_remove(captured_adapters_devices_t, adapter_get_dbus_object_path(adapter));
 	g_object_unref(adapter);
@@ -274,18 +320,22 @@ static void release_adapter(Adapter *adapter)
 
 static void capture_device(Device *device)
 {
+	//g_print("capture_device()\n");
+
 	g_assert(DEVICE_IS(device));
 
 	GSList *t = g_hash_table_lookup(captured_adapters_devices_t, device_get_adapter(device));
 	if (t == NULL) {
-		g_printerr("[error:capture_device()] Uncaptured adapter: %s\n", device_get_adapter(device));
+		Adapter *adapter = g_object_new(ADAPTER_TYPE, "DBusObjectPath", device_get_adapter(device), NULL);
+		g_printerr("[Device: %s (%s)] Uncaptured adapter: %s (%s)\n", device_get_alias(device), device_get_address(device), adapter_get_name(adapter), adapter_get_address(adapter));
+		g_object_unref(adapter);
 		return;
 	}
 	t = g_slist_append(t, device);
 
 	GSList *t2 = g_hash_table_lookup(captured_devices_services_t, device_get_dbus_object_path(device));
 	if (t2 != NULL) {
-		g_printerr("[error:capture_device()] Already captured device: %s\n", device_get_dbus_object_path(device));
+		g_printerr("[Device: %s (%s)] Already captured device\n", device_get_alias(device), device_get_address(device));
 		return;
 	}
 	t2 = g_slist_append(t2, device);
@@ -294,6 +344,52 @@ static void capture_device(Device *device)
 	g_signal_connect(device, "NodeCreated", G_CALLBACK(device_node_created), NULL);
 	g_signal_connect(device, "NodeRemoved", G_CALLBACK(device_node_removed), NULL);
 	g_signal_connect(device, "PropertyChanged", G_CALLBACK(device_property_changed), NULL);
+
+	g_hash_table_insert(captured_adapters_devices_t, device_get_adapter(device), t);
+	g_hash_table_insert(captured_devices_services_t, device_get_dbus_object_path(device), t2);
+
+	reload_device_services(device);
+}
+
+static void release_device(Device *device)
+{
+	//g_print("release_device()\n");
+
+	g_assert(DEVICE_IS(device));
+
+	GSList *t = g_hash_table_lookup(captured_adapters_devices_t, device_get_adapter(device));
+	if (t != NULL) {
+		t = g_slist_remove(t, device);
+		g_hash_table_insert(captured_adapters_devices_t, device_get_adapter(device), t);
+	}
+
+	GSList *t2 = g_hash_table_lookup(captured_devices_services_t, device_get_dbus_object_path(device));
+	while (g_slist_length(t2) > 1) {
+		GObject *service = g_slist_nth_data(t2, 1);
+		t2 = g_slist_remove(t2, service);
+		g_object_unref(service);
+	}
+	g_slist_free(t2);
+	g_hash_table_remove(captured_devices_services_t, device_get_dbus_object_path(device));
+
+	g_object_unref(device);
+}
+
+static void reload_device_services(Device *device)
+{
+	//g_print("reload_device_services()\n");
+
+	GSList *t2 = g_hash_table_lookup(captured_devices_services_t, device_get_dbus_object_path(device));
+	if (t2 == NULL) {
+		g_printerr("[Device: %s (%s)] Uncaptured device\n", device_get_alias(device), device_get_address(device));
+		return;
+	}
+
+	while (g_slist_length(t2) > 1) {
+		GObject *service = g_slist_nth_data(t2, 1);
+		t2 = g_slist_remove(t2, service);
+		g_object_unref(service);
+	}
 
 	// Capturing signals from available services
 	if (intf_is_supported(device_get_dbus_object_path(device), AUDIO_INTF)) {
@@ -313,30 +409,6 @@ static void capture_device(Device *device)
 	}
 
 	g_hash_table_insert(captured_devices_services_t, device_get_dbus_object_path(device), t2);
-}
-
-static void release_device(Device *device, gboolean full_release)
-{
-	g_assert(DEVICE_IS(device));
-
-	GSList *t2 = g_hash_table_lookup(captured_devices_services_t, device_get_dbus_object_path(device));
-
-	while (g_slist_length(t2) > 1) {
-		GObject *service = g_slist_nth_data(t2, 1);
-		t2 = g_slist_remove(t2, service);
-		g_object_unref(service);
-	}
-
-	g_slist_free(t2);
-	g_hash_table_remove(captured_devices_services_t, device_get_dbus_object_path(device));
-
-	if (full_release) {
-		GSList *t = g_hash_table_lookup(captured_adapters_devices_t, device_get_adapter(device));
-		t = g_slist_remove(t, device);
-		g_hash_table_insert(captured_adapters_devices_t, device_get_adapter(device), t);
-	}
-
-	g_object_unref(device);
 }
 
 static GOptionEntry entries[] = {
@@ -399,6 +471,8 @@ int main(int argc, char *argv[])
 	g_signal_connect(manager, "DefaultAdapterChanged", G_CALLBACK(manager_default_adapter_changed), NULL);
 	g_signal_connect(manager, "PropertyChanged", G_CALLBACK(manager_property_changed), NULL);
 
+	g_print("Monitor registered\n");
+
 	GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(mainloop);
 
@@ -406,6 +480,7 @@ int main(int argc, char *argv[])
 
 	g_main_loop_unref(mainloop);
 	g_object_unref(manager);
+	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);
 }
