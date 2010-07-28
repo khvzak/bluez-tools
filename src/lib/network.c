@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <glib.h>
 #include <string.h>
 
 #include "dbus-common.h"
@@ -57,6 +58,9 @@ enum {
 	PROP_UUID /* readonly */
 };
 
+static void _network_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _network_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+
 enum {
 	PROPERTY_CHANGED,
 
@@ -64,9 +68,6 @@ enum {
 };
 
 static guint signals[LAST_SIGNAL] = {0};
-
-static void _network_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
-static void _network_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data);
 

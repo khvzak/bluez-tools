@@ -33,8 +33,7 @@ Methods		void Connect()
 
 			Adjust remote volume one step down
 
-		boolean SendPassthrough(avc_operation_id key, boolean state,
-								string op_data)
+		boolean SendPassthrough(avc_operation_id key, boolean state, string op_data)
 
 			Called to send Passthrough commands. ONLY valid if
 			BlueZ device is in CT role.
@@ -93,8 +92,7 @@ Signals		Connected()
 			Sent when the AVRCP connection to the remote device
 			has been disconnected.
 
-		Passthrough(uint8 key, boolean state, int32 company_id,
-								string op_data)
+		Passthrough(uint8 key, boolean state, int32 company_id, string op_data)
 
 			Called when Passthrough command is received from
 			connected device.

@@ -102,8 +102,7 @@ Methods		dict GetProperties()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
 
-		object CreatePairedDevice(string address, object agent,
-						string capability) [async]
+		object CreatePairedDevice(string address, object agent, string capability) [async]
 
 			Creates a new object path for a remote device. This
 			method will connect to the remote device and retrieve

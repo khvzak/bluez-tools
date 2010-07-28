@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <glib.h>
 #include <string.h>
 
 #include "dbus-common.h"
@@ -52,6 +53,9 @@ enum {
 	PROP_ADAPTERS /* readonly */
 };
 
+static void _manager_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+
 enum {
 	ADAPTER_ADDED,
 	ADAPTER_REMOVED,
@@ -62,9 +66,6 @@ enum {
 };
 
 static guint signals[LAST_SIGNAL] = {0};
-
-static void _manager_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
-static void _manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
 static void adapter_added_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data);
 static void adapter_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *adapter, gpointer data);
@@ -150,7 +151,7 @@ static void manager_init(Manager *self)
 	g_assert(conn != NULL);
 
 	GError *error = NULL;
-	
+
 	/* Getting introspection XML */
 	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_MANAGER_PATH, "org.freedesktop.DBus.Introspectable");
 	self->priv->introspection_xml = NULL;

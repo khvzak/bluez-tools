@@ -34,10 +34,10 @@
 /*
  * Type macros
  */
-#define AGENT_TYPE				(agent_get_type())
-#define AGENT(obj)				(G_TYPE_CHECK_INSTANCE_CAST((obj), AGENT_TYPE, Agent))
+#define AGENT_TYPE					(agent_get_type())
+#define AGENT(obj)					(G_TYPE_CHECK_INSTANCE_CAST((obj), AGENT_TYPE, Agent))
 #define AGENT_IS(obj)				(G_TYPE_CHECK_INSTANCE_TYPE((obj), AGENT_TYPE))
-#define AGENT_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST((klass), AGENT_TYPE, AgentClass))
+#define AGENT_CLASS(klass)			(G_TYPE_CHECK_CLASS_CAST((klass), AGENT_TYPE, AgentClass))
 #define AGENT_IS_CLASS(klass)		(G_TYPE_CHECK_CLASS_TYPE((klass), AGENT_TYPE))
 #define AGENT_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS((obj), AGENT_TYPE, AgentClass))
 

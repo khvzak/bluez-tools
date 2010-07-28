@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <glib.h>
 #include <string.h>
 
 #include "dbus-common.h"
@@ -76,6 +77,9 @@ enum {
 	PROP_UUIDS /* readonly */
 };
 
+static void _adapter_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _adapter_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+
 enum {
 	DEVICE_CREATED,
 	DEVICE_DISAPPEARED,
@@ -87,9 +91,6 @@ enum {
 };
 
 static guint signals[LAST_SIGNAL] = {0};
-
-static void _adapter_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
-static void _adapter_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
 static void device_created_handler(DBusGProxy *dbus_g_proxy, const gchar *device, gpointer data);
 static void device_disappeared_handler(DBusGProxy *dbus_g_proxy, const gchar *address, gpointer data);
@@ -148,7 +149,7 @@ static void adapter_class_init(AdapterClass *klass)
 	g_object_class_install_property(gobject_class, PROP_ADDRESS, pspec);
 
 	/* uint32 Class [readonly] */
-	pspec = g_param_spec_uint("Class", NULL, NULL, 0, 65535, 0, G_PARAM_READABLE);
+	pspec = g_param_spec_uint("Class", NULL, NULL, 0, 0xFFFFFFFF, 0, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_CLASS, pspec);
 
 	/* array{object} Devices [readonly] */
@@ -160,7 +161,7 @@ static void adapter_class_init(AdapterClass *klass)
 	g_object_class_install_property(gobject_class, PROP_DISCOVERABLE, pspec);
 
 	/* uint32 DiscoverableTimeout [readwrite] */
-	pspec = g_param_spec_uint("DiscoverableTimeout", NULL, NULL, 0, 65535, 0, G_PARAM_READWRITE);
+	pspec = g_param_spec_uint("DiscoverableTimeout", NULL, NULL, 0, 0xFFFFFFFF, 0, G_PARAM_READWRITE);
 	g_object_class_install_property(gobject_class, PROP_DISCOVERABLE_TIMEOUT, pspec);
 
 	/* boolean Discovering [readonly] */
@@ -176,7 +177,7 @@ static void adapter_class_init(AdapterClass *klass)
 	g_object_class_install_property(gobject_class, PROP_PAIRABLE, pspec);
 
 	/* uint32 PairableTimeout [readwrite] */
-	pspec = g_param_spec_uint("PairableTimeout", NULL, NULL, 0, 65535, 0, G_PARAM_READWRITE);
+	pspec = g_param_spec_uint("PairableTimeout", NULL, NULL, 0, 0xFFFFFFFF, 0, G_PARAM_READWRITE);
 	g_object_class_install_property(gobject_class, PROP_PAIRABLE_TIMEOUT, pspec);
 
 	/* boolean Powered [readwrite] */
@@ -502,7 +503,7 @@ gchar *adapter_create_device(Adapter *self, const gchar *address, GError **error
 	return ret;
 }
 
-/* object CreatePairedDevice(string address, object agent, string capability) */
+/* object CreatePairedDevice(string address, object agent, string capability) [async] */
 void adapter_create_paired_device_begin(Adapter *self, void (*AsyncNotifyFunc)(gpointer data), gpointer data, const gchar *address, const gchar *agent, const gchar *capability)
 {
 	g_assert(ADAPTER_IS(self));

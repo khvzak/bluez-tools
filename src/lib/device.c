@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <glib.h>
 #include <string.h>
 
 #include "dbus-common.h"
@@ -77,6 +78,9 @@ enum {
 	PROP_UUIDS /* readonly */
 };
 
+static void _device_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _device_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+
 enum {
 	DISCONNECT_REQUESTED,
 	NODE_CREATED,
@@ -87,9 +91,6 @@ enum {
 };
 
 static guint signals[LAST_SIGNAL] = {0};
-
-static void _device_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
-static void _device_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
 static void disconnect_requested_handler(DBusGProxy *dbus_g_proxy, gpointer data);
 static void node_created_handler(DBusGProxy *dbus_g_proxy, const gchar *node, gpointer data);
@@ -161,7 +162,7 @@ static void device_class_init(DeviceClass *klass)
 	g_object_class_install_property(gobject_class, PROP_BLOCKED, pspec);
 
 	/* uint32 Class [readonly] */
-	pspec = g_param_spec_uint("Class", NULL, NULL, 0, 65535, 0, G_PARAM_READABLE);
+	pspec = g_param_spec_uint("Class", NULL, NULL, 0, 0xFFFFFFFF, 0, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_CLASS, pspec);
 
 	/* boolean Connected [readonly] */

@@ -40,29 +40,9 @@ sub parse_doc_api {
         $n++;
         s/\s+$//;
         
-        die "invalid file format (1)\n" if $n == 1 && $_ !~ /^BlueZ D-Bus \S+ API description$/;
+        die "invalid file format (1)\n" if $n == 1 && $_ !~ /^BlueZ D-Bus \S+ API description$/ && $_ !~ /^obex.*?API description$/i;
         
         /^\s*$/ && next;
-        
-        # On-fly patches:
-        
-        # audio-api.txt
-        #s/void (PropertyChanged\(string name, variant value\))$/$1/;
-        #s/(string State)$/$1 [readonly]/;
-        #s/void (AnswerRequested\(\))/$1/;
-        #s/^p(roperties\tstring State \[readonly\])$/P$1/;
-        #s/ ( \[(readonly|readwrite)\])$/$1/;
-        #s/void (Ring\(string number\))$/$1/;
-        #s/void (CallTerminated\(\))$/$1/;
-        #s/void (CallStarted\(\))$/$1/;
-        #s/void (CallEnded\(\))$/$1/;
-        #s/^p(roperties\tboolean Connected \[readonly\])$/P$1/;
-        
-        # adapter-api.txt
-        #s/PaireableTimeout/PairableTimeout/;
-        
-        # device-api.txt
-        #s /dict (DiscoverServices\(string pattern\))$/dict{u,s} $1/;
         
         if (/^(.+) hierarchy$/) {
             my $hierarchy = $1;
@@ -74,12 +54,12 @@ sub parse_doc_api {
         } elsif (/^Service\s*(.+)$/) {
             my $service = $1;
             die "invalid file format (2)\n" unless $section eq 'hierarchy';
-            die "invalid service: $service\n" unless $service eq 'org.bluez';
+            die "invalid service: $service\n" unless $service eq 'org.bluez' || $service eq 'org.openobex' || $service eq 'org.openobex.client';
             $data{'service'} = $service;
         } elsif (/^Interface\s*(.+)$/) {
             my $intf = $1;
             die "invalid file format (3)\n" unless $section eq 'hierarchy';
-            die "invalid interface: $intf\n" unless $intf =~ /^org\.bluez/;
+            die "invalid interface: $intf\n" unless $intf =~ /^org\.(bluez|openobex)/;
             $data{'intf'} = $intf;
             
             $data{$intf} = undef;
@@ -90,6 +70,10 @@ sub parse_doc_api {
             my $obj_path = $1;
             die "invalid file format (4)\n" unless $section eq 'hierarchy';
             $data{'objectPath'} = $obj_path if $obj_path =~ /^[A-Za-z0-9\/]+$/;
+        } elsif (/^Object name\s*(.+)/) {
+            my $obj_name = $1;
+            die "invalid file format (4)\n" unless $section eq 'hierarchy';
+            $data{'objectName'} = $obj_name if $obj_name =~ /^[A-Za-z]+$/;
         } elsif (/^Methods/) {
             die "invalid file format (5)\n" unless $section eq 'hierarchy';
             $section = 'methods';
@@ -104,45 +88,22 @@ sub parse_doc_api {
             s/Properties/          /;
         }
         
-        if (defined $section && $section eq 'methods' && (/^\s+((\S+) (\w+)\((.*)\)( \[(\w+)\])?)$/ || /^\s+((\S+) (\w+)\((.*,))$/)) {
+        if (defined $section && $section eq 'methods' && /^\s+((\S+) (\w+)\((.*)\)( \[(\w+)\])?)$/) {
             my $decl = $1;
             my $ret = $2;
             my $name = $3;
             my $args = $4;
             my $flag = $6;
 	    
-            if ($decl =~ /,$/) {
-                my $add_str = <INPUT>;
-                # adapter-api.txt patch
-                #$add_str =~ s/(string capability\))$/$1 [async]/;
-                if ($add_str =~ /\s+(.+)\)( \[(\w+)\])?$/) {
-                    $decl .= " $1)";
-                    $args .= " $1";
-                    $flag = $3;
-                }  else {
-                    die "invalid file format (8)\n";
-                }
-            }
-	    
             $data{$data{'intf'}}{'methods'}{$name}{'decl'} = $decl;
             $data{$data{'intf'}}{'methods'}{$name}{'ret'} = $ret;
             $data{$data{'intf'}}{'methods'}{$name}{'flag'} = $flag;
             @{$data{$data{'intf'}}{'methods'}{$name}{'args'}} = map {type => (split / /, $_)[0], name => (split / /, $_)[1]}, (split /, /, $args);
-        } elsif (defined $section && $section eq 'signals' && (/^\s+((\w+)\((.*)\))$/ || /^\s+((\w+)\((.*,))$/)) {
+        } elsif (defined $section && $section eq 'signals' && /^\s+((\w+)\((.*)\))$/) {
             my $decl = $1;
             my $name = $2;
             my $args = $3;
             
-            if ($decl =~ /,$/) {
-                my $add_str = <INPUT>;
-                if ($add_str =~ /\s+(.+)\)$/) {
-                    $decl .= " $1)";
-                    $args .= " $1";
-                }  else {
-                    die "invalid file format (9)\n";
-                }
-            }
-	    
             $data{$data{'intf'}}{'signals'}{$name}{'decl'} = $decl;
             @{$data{$data{'intf'}}{'signals'}{$name}{'args'}} = map {type => (split / /, $_)[0], name => (split / /, $_)[1]}, (split /, /, $args);
         } elsif (defined $section && $section eq 'properties' && /^\s+((\S+) (\w+) \[(readonly|readwrite)\])$/) {
@@ -162,8 +123,6 @@ sub parse_doc_api {
     
     return \%data;
 }
-
-my $data = parse_doc_api($ARGV[1], $ARGV[2]);
 
 my $HEADER = <<EOH;
 /*
@@ -202,8 +161,10 @@ sub get_g_type {
     $g_type = 'gboolean ' if $bluez_type eq 'boolean';
     $g_type = 'gint32 ' if $bluez_type eq 'int32';
     $g_type = 'guint32 ' if $bluez_type eq 'uint32';
-    $g_type = 'GPtrArray *' if $bluez_type eq 'array{object}';
+    $g_type = 'guint64 ' if $bluez_type eq 'uint64';
+    $g_type = 'GPtrArray *' if $bluez_type eq 'array{object}' || $bluez_type eq 'array{dict}';
     $g_type = 'gchar **' if $bluez_type eq 'array{string}';
+    $g_type = 'guchar ' if $bluez_type eq 'byte';
     
     die "unknown bluez type (1): $bluez_type\n" unless defined $g_type;
     
@@ -218,10 +179,15 @@ sub get_g_type_name {
     $g_type_name = 'G_TYPE_STRING' if $bluez_type eq 'string';
     $g_type_name = 'G_TYPE_VALUE' if $bluez_type eq 'variant';
     $g_type_name = 'G_TYPE_BOOLEAN' if $bluez_type eq 'boolean';
+    $g_type_name = 'G_TYPE_INT' if $bluez_type eq 'int32';
     $g_type_name = 'G_TYPE_UINT' if $bluez_type eq 'uint32';
+    $g_type_name = 'G_TYPE_UINT64' if $bluez_type eq 'uint64';
     $g_type_name = 'DBUS_TYPE_G_STRING_VARIANT_HASHTABLE' if $bluez_type eq 'dict';
     $g_type_name = 'DBUS_TYPE_G_UINT_STRING_HASHTABLE' if $bluez_type eq 'dict{u,s}';
     $g_type_name = 'DBUS_TYPE_G_OBJECT_ARRAY' if $bluez_type eq 'array{object}';
+    $g_type_name = 'G_TYPE_STRV' if $bluez_type eq 'array{string}';
+    $g_type_name = 'G_TYPE_UCHAR' if $bluez_type eq 'byte';
+    $g_type_name = 'DBUS_TYPE_G_HASH_TABLE_ARRAY' if $bluez_type eq 'array{dict}';
     
     die "unknown bluez type (2): $bluez_type\n" unless defined $g_type_name;
     
@@ -289,7 +255,7 @@ GType {\$object}_get_type(void) G_GNUC_CONST;
 EOT
     
     my $intf = $node->{'intf'};
-    my $obj = (split /\./, $intf)[-1];
+    my $obj = exists $node->{'objectName'} ? $node->{'objectName'} : (split /\./, $intf)[-1];
     my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     
@@ -346,6 +312,7 @@ sub generate_source {
 #include <config.h>
 #endif
 
+#include <glib.h>
 #include <string.h>
 
 #include "dbus-common.h"
@@ -361,10 +328,10 @@ struct _{\$Object}Private {
 	DBusGProxy *introspection_g_proxy;
 	gchar *introspection_xml;
 
-	{IF_PROPERTIES}
+	{IF_PROPERTIES_EXT}
 	/* Properties */
 	{PRIV_PROPERTIES}
-	{FI_PROPERTIES}
+	{FI_PROPERTIES_EXT}
 
 	{IF_ASYNC_CALLS}
 	/* Async calls */
@@ -374,11 +341,16 @@ struct _{\$Object}Private {
 
 G_DEFINE_TYPE({\$Object}, {\$object}, G_TYPE_OBJECT);
 
+{IF_PROPERTIES}
 enum {
 	PROP_0,
 
 	{ENUM_PROPERTIES}
 };
+
+static void _{\$object}_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
+static void _{\$object}_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
+{FI_PROPERTIES}
 
 {IF_SIGNALS}
 enum {
@@ -388,12 +360,7 @@ enum {
 };
 
 static guint signals[LAST_SIGNAL] = {0};
-{FI_SIGNALS}
 
-static void _{\$object}_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
-static void _{\$object}_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
-
-{IF_SIGNALS}
 {SIGNALS_HANDLERS_DEF}
 {FI_SIGNALS}
 
@@ -406,10 +373,10 @@ static void {\$object}_dispose(GObject *gobject)
 	{SIGNALS_DISCONNECTION}
 	{FI_SIGNALS}
 
-	{IF_PROPERTIES}
+	{IF_PROPERTIES_EXT}
 	/* Properties free */
 	{PROPERTIES_FREE}
-	{FI_PROPERTIES}
+	{FI_PROPERTIES_EXT}
 
 	/* Proxy free */
 	g_object_unref(self->priv->dbus_g_proxy);
@@ -430,6 +397,7 @@ static void {\$object}_class_init({\$Object}Class *klass)
 
 	g_type_class_add_private(klass, sizeof({\$Object}Private));
 
+	{IF_PROPERTIES}
 	/* Properties registration */
 	GParamSpec *pspec;
 
@@ -437,6 +405,7 @@ static void {\$object}_class_init({\$Object}Class *klass)
 	gobject_class->set_property = _{\$object}_set_property;
 
 	{PROPERTIES_REGISTRATION}
+	{FI_PROPERTIES}
 
 	{IF_SIGNALS}
 	/* Signals registation */
@@ -457,7 +426,7 @@ static void {\$object}_init({\$Object} *self)
 
 	{IF_INIT}
 	GError *error = NULL;
-	
+
 	/* Getting introspection XML */
 	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_{\$OBJECT}_PATH, "org.freedesktop.DBus.Introspectable");
 	self->priv->introspection_xml = NULL;
@@ -481,10 +450,10 @@ static void {\$object}_init({\$Object} *self)
 	{SIGNALS_CONNECTION}
 	{FI_SIGNALS}
 
-	{IF_PROPERTIES}
+	{IF_PROPERTIES_EXT}
 	/* Properties init */
 	{PROPERTIES_INIT}
-	{FI_PROPERTIES}
+	{FI_PROPERTIES_EXT}
 	{FI_INIT}
 }
 
@@ -519,13 +488,14 @@ static void {\$object}_post_init({\$Object} *self, const gchar *dbus_object_path
 	{SIGNALS_CONNECTION}
 	{FI_SIGNALS}
 
-	{IF_PROPERTIES}
+	{IF_PROPERTIES_EXT}
 	/* Properties init */
 	{PROPERTIES_INIT}
-	{FI_PROPERTIES}
+	{FI_PROPERTIES_EXT}
 }
 {FI_POST_INIT}
 
+{IF_PROPERTIES}
 static void _{\$object}_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
 {
 	{\$Object} *self = {\$OBJECT}(object);
@@ -557,6 +527,7 @@ static void _{\$object}_set_property(GObject *object, guint property_id, const G
 	}
 	g_assert(error == NULL);
 }
+{FI_PROPERTIES}
 
 {IF_ASYNC_CALLS}
 static void {\$object}_async_notify_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
@@ -572,8 +543,10 @@ static void {\$object}_async_notify_callback(DBusGProxy *proxy, DBusGProxyCall *
 
 {METHODS}
 
+{IF_PROPERTIES}
 /* Properties access methods */
 {PROPERTIES_ACCESS_METHODS}
+{FI_PROPERTIES}
 
 {IF_SIGNALS}
 /* Signals handlers */
@@ -582,7 +555,7 @@ static void {\$object}_async_notify_callback(DBusGProxy *proxy, DBusGProxyCall *
 EOT
 
     my $intf = $node->{'intf'};
-    my $obj = (split /\./, $intf)[-1];
+    my $obj = exists $node->{'objectName'} ? $node->{'objectName'} : (split /\./, $intf)[-1];
     my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     
@@ -689,6 +662,14 @@ EOT
             $signals_registration .=
             "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_BOXED,\n".
             "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_HASH_TABLE);\n\n";
+        } elsif ($arg_t eq 'object_boolean') {
+            $signals_registration .=
+            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_BOOLEAN,\n".
+            "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_BOOLEAN);\n\n";
+        } elsif ($arg_t eq 'int32_int32') {
+            $signals_registration .=
+            "\t\t\tg_cclosure_bluez_marshal_VOID__INT_INT,\n".
+            "\t\t\tG_TYPE_NONE, 2, G_TYPE_INT, G_TYPE_INT);\n\n";
         } else {
             die "unknown signal arguments: $arg_t\n";
         }
@@ -835,7 +816,7 @@ EOT
             "\t\tg_strfreev(self->priv->$property_var);\n".
             "\t\tself->priv->$property_var = (gchar **) g_value_dup_boxed(value);\n";
         } elsif ($p{'type'} eq 'uint32') {
-            $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 65535, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
+            $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 0xFFFFFFFF, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
             "\t\tself->priv->$property_var = g_value_get_uint(g_hash_table_lookup(properties, \"$property\"));\n".
@@ -844,6 +825,16 @@ EOT
             "\t}\n";
             $get_properties .= "\t\tg_value_set_uint(value, $property_get_method(self));\n";
             $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uint(value);\n";
+        } elsif ($p{'type'} eq 'uint64') {
+            $properties_registration .= "\tpspec = g_param_spec_uint64(\"$property\", NULL, NULL, 0, 0xFFFFFFFFFFFFFFFF, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
+	    $properties_init .=
+            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
+            "\t\tself->priv->$property_var = g_value_get_uint64(g_hash_table_lookup(properties, \"$property\"));\n".
+            "\t} else {\n".
+            "\t\tself->priv->$property_var = 0;\n".
+            "\t}\n";
+            $get_properties .= "\t\tg_value_set_uint64(value, $property_get_method(self));\n";
+            $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uint64(value);\n";
         } elsif ($p{'type'} eq 'boolean') {
             $properties_registration .= "\tpspec = g_param_spec_boolean(\"$property\", NULL, NULL, FALSE, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
 	    $properties_init .=
@@ -854,6 +845,16 @@ EOT
             "\t}\n";
             $get_properties .= "\t\tg_value_set_boolean(value, $property_get_method(self));\n";
             $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_boolean(value);\n";
+        } elsif ($p{'type'} eq 'byte') {
+            $properties_registration .= "\tpspec = g_param_spec_uchar(\"$property\", NULL, NULL, 0, 0xFF, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
+	    $properties_init .=
+            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
+            "\t\tself->priv->$property_var = g_value_get_uchar(g_hash_table_lookup(properties, \"$property\"));\n".
+            "\t} else {\n".
+            "\t\tself->priv->$property_var = 0;\n".
+            "\t}\n";
+            $get_properties .= "\t\tg_value_set_uchar(value, $property_get_method(self));\n";
+            $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uchar(value);\n";
         } else {
             die "unknown property type: $p{'type'}\n";
         }
@@ -922,10 +923,15 @@ EOT
     } else {
         $output =~ s/\s+\{IF_SIGNALS\}.+?\{FI_SIGNALS\}//gs;
     }
-    if (scalar keys %{$node->{$intf}{'properties'}} > 0) {
+    if (scalar keys %{$node->{$intf}{'properties'}} > 0 || !defined $node->{'objectPath'}) {
 	$output =~ s/\{IF_PROPERTIES\}\s+(.+?)\s+\{FI_PROPERTIES\}/$1/gs;
     } else {
 	$output =~ s/\s+\{IF_PROPERTIES\}.+?\{FI_PROPERTIES\}//gs;
+    }
+    if (scalar keys %{$node->{$intf}{'properties'}} > 0) {
+	$output =~ s/\{IF_PROPERTIES_EXT\}\s+(.+?)\s+\{FI_PROPERTIES_EXT\}/$1/gs;
+    } else {
+	$output =~ s/\s+\{IF_PROPERTIES_EXT\}.+?\{FI_PROPERTIES_EXT\}//gs;
     }
     if ($async_flag == 1) {
         $output =~ s/\{IF_ASYNC_CALLS\}\s+(.+?)\s+\{FI_ASYNC_CALLS\}/$1/gs;
@@ -961,6 +967,8 @@ EOT
     
     return $output;
 }
+
+my $data = parse_doc_api($ARGV[1], $ARGV[2]);
 
 print generate_header($data) if $ARGV[0] eq '-header';
 print generate_source($data) if $ARGV[0] eq '-source';

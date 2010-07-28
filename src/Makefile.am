@@ -26,7 +26,15 @@ lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/network_peer.c lib/network_peer.h \
 		lib/network_router.c lib/network_router.h \
 		lib/serial.c lib/serial.h \
-		lib/sdp.c lib/sdp.h
+		lib/sdp.c lib/sdp.h \
+		lib/obexagent.c lib/obexagent.h \
+		lib/obexclient.c lib\obexclient.h \
+		lib/obexclient_file_transfer.c lib/obexclient_file_transfer.h \
+		lib/obexclient_session.c lib/obexclient_session.h \
+		lib/obexclient_transfer.c lib/obexclient_transfer.h \
+		lib/obexmanager.c lib/obexmanager.h \
+		lib/obexsession.c lib/obexsession.h \
+		lib/obextransfer.c lib/obextransfer.h
 
 bin_PROGRAMS = bt-monitor bt-adapter bt-agent bt-device bt-input bt-audio bt-network bt-serial
 bt_monitor_SOURCES = $(lib_sources) bt-monitor.c
