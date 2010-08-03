@@ -28,7 +28,12 @@ lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/serial.c lib/serial.h \
 		lib/sdp.c lib/sdp.h
 
-bin_PROGRAMS = bt-monitor bt-adapter bt-agent bt-device bt-input bt-audio bt-network bt-serial
+obex_sources = 	lib/obexmanager.c lib/obexmanager.h \
+		lib/obexsession.c lib/obexsession.h \
+		lib/obexserver.c lib/obexserver.h \
+		lib/obexserver_session.c lib/obexserver_session.h
+
+bin_PROGRAMS = bt-monitor bt-adapter bt-agent bt-device bt-input bt-audio bt-network bt-serial bt-obex
 bt_monitor_SOURCES = $(lib_sources) bt-monitor.c
 bt_adapter_SOURCES = ${lib_sources} bt-adapter.c
 bt_agent_SOURCES = $(lib_sources) bt-agent.c
@@ -37,6 +42,7 @@ bt_input_SOURCES = $(lib_sources) bt-input.c
 bt_audio_SOURCES = $(lib_sources) bt-audio.c
 bt_network_SOURCES = $(lib_sources) bt-network.c
 bt_serial_SOURCES = $(lib_sources) bt-serial.c
+bt_obex_SOURCES = $(lib_sources) $(obex_sources) bt-obex.c
 
 #CLEANFILES = Makefile.in lib/marshallers.c lib/marshallers.h
 

@@ -39,3 +39,17 @@
 ./gen-dbus-gobject.pl -header bluez-api-4.66-fixed/serial-api.txt > ../src/lib/serial.h
 ./gen-dbus-gobject.pl -source bluez-api-4.66-fixed/serial-api.txt > ../src/lib/serial.c
 
+# obex-data-server API
+
+./gen-dbus-gobject.pl -header obex-data-server-api-0.4.5-fixed.txt > ../src/lib/obexmanager.h
+./gen-dbus-gobject.pl -source obex-data-server-api-0.4.5-fixed.txt > ../src/lib/obexmanager.c
+
+./gen-dbus-gobject.pl -header obex-data-server-api-0.4.5-fixed.txt 2 > ../src/lib/obexserver.h
+./gen-dbus-gobject.pl -source obex-data-server-api-0.4.5-fixed.txt 2 > ../src/lib/obexserver.c
+
+./gen-dbus-gobject.pl -header obex-data-server-api-0.4.5-fixed.txt 3 > ../src/lib/obexsession.h
+./gen-dbus-gobject.pl -source obex-data-server-api-0.4.5-fixed.txt 3 > ../src/lib/obexsession.c
+
+./gen-dbus-gobject.pl -header obex-data-server-api-0.4.5-fixed.txt 4 > ../src/lib/obexserver_session.h
+./gen-dbus-gobject.pl -source obex-data-server-api-0.4.5-fixed.txt 4 > ../src/lib/obexserver_session.c
+

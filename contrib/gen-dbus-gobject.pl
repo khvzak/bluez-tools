@@ -199,7 +199,7 @@ sub get_default_value {
     my $default_value;
     
     $default_value = 'NULL' if $c_type =~ /\*$/;
-    $default_value = 'FALSE' if $c_type eq 'gboolean';
+    $default_value = 'FALSE' if $c_type =~ /boolean/;
     $default_value = '0' if $c_type =~ /int/;
     
     die "unknown C type (3): $c_type\n" unless defined $default_value;
@@ -654,6 +654,10 @@ EOT
             $signals_registration .=
             "\t\t\tg_cclosure_marshal_VOID__STRING,\n".
             "\t\t\tG_TYPE_NONE, 1, G_TYPE_STRING);\n\n";
+        } elsif ($arg_t eq 'object_string_string') {
+            $signals_registration .=
+            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_STRING_STRING,\n".
+            "\t\t\tG_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);\n\n";
         } elsif ($arg_t eq 'string_variant') {
             $signals_registration .=
             "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_BOXED,\n".
@@ -666,10 +670,22 @@ EOT
             $signals_registration .=
             "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_BOOLEAN,\n".
             "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_BOOLEAN);\n\n";
+        } elsif ($arg_t eq 'uint64') {
+            $signals_registration .=
+            "\t\t\tg_cclosure_bluez_marshal_VOID__UINT64,\n".
+            "\t\t\tG_TYPE_NONE, 1, G_TYPE_UINT64);\n\n";
         } elsif ($arg_t eq 'int32_int32') {
             $signals_registration .=
             "\t\t\tg_cclosure_bluez_marshal_VOID__INT_INT,\n".
             "\t\t\tG_TYPE_NONE, 2, G_TYPE_INT, G_TYPE_INT);\n\n";
+        } elsif ($arg_t eq 'string_string') {
+            $signals_registration .=
+            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_STRING,\n".
+            "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_STRING);\n\n";
+        } elsif ($arg_t eq 'string_string_uint64') {
+            $signals_registration .=
+            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_STRING_UINT64,\n".
+            "\t\t\tG_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT64);\n\n";
         } else {
             die "unknown signal arguments: $arg_t\n";
         }
