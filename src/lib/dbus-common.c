@@ -46,9 +46,8 @@ gboolean dbus_connect(GError **error)
 	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__STRING_BOOLEAN, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_INVALID);
 	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__INT_INT, G_TYPE_NONE, G_TYPE_INT, G_TYPE_INT, G_TYPE_INVALID);
 
-	/* Agents installation */
+	/* Agent installation */
 	dbus_g_object_type_install_info(AGENT_TYPE, &dbus_glib_agent_object_info);
-	dbus_g_object_type_install_info(OBEXAGENT_TYPE, &dbus_glib_obexagent_object_info);
 
 	return TRUE;
 }
