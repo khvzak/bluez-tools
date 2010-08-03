@@ -127,7 +127,7 @@ static void network_hub_post_init(NetworkHub *self, const gchar *dbus_object_pat
 	GError *error = NULL;
 
 	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, "org.bluez", dbus_object_path, "org.freedesktop.DBus.Introspectable");
 	self->priv->introspection_xml = NULL;
 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
 		g_critical("%s", error->message);
@@ -140,7 +140,7 @@ static void network_hub_post_init(NetworkHub *self, const gchar *dbus_object_pat
 		g_assert(FALSE);
 	}
 	g_free(check_intf_regex_str);
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_NETWORK_HUB_INTERFACE);
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, "org.bluez", dbus_object_path, BLUEZ_DBUS_NETWORK_HUB_INTERFACE);
 
 	/* Properties init */
 	GHashTable *properties = network_hub_get_properties(self, &error);

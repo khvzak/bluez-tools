@@ -28,6 +28,7 @@
 #include <dbus/dbus-glib.h>
 
 #define BLUEZ_DBUS_NAME "org.bluez"
+#define OBEX_DBUS_NAME "org.openobex"
 
 #define DBUS_TYPE_G_STRING_VARIANT_HASHTABLE (dbus_g_type_get_map("GHashTable", G_TYPE_STRING, G_TYPE_VALUE))
 #define DBUS_TYPE_G_UINT_STRING_HASHTABLE (dbus_g_type_get_map("GHashTable", G_TYPE_UINT, G_TYPE_STRING))

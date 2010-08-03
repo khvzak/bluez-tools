@@ -55,7 +55,7 @@ sub parse_doc_api {
             my $service = $1;
             die "invalid file format (2)\n" unless $section eq 'hierarchy';
             die "invalid service: $service\n" unless $service eq 'org.bluez' || $service eq 'org.openobex' || $service eq 'org.openobex.client';
-            $data{'service'} = $service;
+            $data{'serviceName'} = $service;
         } elsif (/^Interface\s*(.+)$/) {
             my $intf = $1;
             die "invalid file format (3)\n" unless $section eq 'hierarchy';
@@ -428,7 +428,7 @@ static void {\$object}_init({\$Object} *self)
 	GError *error = NULL;
 
 	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_{\$OBJECT}_PATH, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, {DBUS_SERVICE_NAME}, BLUEZ_DBUS_{\$OBJECT}_PATH, "org.freedesktop.DBus.Introspectable");
 	self->priv->introspection_xml = NULL;
 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
 		g_critical("%s", error->message);
@@ -442,7 +442,7 @@ static void {\$object}_init({\$Object} *self)
 	}
 	g_free(check_intf_regex_str);
 
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_{\$OBJECT}_PATH, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, {DBUS_SERVICE_NAME}, BLUEZ_DBUS_{\$OBJECT}_PATH, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
 
 	{IF_SIGNALS}
 	/* DBus signals connection */
@@ -467,7 +467,7 @@ static void {\$object}_post_init({\$Object} *self, const gchar *dbus_object_path
 	GError *error = NULL;
 
 	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, {DBUS_SERVICE_NAME}, dbus_object_path, "org.freedesktop.DBus.Introspectable");
 	self->priv->introspection_xml = NULL;
 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
 		g_critical("%s", error->message);
@@ -480,7 +480,7 @@ static void {\$object}_post_init({\$Object} *self, const gchar *dbus_object_path
 		g_assert(FALSE);
 	}
 	g_free(check_intf_regex_str);
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, dbus_object_path, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, {DBUS_SERVICE_NAME}, dbus_object_path, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
 
 	{IF_SIGNALS}
 	/* DBus signals connection */
@@ -954,6 +954,7 @@ EOT
     } else {
         $output =~ s/\s+\{IF_ASYNC_CALLS\}.+?\{FI_ASYNC_CALLS\}//gs;
     }
+    $output =~ s/{DBUS_SERVICE_NAME}/"$node->{'serviceName'}"/g;
     $output =~ s/{ENUM_SIGNALS}/$enum_signals/;
     $output =~ s/{SIGNALS_HANDLERS_DEF}/$signals_handlers_def/;
     $output =~ s/{SIGNALS_REGISTRATION}/$signals_registration/;

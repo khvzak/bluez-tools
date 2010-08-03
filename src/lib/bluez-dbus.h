@@ -47,4 +47,11 @@
 #include "network_router.h"
 #include "serial.h"
 
+/* OBEX DBus Interfaces */
+#include "obexmanager.h"
+#include "obexsession.h"
+#include "obexserver.h"
+#include "obexserver_session.h"
+
 #endif /* __BLUEZ_DBUS_H */
+

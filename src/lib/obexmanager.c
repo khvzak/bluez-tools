@@ -118,7 +118,7 @@ static void obexmanager_init(OBEXManager *self)
 	GError *error = NULL;
 
 	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_OBEXMANAGER_PATH, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, "org.openobex", BLUEZ_DBUS_OBEXMANAGER_PATH, "org.freedesktop.DBus.Introspectable");
 	self->priv->introspection_xml = NULL;
 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
 		g_critical("%s", error->message);
@@ -132,7 +132,7 @@ static void obexmanager_init(OBEXManager *self)
 	}
 	g_free(check_intf_regex_str);
 
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, BLUEZ_DBUS_NAME, BLUEZ_DBUS_OBEXMANAGER_PATH, BLUEZ_DBUS_OBEXMANAGER_INTERFACE);
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, "org.openobex", BLUEZ_DBUS_OBEXMANAGER_PATH, BLUEZ_DBUS_OBEXMANAGER_INTERFACE);
 
 	/* DBus signals connection */
 

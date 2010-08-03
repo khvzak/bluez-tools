@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <glib.h>
 
+/* Bluez DBus Interfaces */
 #include "adapter.h"
 #include "device.h"
 #include "audio.h"
@@ -37,9 +38,16 @@
 #include "network_router.h"
 #include "serial.h"
 
+/* OBEX DBus Interfaces */
+#include "obexmanager.h"
+#include "obexsession.h"
+#include "obexserver.h"
+#include "obexserver_session.h"
+
 enum {
 	DEVICE_INTF,
 
+	/* BlueZ Interfaces */
 	AUDIO_INTF,
 	INPUT_INTF,
 	NETWORK_INTF,
@@ -47,6 +55,12 @@ enum {
 	NETWORK_PEER_INTF,
 	NETWORK_ROUTER_INTF,
 	SERIAL_INTF,
+
+	/* OBEX Interfaces */
+	OBEXMANAGER_INTF,
+	OBEXSESSION_INRF,
+	OBEXSERVER_INTF,
+	OBEXSERVER_SESSION_INTF,
 };
 
 /* Adapter helpers */
@@ -62,7 +76,8 @@ if (error) { \
 	exit(EXIT_FAILURE); \
 }; }G_STMT_END
 
-inline int xtoi(const gchar *str) {
+inline int xtoi(const gchar *str)
+{
 	int i = 0;
 	sscanf(str, "0x%x", &i);
 	return i;
