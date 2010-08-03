@@ -1,4 +1,4 @@
-AC_INIT([bluez-tools], m4_esyscmd([./git-version-gen .tarball-version]), [bluez-tools-bug-report@notavailable.ru], [bluez-tools], [http://notavailable.ru/projects/bluez-tools/])
+AC_INIT([bluez-tools], m4_esyscmd([./git-version-gen .tarball-version]), [zxteam@gmail.com], [bluez-tools], [http://code.google.com/p/bluez-tools/])
 AC_PREREQ([2.65])
 AM_INIT_AUTOMAKE([1.11 no-define foreign -Wall subdir-objects])
 AC_CONFIG_HEADERS([config.h])

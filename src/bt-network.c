@@ -87,7 +87,8 @@ int main(int argc, char *argv[])
 			"     Name\n"
 			"     Enabled\n"
 			"  By default - show status\n\n"
-			"Report bugs to <"PACKAGE_BUGREPORT">."
+			//"Report bugs to <"PACKAGE_BUGREPORT">."
+			"Project home <"PACKAGE_URL">."
 			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
