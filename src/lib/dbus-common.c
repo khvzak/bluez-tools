@@ -27,7 +27,6 @@
 
 #include "marshallers.h"
 #include "agent.h"
-#include "obexagent.h"
 #include "dbus-common.h"
 
 DBusGConnection *conn = NULL;
