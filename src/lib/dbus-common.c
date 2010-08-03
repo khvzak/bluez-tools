@@ -42,8 +42,6 @@ gboolean dbus_connect(GError **error)
 	 * Used for signals
 	 */
 	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__STRING_BOXED, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__STRING_BOOLEAN, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__INT_INT, G_TYPE_NONE, G_TYPE_INT, G_TYPE_INT, G_TYPE_INVALID);
 
 	/* Agent installation */
 	dbus_g_object_type_install_info(AGENT_TYPE, &dbus_glib_agent_object_info);
