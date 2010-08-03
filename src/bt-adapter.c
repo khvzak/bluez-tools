@@ -26,6 +26,7 @@
 #endif
 
 #include <stdlib.h>
+#include <string.h>
 #include <glib.h>
 
 #include "lib/bluez-dbus.h"
@@ -122,7 +123,7 @@ int main(int argc, char *argv[])
 	} else if (!list_arg && !info_arg && !discover_arg && !set_arg) {
 		g_print("%s", g_option_context_get_help(context, FALSE, NULL));
 		exit(EXIT_FAILURE);
-	} else if (set_arg && argc != 3) {
+	} else if (set_arg && (argc != 3 || strlen(argv[1]) == 0 || strlen(argv[2]) == 0)) {
 		g_print("%s: Invalid arguments for --set\n", g_get_prgname());
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);

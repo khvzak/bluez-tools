@@ -26,6 +26,7 @@
 #endif
 
 #include <stdlib.h>
+#include <string.h>
 #include <glib.h>
 
 #include "lib/bluez-dbus.h"
@@ -93,14 +94,14 @@ int main(int argc, char *argv[])
 		g_print("%s: %s\n", g_get_prgname(), error->message);
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
-	} else if (!connect_arg && !disconnect_arg && !service_arg) {
+	} else if (!connect_arg && (!disconnect_arg || strlen(disconnect_arg) == 0) && !service_arg) {
 		g_print("%s", g_option_context_get_help(context, FALSE, NULL));
 		exit(EXIT_FAILURE);
-	} else if (connect_arg && argc != 3) {
+	} else if (connect_arg && (argc != 3 || strlen(argv[1]) == 0 || strlen(argv[2]) == 0)) {
 		g_print("%s: Invalid arguments for --connect\n", g_get_prgname());
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
-	} else if (service_arg && argc != 2 && argc != 4) {
+	} else if (service_arg && (argc != 2 || strlen(argv[1]) == 0) && (argc != 4 || strlen(argv[1]) == 0 || strlen(argv[2]) == 0 || strlen(argv[3]) == 0)) {
 		g_print("%s: Invalid arguments for --service\n", g_get_prgname());
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);

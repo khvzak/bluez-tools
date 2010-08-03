@@ -269,14 +269,14 @@ int main(int argc, char *argv[])
 		g_print("%s: %s\n", g_get_prgname(), error->message);
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
-	} else if (!list_arg && !connect_arg && !remove_arg && !info_arg && !services_arg && !set_arg) {
+	} else if (!list_arg && (!connect_arg || strlen(connect_arg) == 0) && (!remove_arg || strlen(remove_arg) == 0) && (!info_arg || strlen(info_arg) == 0) && !services_arg && !set_arg) {
 		g_print("%s", g_option_context_get_help(context, FALSE, NULL));
 		exit(EXIT_FAILURE);
-	} else if (services_arg && argc != 2 && argc != 3) {
+	} else if (services_arg && (argc != 2 || strlen(argv[1]) == 0) && (argc != 3 || strlen(argv[1]) == 0)) {
 		g_print("%s: Invalid arguments for --services\n", g_get_prgname());
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
-	} else if (set_arg && argc != 4) {
+	} else if (set_arg && (argc != 4 || strlen(argv[1]) == 0 || strlen(argv[2]) ==0 || strlen(argv[3]) == 0)) {
 		g_print("%s: Invalid arguments for --set\n", g_get_prgname());
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
