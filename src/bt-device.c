@@ -263,7 +263,7 @@ int main(int argc, char *argv[])
 			"     Trusted\n"
 			"     Blocked\n\n"
 			//"Report bugs to <"PACKAGE_BUGREPORT">."
-			"Project home <"PACKAGE_URL">."
+			"Project home page <"PACKAGE_URL">."
 			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {

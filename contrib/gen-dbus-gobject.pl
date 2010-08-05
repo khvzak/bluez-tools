@@ -184,6 +184,7 @@ sub get_g_type_name {
     $g_type_name = 'G_TYPE_UINT64' if $bluez_type eq 'uint64';
     $g_type_name = 'DBUS_TYPE_G_STRING_VARIANT_HASHTABLE' if $bluez_type eq 'dict';
     $g_type_name = 'DBUS_TYPE_G_UINT_STRING_HASHTABLE' if $bluez_type eq 'dict{u,s}';
+    $g_type_name = 'DBUS_TYPE_G_STRING_STRING_HASHTABLE' if $bluez_type eq 'dict{s,s}';
     $g_type_name = 'DBUS_TYPE_G_OBJECT_ARRAY' if $bluez_type eq 'array{object}';
     $g_type_name = 'G_TYPE_STRV' if $bluez_type eq 'array{string}';
     $g_type_name = 'G_TYPE_UCHAR' if $bluez_type eq 'byte';

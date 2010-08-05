@@ -143,7 +143,7 @@ Adapter *find_adapter(const gchar *name, GError **error)
 
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
 
-	// If name is null - return default adapter
+	// If name is null or empty - return default adapter
 	if (name == NULL || strlen(name) == 0) {
 		adapter_path = manager_default_adapter(manager, error);
 		if (adapter_path) {
@@ -297,7 +297,13 @@ gboolean intf_is_supported(const gchar *dbus_object_path, int intf_id)
 	gchar *introspection_xml = NULL;
 	GError *error = NULL;
 	if (!dbus_g_proxy_call(introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &introspection_xml, G_TYPE_INVALID)) {
+#if 0
 		g_critical("%s", error->message);
+#else
+		g_error_free(error);
+		error = NULL;
+		introspection_xml = g_strdup("null");
+#endif
 	}
 	g_assert(error == NULL);
 

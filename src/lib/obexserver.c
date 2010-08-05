@@ -262,13 +262,13 @@ void obexserver_close(OBEXServer *self, GError **error)
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Close", error, G_TYPE_INVALID, G_TYPE_INVALID);
 }
 
-/* dict GetServerSessionInfo(object session_object) */
+/* dict{s,s} GetServerSessionInfo(object session_object) */
 GHashTable *obexserver_get_server_session_info(OBEXServer *self, const gchar *session_object, GError **error)
 {
 	g_assert(OBEXSERVER_IS(self));
 
 	GHashTable *ret = NULL;
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetServerSessionInfo", error, DBUS_TYPE_G_OBJECT_PATH, session_object, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetServerSessionInfo", error, DBUS_TYPE_G_OBJECT_PATH, session_object, G_TYPE_INVALID, DBUS_TYPE_G_STRING_STRING_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }

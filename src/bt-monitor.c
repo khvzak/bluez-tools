@@ -429,7 +429,7 @@ int main(int argc, char *argv[])
 	g_option_context_set_summary(context, "Version "PACKAGE_VERSION);
 	g_option_context_set_description(context,
 			//"Report bugs to <"PACKAGE_BUGREPORT">."
-			"Project home <"PACKAGE_URL">."
+			"Project home page <"PACKAGE_URL">."
 			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {

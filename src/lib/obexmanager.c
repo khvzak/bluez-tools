@@ -184,13 +184,13 @@ gchar *obexmanager_create_bluetooth_session(OBEXManager *self, const gchar *targ
 	return ret;
 }
 
-/* dict GetServerInfo(object server_object) */
+/* dict{s,s} GetServerInfo(object server_object) */
 GHashTable *obexmanager_get_server_info(OBEXManager *self, const gchar *server_object, GError **error)
 {
 	g_assert(OBEXMANAGER_IS(self));
 
 	GHashTable *ret = NULL;
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetServerInfo", error, DBUS_TYPE_G_OBJECT_PATH, server_object, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetServerInfo", error, DBUS_TYPE_G_OBJECT_PATH, server_object, G_TYPE_INVALID, DBUS_TYPE_G_STRING_STRING_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
@@ -206,13 +206,13 @@ gchar **obexmanager_get_server_list(OBEXManager *self, GError **error)
 	return ret;
 }
 
-/* dict GetSessionInfo(object session_object) */
+/* dict{s,s} GetSessionInfo(object session_object) */
 GHashTable *obexmanager_get_session_info(OBEXManager *self, const gchar *session_object, GError **error)
 {
 	g_assert(OBEXMANAGER_IS(self));
 
 	GHashTable *ret = NULL;
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetSessionInfo", error, DBUS_TYPE_G_OBJECT_PATH, session_object, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetSessionInfo", error, DBUS_TYPE_G_OBJECT_PATH, session_object, G_TYPE_INVALID, DBUS_TYPE_G_STRING_STRING_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }

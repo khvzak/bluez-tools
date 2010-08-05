@@ -370,13 +370,13 @@ gchar *obexsession_get_current_path(OBEXSession *self, GError **error)
 	return ret;
 }
 
-/* dict GetTransferInfo() */
+/* dict{s,s} GetTransferInfo() */
 GHashTable *obexsession_get_transfer_info(OBEXSession *self, GError **error)
 {
 	g_assert(OBEXSESSION_IS(self));
 
 	GHashTable *ret = NULL;
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetTransferInfo", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetTransferInfo", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_STRING_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }

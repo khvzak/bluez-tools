@@ -96,7 +96,7 @@ Methods		object CreateBluetoothSession(string target_address, string source_addr
 			
 			Possible errors: none
 
-		dict GetUsbInterfaceInfo(integer interface_number) {skipped}
+		dict{s,s} GetUsbInterfaceInfo(integer interface_number) {skipped}
 
 			Returns info about specified USB OBEX interface:
 				"Manufacturer" : Manufacturer of the device
@@ -156,7 +156,7 @@ Methods		object CreateBluetoothSession(string target_address, string source_addr
 			Possible errors: org.openobex.Error.Failed
 					 org.openobex.Error.InvalidArguments
 
-		dict GetSessionInfo(object session_object)
+		dict{s,s} GetSessionInfo(object session_object)
 
 			Returns info about specified session:
 				"BluetoothTargetAddress" : Target device Bluetooth address (only for Bluetooth sessions);
@@ -169,7 +169,7 @@ Methods		object CreateBluetoothSession(string target_address, string source_addr
 			
 			Possible errors: none
 
-		dict GetServerInfo(object server_object)
+		dict{s,s} GetServerInfo(object server_object)
 
 			Returns info about specified server:
 				"BluetoothSourceAddress" : Bluetooth source address (only for Bluetooth servers);
@@ -287,7 +287,7 @@ Methods		void Start(string path, boolean allow_write, boolean auto_accept)
 			
 			Possible errors: org.openobex.Error.InvalidArguments
 
-		dict GetServerSessionInfo(object session_object)
+		dict{s,s} GetServerSessionInfo(object session_object)
 
 			Returns info about specified server session:
 				"BluetoothAddress" : Client device Bluetooth address;
@@ -696,7 +696,7 @@ Methods		void Disconnect()
 			
 			Possible errors: org.openobex.Error.Failed
 
-		dict GetTransferInfo()
+		dict{s,s} GetTransferInfo()
 
 			Returns info about the ongoing transfer:
 				"LocalPath" : full local path;
@@ -805,7 +805,7 @@ Methods		void Accept()
 			
 			Possible errors: none?
 
-		dict GetTransferInfo()
+		dict{s,s} GetTransferInfo()
 
 			Returns all info about the ongoing transfer (filename, local path, 
 			total bytes).

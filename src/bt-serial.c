@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 			"  Where `tty_device` is:\n"
 			"     RFCOMM TTY device that has been connected\n\n"
 			//"Report bugs to <"PACKAGE_BUGREPORT">."
-			"Project home <"PACKAGE_URL">."
+			"Project home page <"PACKAGE_URL">."
 			);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {

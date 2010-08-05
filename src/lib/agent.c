@@ -84,7 +84,7 @@ gboolean agent_release(Agent *self, GError **error)
 gboolean agent_request_pin_code(Agent *self, const gchar *device, gchar **ret, GError **error)
 {
 	Device *device_obj = g_object_new(DEVICE_TYPE, "DBusObjectPath", device, NULL);
-	g_print("Device: %s (%s)\n", device_get_address(device_obj), device_get_alias(device_obj));
+	g_print("Device: %s (%s)\n", device_get_alias(device_obj), device_get_address(device_obj));
 	g_object_unref(device_obj);
 
 	*ret = g_new0(gchar, 17);
@@ -99,7 +99,7 @@ gboolean agent_request_pin_code(Agent *self, const gchar *device, gchar **ret, G
 gboolean agent_request_passkey(Agent *self, const gchar *device, guint *ret, GError **error)
 {
 	Device *device_obj = g_object_new(DEVICE_TYPE, "DBusObjectPath", device, NULL);
-	g_print("Device: %s (%s)\n", device_get_address(device_obj), device_get_alias(device_obj));
+	g_print("Device: %s (%s)\n", device_get_alias(device_obj), device_get_address(device_obj));
 	g_object_unref(device_obj);
 
 	g_print("Enter passkey: ");
@@ -113,7 +113,7 @@ gboolean agent_request_passkey(Agent *self, const gchar *device, guint *ret, GEr
 gboolean agent_display_passkey(Agent *self, const gchar *device, guint passkey, guint8 entered, GError **error)
 {
 	Device *device_obj = g_object_new(DEVICE_TYPE, "DBusObjectPath", device, NULL);
-	g_print("Device: %s (%s)\n", device_get_address(device_obj), device_get_alias(device_obj));
+	g_print("Device: %s (%s)\n", device_get_alias(device_obj), device_get_address(device_obj));
 	g_object_unref(device_obj);
 
 	g_print("Passkey: %u, entered: %u\n", passkey, entered);
@@ -123,7 +123,7 @@ gboolean agent_display_passkey(Agent *self, const gchar *device, guint passkey, 
 gboolean agent_request_confirmation(Agent *self, const gchar *device, guint passkey, GError **error)
 {
 	Device *device_obj = g_object_new(DEVICE_TYPE, "DBusObjectPath", device, NULL);
-	g_print("Device: %s (%s)\n", device_get_address(device_obj), device_get_alias(device_obj));
+	g_print("Device: %s (%s)\n", device_get_alias(device_obj), device_get_address(device_obj));
 	g_object_unref(device_obj);
 
 	gchar yn[4] = {0,};
@@ -147,7 +147,7 @@ gboolean agent_request_confirmation(Agent *self, const gchar *device, guint pass
 gboolean agent_authorize(Agent *self, const gchar *device, const gchar *uuid, GError **error)
 {
 	Device *device_obj = g_object_new(DEVICE_TYPE, "DBusObjectPath", device, NULL);
-	g_print("Device: %s (%s)\n", device_get_address(device_obj), device_get_alias(device_obj));
+	g_print("Device: %s (%s)\n", device_get_alias(device_obj), device_get_address(device_obj));
 	g_object_unref(device_obj);
 
 	gchar yn[4] = {0,};

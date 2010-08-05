@@ -278,13 +278,13 @@ void obexserver_session_disconnect(OBEXServerSession *self, GError **error)
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Disconnect", error, G_TYPE_INVALID, G_TYPE_INVALID);
 }
 
-/* dict GetTransferInfo() */
+/* dict{s,s} GetTransferInfo() */
 GHashTable *obexserver_session_get_transfer_info(OBEXServerSession *self, GError **error)
 {
 	g_assert(OBEXSERVER_SESSION_IS(self));
 
 	GHashTable *ret = NULL;
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetTransferInfo", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
+	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetTransferInfo", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_STRING_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
 }
