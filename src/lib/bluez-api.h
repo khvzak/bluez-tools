@@ -21,23 +21,25 @@
  *
  */
 
-#ifndef __DBUS_COMMON_H
-#define __DBUS_COMMON_H
+#ifndef __BLUEZ_API_H
+#define __BLUEZ_API_H
 
+/* Global includes */
 #include <glib.h>
 #include <dbus/dbus-glib.h>
 
-#define DBUS_TYPE_G_STRING_VARIANT_HASHTABLE (dbus_g_type_get_map("GHashTable", G_TYPE_STRING, G_TYPE_VALUE))
-#define DBUS_TYPE_G_UINT_STRING_HASHTABLE (dbus_g_type_get_map("GHashTable", G_TYPE_UINT, G_TYPE_STRING))
-#define DBUS_TYPE_G_HASH_TABLE_ARRAY (dbus_g_type_get_collection("GPtrArray", DBUS_TYPE_G_STRING_VARIANT_HASHTABLE))
+#define BLUEZ_DBUS_NAME "org.bluez"
 
-extern DBusGConnection *session_conn;
-extern DBusGConnection *system_conn;
+/* BlueZ DBus API */
+#include "bluez/adapter.h"
+#include "bluez/agent.h"
+#include "bluez/audio.h"
+#include "bluez/device.h"
+#include "bluez/input.h"
+#include "bluez/manager.h"
+#include "bluez/network.h"
+#include "bluez/network_server.h"
+#include "bluez/serial.h"
 
-void dbus_init();
-gboolean dbus_session_connect(GError **error);
-void dbus_session_disconnect();
-gboolean dbus_system_connect(GError **error);
-void dbus_system_disconnect();
+#endif /* __BLUEZ_API_H */
 
-#endif /* __DBUS_COMMON_H */

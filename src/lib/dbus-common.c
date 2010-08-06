@@ -25,35 +25,60 @@
 #include <config.h>
 #endif
 
-#include "marshallers.h"
-#include "agent.h"
+#include "bluez-api.h"
+#include "obexd-api.h"
+#include "ods-api.h"
+
 #include "dbus-common.h"
 
-DBusGConnection *conn = NULL;
+DBusGConnection *session_conn = NULL;
+DBusGConnection *system_conn = NULL;
 
-gboolean dbus_connect(GError **error)
+void dbus_init()
 {
-	conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, error);
-	if (!conn) {
-		return FALSE;
-	}
-
 	/* Marshallers registration
 	 * Used for signals
 	 */
-	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__UINT64, G_TYPE_NONE, G_TYPE_UINT64, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__STRING_BOXED, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__STRING_STRING, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__STRING_STRING_UINT64, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT64, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bluez_marshal_VOID__BOXED_STRING_STRING, G_TYPE_NONE, G_TYPE_VALUE, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
+	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__STRING_BOXED, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
+	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__INT_INT, G_TYPE_NONE, G_TYPE_INT, G_TYPE_INT, G_TYPE_INVALID);
+	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__STRING_BOOLEAN, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_INVALID);
+	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__UINT64, G_TYPE_NONE, G_TYPE_UINT64, G_TYPE_INVALID);
+	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__STRING_STRING, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
+	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__STRING_STRING_UINT64, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT64, G_TYPE_INVALID);
+	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__BOXED_STRING_STRING, G_TYPE_NONE, G_TYPE_VALUE, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
 
-	/* Agent installation */
+	/* Agents installation */
 	dbus_g_object_type_install_info(AGENT_TYPE, &dbus_glib_agent_object_info);
+	dbus_g_object_type_install_info(OBEXAGENT_TYPE, &dbus_glib_obexagent_object_info);
+}
+
+gboolean dbus_session_connect(GError **error)
+{
+	session_conn = dbus_g_bus_get(DBUS_BUS_SESSION, error);
+	if (!session_conn) {
+		return FALSE;
+	}
 
 	return TRUE;
 }
 
-void dbus_disconnect()
+void dbus_session_disconnect()
 {
-	dbus_g_connection_unref(conn);
+	dbus_g_connection_unref(session_conn);
 }
+
+gboolean dbus_system_connect(GError **error)
+{
+	system_conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, error);
+	if (!system_conn) {
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+void dbus_system_disconnect()
+{
+	dbus_g_connection_unref(system_conn);
+}
+

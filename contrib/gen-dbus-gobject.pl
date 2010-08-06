@@ -40,7 +40,19 @@ sub parse_doc_api {
         $n++;
         s/\s+$//;
         
-        die "invalid file format (1)\n" if $n == 1 && $_ !~ /^BlueZ D-Bus \S+ API description$/ && $_ !~ /^obex.*?API description$/i;
+	if ($n == 1) {
+	    if (/^BlueZ D-Bus \S+ API description$/) {
+		$data{'dbus_conn'} = 'system_conn';
+	    } elsif (/^obex.*?API description$/i) {
+		$data{'dbus_conn'} = 'session_conn';
+	    } elsif (/^ODS API description$/) {
+		$data{'dbus_conn'} = 'system_conn';
+	    } else {
+		die "invalid file format (1)\n";
+	    }
+	    
+	    next;
+	}
         
         /^\s*$/ && next;
         
@@ -48,9 +60,11 @@ sub parse_doc_api {
             my $hierarchy = $1;
             $section = 'hierarchy';
             $hierarchy_n++;
+	    my $dbus_conn = $data{'dbus_conn'};
             undef %data if $hierarchy_n == $hierarchy_id;
             last if $hierarchy_n == $hierarchy_id+1;
             $data{'hierarchy'} = $hierarchy;
+	    $data{'dbus_conn'} = $dbus_conn;
         } elsif (/^Service\s*(.+)$/) {
             my $service = $1;
             die "invalid file format (2)\n" unless $section eq 'hierarchy';
@@ -150,47 +164,47 @@ my $HEADER = <<EOH;
 EOH
 
 sub get_g_type {
-    my $bluez_type = shift;
+    my $obj_type = shift;
     my $g_type;
     
-    $g_type = 'void ' if $bluez_type eq 'void';
-    $g_type = 'gchar *' if $bluez_type eq 'object' || $bluez_type eq 'string';
-    $g_type = 'GHashTable *' if $bluez_type =~ /^dict/;
-    $g_type = 'GValue *' if $bluez_type eq 'variant';
-    $g_type = 'guint8 ' if $bluez_type eq 'uint8';
-    $g_type = 'gboolean ' if $bluez_type eq 'boolean';
-    $g_type = 'gint32 ' if $bluez_type eq 'int32';
-    $g_type = 'guint32 ' if $bluez_type eq 'uint32';
-    $g_type = 'guint64 ' if $bluez_type eq 'uint64';
-    $g_type = 'GPtrArray *' if $bluez_type eq 'array{object}' || $bluez_type eq 'array{dict}';
-    $g_type = 'gchar **' if $bluez_type eq 'array{string}';
-    $g_type = 'guchar ' if $bluez_type eq 'byte';
+    $g_type = 'void ' if $obj_type eq 'void';
+    $g_type = 'gchar *' if $obj_type eq 'object' || $obj_type eq 'string';
+    $g_type = 'GHashTable *' if $obj_type =~ /^dict/;
+    $g_type = 'GValue *' if $obj_type eq 'variant';
+    $g_type = 'guint8 ' if $obj_type eq 'uint8';
+    $g_type = 'gboolean ' if $obj_type eq 'boolean';
+    $g_type = 'gint32 ' if $obj_type eq 'int32';
+    $g_type = 'guint32 ' if $obj_type eq 'uint32';
+    $g_type = 'guint64 ' if $obj_type eq 'uint64';
+    $g_type = 'GPtrArray *' if $obj_type eq 'array{object}' || $obj_type eq 'array{dict}';
+    $g_type = 'gchar **' if $obj_type eq 'array{string}';
+    $g_type = 'guchar ' if $obj_type eq 'byte';
     
-    die "unknown bluez type (1): $bluez_type\n" unless defined $g_type;
+    die "unknown object type (1): $obj_type\n" unless defined $g_type;
     
     return $g_type;
 }
 
 sub get_g_type_name {
-    my $bluez_type = shift;
+    my $obj_type = shift;
     my $g_type_name;
     
-    $g_type_name = 'DBUS_TYPE_G_OBJECT_PATH' if $bluez_type eq 'object';
-    $g_type_name = 'G_TYPE_STRING' if $bluez_type eq 'string';
-    $g_type_name = 'G_TYPE_VALUE' if $bluez_type eq 'variant';
-    $g_type_name = 'G_TYPE_BOOLEAN' if $bluez_type eq 'boolean';
-    $g_type_name = 'G_TYPE_INT' if $bluez_type eq 'int32';
-    $g_type_name = 'G_TYPE_UINT' if $bluez_type eq 'uint32';
-    $g_type_name = 'G_TYPE_UINT64' if $bluez_type eq 'uint64';
-    $g_type_name = 'DBUS_TYPE_G_STRING_VARIANT_HASHTABLE' if $bluez_type eq 'dict';
-    $g_type_name = 'DBUS_TYPE_G_UINT_STRING_HASHTABLE' if $bluez_type eq 'dict{u,s}';
-    $g_type_name = 'DBUS_TYPE_G_STRING_STRING_HASHTABLE' if $bluez_type eq 'dict{s,s}';
-    $g_type_name = 'DBUS_TYPE_G_OBJECT_ARRAY' if $bluez_type eq 'array{object}';
-    $g_type_name = 'G_TYPE_STRV' if $bluez_type eq 'array{string}';
-    $g_type_name = 'G_TYPE_UCHAR' if $bluez_type eq 'byte';
-    $g_type_name = 'DBUS_TYPE_G_HASH_TABLE_ARRAY' if $bluez_type eq 'array{dict}';
+    $g_type_name = 'DBUS_TYPE_G_OBJECT_PATH' if $obj_type eq 'object';
+    $g_type_name = 'G_TYPE_STRING' if $obj_type eq 'string';
+    $g_type_name = 'G_TYPE_VALUE' if $obj_type eq 'variant';
+    $g_type_name = 'G_TYPE_BOOLEAN' if $obj_type eq 'boolean';
+    $g_type_name = 'G_TYPE_INT' if $obj_type eq 'int32';
+    $g_type_name = 'G_TYPE_UINT' if $obj_type eq 'uint32';
+    $g_type_name = 'G_TYPE_UINT64' if $obj_type eq 'uint64';
+    $g_type_name = 'DBUS_TYPE_G_STRING_VARIANT_HASHTABLE' if $obj_type eq 'dict';
+    $g_type_name = 'DBUS_TYPE_G_UINT_STRING_HASHTABLE' if $obj_type eq 'dict{u,s}';
+    $g_type_name = 'DBUS_TYPE_G_STRING_STRING_HASHTABLE' if $obj_type eq 'dict{s,s}';
+    $g_type_name = 'DBUS_TYPE_G_OBJECT_ARRAY' if $obj_type eq 'array{object}';
+    $g_type_name = 'G_TYPE_STRV' if $obj_type eq 'array{string}';
+    $g_type_name = 'G_TYPE_UCHAR' if $obj_type eq 'byte';
+    $g_type_name = 'DBUS_TYPE_G_HASH_TABLE_ARRAY' if $obj_type eq 'array{dict}';
     
-    die "unknown bluez type (2): $bluez_type\n" unless defined $g_type_name;
+    die "unknown object type (2): $obj_type\n" unless defined $g_type_name;
     
     return $g_type_name;
 }
@@ -217,7 +231,7 @@ sub generate_header {
 
 #include <glib-object.h>
 
-{BLUEZ_DBUS_OBJECT_DEFS}
+{DBUS_OBJECT_DEFS}
 
 /*
  * Type macros
@@ -260,9 +274,9 @@ EOT
     my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     
-    my $bluez_dbus_object_defs = "";
-    $bluez_dbus_object_defs .= "#define BLUEZ_DBUS_{\$OBJECT}_PATH \"$node->{'objectPath'}\"\n"  if defined $node->{'objectPath'};
-    $bluez_dbus_object_defs .= "#define BLUEZ_DBUS_{\$OBJECT}_INTERFACE \"$node->{'intf'}\"";
+    my $dbus_object_defs = "";
+    $dbus_object_defs .= "#define {\$OBJECT}_DBUS_PATH \"$node->{'objectPath'}\"\n"  if defined $node->{'objectPath'};
+    $dbus_object_defs .= "#define {\$OBJECT}_DBUS_INTERFACE \"$node->{'intf'}\"";
     
     my $method_defs = "";
     
@@ -296,7 +310,7 @@ EOT
     $method_defs =~ s/\s+$//s;
     
     my $output = "$HEADER\n$HEADER_TEMPLATE\n";
-    $output =~ s/{BLUEZ_DBUS_OBJECT_DEFS}/$bluez_dbus_object_defs/;
+    $output =~ s/{DBUS_OBJECT_DEFS}/$dbus_object_defs/;
     $output =~ s/{METHOD_DEFS}/$method_defs/;
     $output =~ s/{\$OBJECT}/$obj_uc/g;
     $output =~ s/{\$Object}/$obj/g;
@@ -316,8 +330,9 @@ sub generate_source {
 #include <glib.h>
 #include <string.h>
 
-#include "dbus-common.h"
-#include "marshallers.h"
+#include "../dbus-common.h"
+#include "../marshallers.h"
+
 #include "{\$object}.h"
 
 #define {\$OBJECT}_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), {\$OBJECT}_TYPE, {\$Object}Private))
@@ -423,27 +438,27 @@ static void {\$object}_init({\$Object} *self)
 	{PRIV_ASYNC_CALLS_INIT}
 	{FI_ASYNC_CALLS}
 
-	g_assert(conn != NULL);
+	g_assert({\$conn} != NULL);
 
 	{IF_INIT}
 	GError *error = NULL;
 
 	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, {DBUS_SERVICE_NAME}, BLUEZ_DBUS_{\$OBJECT}_PATH, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name({\$conn}, {DBUS_SERVICE_NAME}, {\$OBJECT}_DBUS_PATH, "org.freedesktop.DBus.Introspectable");
 	self->priv->introspection_xml = NULL;
 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
 		g_critical("%s", error->message);
 	}
 	g_assert(error == NULL);
 
-	gchar *check_intf_regex_str = g_strconcat("<interface name=\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, "\\">", NULL);
+	gchar *check_intf_regex_str = g_strconcat("<interface name=\\"", {\$OBJECT}_DBUS_INTERFACE, "\\">", NULL);
 	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
-		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, BLUEZ_DBUS_{\$OBJECT}_PATH);
+		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", {\$OBJECT}_DBUS_INTERFACE, {\$OBJECT}_DBUS_PATH);
 		g_assert(FALSE);
 	}
 	g_free(check_intf_regex_str);
 
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, {DBUS_SERVICE_NAME}, BLUEZ_DBUS_{\$OBJECT}_PATH, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name({\$conn}, {DBUS_SERVICE_NAME}, {\$OBJECT}_DBUS_PATH, {\$OBJECT}_DBUS_INTERFACE);
 
 	{IF_SIGNALS}
 	/* DBus signals connection */
@@ -468,20 +483,20 @@ static void {\$object}_post_init({\$Object} *self, const gchar *dbus_object_path
 	GError *error = NULL;
 
 	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(conn, {DBUS_SERVICE_NAME}, dbus_object_path, "org.freedesktop.DBus.Introspectable");
+	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name({\$conn}, {DBUS_SERVICE_NAME}, dbus_object_path, "org.freedesktop.DBus.Introspectable");
 	self->priv->introspection_xml = NULL;
 	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
 		g_critical("%s", error->message);
 	}
 	g_assert(error == NULL);
 
-	gchar *check_intf_regex_str = g_strconcat("<interface name=\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, "\\">", NULL);
+	gchar *check_intf_regex_str = g_strconcat("<interface name=\\"", {\$OBJECT}_DBUS_INTERFACE, "\\">", NULL);
 	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
-		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", BLUEZ_DBUS_{\$OBJECT}_INTERFACE, dbus_object_path);
+		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", {\$OBJECT}_DBUS_INTERFACE, dbus_object_path);
 		g_assert(FALSE);
 	}
 	g_free(check_intf_regex_str);
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(conn, {DBUS_SERVICE_NAME}, dbus_object_path, BLUEZ_DBUS_{\$OBJECT}_INTERFACE);
+	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name({\$conn}, {DBUS_SERVICE_NAME}, dbus_object_path, {\$OBJECT}_DBUS_INTERFACE);
 
 	{IF_SIGNALS}
 	/* DBus signals connection */
@@ -657,35 +672,35 @@ EOT
             "\t\t\tG_TYPE_NONE, 1, G_TYPE_STRING);\n\n";
         } elsif ($arg_t eq 'object_string_string') {
             $signals_registration .=
-            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_STRING_STRING,\n".
+            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_STRING_STRING,\n".
             "\t\t\tG_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);\n\n";
         } elsif ($arg_t eq 'string_variant') {
             $signals_registration .=
-            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_BOXED,\n".
+            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_BOXED,\n".
             "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_VALUE);\n\n";
         } elsif ($arg_t eq 'string_dict') {
             $signals_registration .=
-            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_BOXED,\n".
+            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_BOXED,\n".
             "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_HASH_TABLE);\n\n";
         } elsif ($arg_t eq 'object_boolean') {
             $signals_registration .=
-            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_BOOLEAN,\n".
+            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_BOOLEAN,\n".
             "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_BOOLEAN);\n\n";
         } elsif ($arg_t eq 'uint64') {
             $signals_registration .=
-            "\t\t\tg_cclosure_bluez_marshal_VOID__UINT64,\n".
+            "\t\t\tg_cclosure_bt_marshal_VOID__UINT64,\n".
             "\t\t\tG_TYPE_NONE, 1, G_TYPE_UINT64);\n\n";
         } elsif ($arg_t eq 'int32_int32') {
             $signals_registration .=
-            "\t\t\tg_cclosure_bluez_marshal_VOID__INT_INT,\n".
+            "\t\t\tg_cclosure_bt_marshal_VOID__INT_INT,\n".
             "\t\t\tG_TYPE_NONE, 2, G_TYPE_INT, G_TYPE_INT);\n\n";
         } elsif ($arg_t eq 'string_string') {
             $signals_registration .=
-            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_STRING,\n".
+            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_STRING,\n".
             "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_STRING);\n\n";
         } elsif ($arg_t eq 'string_string_uint64') {
             $signals_registration .=
-            "\t\t\tg_cclosure_bluez_marshal_VOID__STRING_STRING_UINT64,\n".
+            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_STRING_UINT64,\n".
             "\t\t\tG_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT64);\n\n";
         } else {
             die "unknown signal arguments: $arg_t\n";
@@ -956,6 +971,7 @@ EOT
         $output =~ s/\s+\{IF_ASYNC_CALLS\}.+?\{FI_ASYNC_CALLS\}//gs;
     }
     $output =~ s/{DBUS_SERVICE_NAME}/"$node->{'serviceName'}"/g;
+    $output =~ s/{\$conn}/$node->{'dbus_conn'}/g;
     $output =~ s/{ENUM_SIGNALS}/$enum_signals/;
     $output =~ s/{SIGNALS_HANDLERS_DEF}/$signals_handlers_def/;
     $output =~ s/{SIGNALS_REGISTRATION}/$signals_registration/;

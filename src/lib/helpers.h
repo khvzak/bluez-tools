@@ -27,22 +27,9 @@
 #include <stdio.h>
 #include <glib.h>
 
-/* Bluez DBus Interfaces */
-#include "adapter.h"
-#include "device.h"
-#include "audio.h"
-#include "input.h"
-#include "network.h"
-#include "network_hub.h"
-#include "network_peer.h"
-#include "network_router.h"
-#include "serial.h"
-
-/* OBEX DBus Interfaces */
-#include "obexmanager.h"
-#include "obexsession.h"
-#include "obexserver.h"
-#include "obexserver_session.h"
+#include "bluez-api.h"
+#include "obexd-api.h"
+#include "ods-api.h"
 
 enum {
 	DEVICE_INTF,

@@ -1,0 +1,329 @@
+OBEX client API description
+***************************
+
+Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
+
+
+Client hierarchy
+================
+
+Service		org.openobex.client
+Interface	org.openobex.Client
+Object path	/
+Object name	OBEXClient
+
+Methods		void SendFiles(dict device, array{string} files, object agent)
+
+			Send one or multiple local files to the specified
+			device. The device is configured via properties. At
+			least the Destination property should be specified.
+
+		void PullBusinessCard(dict device, string file)
+
+			Request the business card from a remote device and
+			store it in the local file.
+
+		void ExchangeBusinessCards(dict device, string clientfile, string file)
+
+			Push the client's business card to the remote device
+			and then retrieve the remote business card and store
+			it in a local file.
+
+		object CreateSession(dict device)
+
+			Create a new OBEX session. The device is configured
+			via properties like in SendFiles.
+
+		void RemoveSession(object session)
+
+			Unregister session and abort pending transfers.
+
+		string GetCapabilities(dict device)
+
+			Get remote device capabilities.
+
+Properties	string Target
+
+		string Source
+
+		string Destination
+
+		byte Channel
+
+
+Session hierarchy
+=================
+
+Service		org.openobex.client
+Interface	org.openobex.Session
+Object path	[variable prefix]/{session0,session1,...}
+Object name	OBEXClientSession
+
+Methods		dict GetProperties()
+
+			Returns all properties for the session.
+
+		void AssignAgent(object agent)
+
+			Assign an OBEX agent to this session. This allows
+			detailed progress reports about the transactions.
+
+		void ReleaseAgent(object agent)
+
+			Release a previously assigned OBEX agent.
+
+Properties	string Source [readonly]
+
+		string Destination [readonly]
+
+		byte Channel [readonly]
+
+
+File Transfer hierarchy
+=======================
+
+Service		org.openobex.client
+Interface	org.openobex.FileTransfer
+Object path	[variable prefix]/{session0,session1,...}
+Object name	OBEXClientFileTransfer
+
+Methods		void ChangeFolder(string folder)
+
+			Change the current folder of the remote device.
+
+		void CreateFolder(string folder)
+
+			Create a new folder in the remote device.
+
+		array{dict} ListFolder()
+
+			Returns a dictionary containing information about
+			the current folder content.
+
+			The following keys are defined:
+
+				string Name : Object name in UTF-8 format
+				string Type : Either "folder" or "file"
+				uint64 Size : Object size or number of items in folder
+				string Permission : Group, owner and other permission
+				guint64 Modified : Last change
+				guint64 Accessed : Last access
+				guint64 Created : Creation date
+
+		void GetFile(string targetfile, string sourcefile)
+
+			Copy the source file (from remote device) to the
+			target file (on local filesystem).
+
+			A new Transfer object is created to represent this
+			transaction.
+
+		void PutFile(string sourcefile, string targetfile)
+
+			Copy the source file (from local filesystem) to the
+			target file (on remote device).
+
+			A new Transfer object is created to represent this
+			transaction.
+
+		void CopyFile(string sourcefile, string targetfile)
+
+			Copy a file within the remote device from source file
+			to target file.
+
+		void MoveFile(string sourcefile, string targetfile)
+
+			Movea file within the remote device from source file
+			to the target file.
+
+		void Delete(string file)
+
+			Deletes the specified file/folder.
+
+
+Phonebook Access hierarchy
+=======================
+
+Service		org.openobex.client
+Interface	org.openobex.PhonebookAccess
+Object path	[variable prefix]/{session0,session1,...}
+
+Methods		void Select(string location, string phonebook)
+
+			Select the phonebook object for other operations. Should
+			be call before all the other operations.
+
+			location : Where the phonebook is stored, possible inputs :
+				"INT" ( "INTERNAL" which is default )
+				"SIM" ( "SIM1" )
+				"SIM2"
+				...
+
+			phonebook : Possible inputs :
+				"pb" :	phonebook for the saved contacts
+				"ich":	incoming call history
+				"och":	outgoing call history
+				"mch":	missing call history
+				"cch":	combination of ich och mch
+
+		string PullAll()
+
+			Return the entire phonebook object from the PSE server
+			in plain string with vcard format.
+
+		array{string vcard, string name} List()
+
+			Return an array of vcard-listing data which contains the
+			vcard : name paired string, for example "1.vcf" : "John".
+
+		string Pull(string vcard)
+
+			Retrieve the vcard in the current phonebook object
+			for example : Pull("0.vcf")
+
+		array{string vcard, string name}
+		Search(string field, string value)
+
+			Return an array of vcard-listing data which contains the
+			vcard : name paired string match the search condition.
+
+			field : the field in the vcard to search with
+				{ "name" (default) | "number" | "sound" }
+			value : the string value to search for
+
+		uint16 GetSize()
+
+			Return the number of the non-null entries in the selected
+			phonebook object.
+
+		void SetFormat(string format)
+
+			Indicate the format of the vcard that should be return by
+			related methods.
+
+			format : { "vcard21" (default) | "vcard30" }
+
+		void SetOrder(string order)
+
+			Indicate the sorting method of the vcard-listing data returned
+			by List and Search methods.
+
+			order : { "indexed" (default) | "alphanumeric" | "phonetic" }
+
+		void SetFilter(array{string}) {FIX?!}
+
+			Indicate fields that should be contained in vcards return by
+			related methods.
+
+			Give an empty array will clear the filter and return all fields
+			available in vcards. And this is the default behavior.
+
+			Possible filter fields : "VERSION", "FN", ..., "ALL", "bit[0-63]"
+
+		array{string} ListFilterFields() {FIX?!}
+
+			Return All Available fields that can be used in SefFilter method.
+
+		array{string} GetFilter()
+
+			Return the current filter setting
+
+Synchronization hierarchy
+=======================
+
+Service		org.openobex.client
+Interface	org.openobex.Synchronization
+Object path	[variable prefix]/{session0,session1,...}
+
+Methods		void SetLocation(string location)
+
+			Set the phonebook object store location for other operations. Should
+			be called before all the other operations.
+
+			location: Where the phonebook is stored, possible values:
+				"INT" ( "INTERNAL" which is default )
+				"SIM1"
+				"SIM2"
+				......
+
+		string GetPhonebook()
+
+			retrieve an entire Phonebook Object store from remote device
+
+		void PutPhonebook(string obj)
+
+			send an entire Phonebook Object store to remote device
+
+Transfer hierarchy
+==================
+
+Service		org.openobex.client
+Interface	org.openobex.Transfer
+Object path	[variable prefix]/{transfer0,transfer1,...}
+Object name	OBEXClientTransfer
+
+Methods		dict GetProperties()
+
+			Returns all properties for the transfer. See the
+			properties section for available properties.
+
+		void Cancel()
+
+			Cancels this transfer.
+
+Properties	string Name [readonly]
+
+			Name of the transferred object.
+
+		uint64 Size [readonly]
+
+			Size of the transferred object. If the size is
+			unknown, then this property will not be present.
+
+		string Filename [readonly]
+
+			Complete name of the file being received or sent.
+
+
+Agent hierarchy
+===============
+
+Service		unique name
+Interface	org.openobex.Agent
+Object path	freely definable
+
+Methods		void Release()
+
+			This method gets called when the service daemon
+			unregisters the agent. An agent can use it to do
+			cleanup tasks. There is no need to unregister the
+			agent, because when this method gets called it has
+			already been unregistered.
+
+		string Request(object transfer)
+
+			Accept or reject a new transfer (client and server)
+			and provide the filename for it.
+
+			In case of incoming transfers it is the filename
+			where to store the file and for outgoing transfers
+			it is the filename to show the remote device. If left
+			empty it will be calculated automatically.
+
+			Possible errors: org.openobex.Error.Rejected
+			                 org.openobex.Error.Canceled
+
+		void Progress(object transfer, uint64 transferred)
+
+			Progress within the transfer has been made. The
+			number of transferred bytes is given as second
+			argument for convenience.
+
+		void Complete(object transfer)
+
+			Informs that the transfer has completed sucessfully.
+
+		void Error(object transfer, string message)
+
+			Informs that the transfer has been terminated because
+			of some error.

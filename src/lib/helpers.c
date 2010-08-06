@@ -30,8 +30,9 @@
 #include <string.h>
 
 #include "dbus-common.h"
-#include "manager.h"
 #include "helpers.h"
+
+#include "bluez-api.h"
 
 /* UUID Name lookup table */
 typedef struct {

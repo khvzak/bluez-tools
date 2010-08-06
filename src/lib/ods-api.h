@@ -21,23 +21,20 @@
  *
  */
 
-#ifndef __DBUS_COMMON_H
-#define __DBUS_COMMON_H
+#ifndef __ODS_API_H
+#define __ODS_API_H
 
+/* Global includes */
 #include <glib.h>
 #include <dbus/dbus-glib.h>
 
-#define DBUS_TYPE_G_STRING_VARIANT_HASHTABLE (dbus_g_type_get_map("GHashTable", G_TYPE_STRING, G_TYPE_VALUE))
-#define DBUS_TYPE_G_UINT_STRING_HASHTABLE (dbus_g_type_get_map("GHashTable", G_TYPE_UINT, G_TYPE_STRING))
-#define DBUS_TYPE_G_HASH_TABLE_ARRAY (dbus_g_type_get_collection("GPtrArray", DBUS_TYPE_G_STRING_VARIANT_HASHTABLE))
+#define ODS_DBUS_NAME "org.openobex"
 
-extern DBusGConnection *session_conn;
-extern DBusGConnection *system_conn;
+/* ODS DBus API */
+#include "ods/obexmanager.h"
+#include "ods/obexserver.h"
+#include "ods/obexserver_session.h"
+#include "ods/obexsession.h"
 
-void dbus_init();
-gboolean dbus_session_connect(GError **error);
-void dbus_session_disconnect();
-gboolean dbus_system_connect(GError **error);
-void dbus_system_disconnect();
+#endif /* __ODS_API_H */
 
-#endif /* __DBUS_COMMON_H */
