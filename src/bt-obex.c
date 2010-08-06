@@ -460,7 +460,7 @@ int main(int argc, char *argv[])
 		g_free(root_dir);
 		g_hash_table_unref(server_sessions);
 	} else if (opp_arg) {
-		
+
 	}
 
 	g_object_unref(manager);

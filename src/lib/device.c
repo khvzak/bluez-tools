@@ -286,7 +286,7 @@ static void device_post_init(Device *self, const gchar *dbus_object_path)
 
 	/* object Adapter [readonly] */
 	if (g_hash_table_lookup(properties, "Adapter")) {
-		self->priv->adapter = (gchar *)g_value_dup_boxed(g_hash_table_lookup(properties, "Adapter"));
+		self->priv->adapter = (gchar *) g_value_dup_boxed(g_hash_table_lookup(properties, "Adapter"));
 	} else {
 		self->priv->adapter = g_strdup("undefined");
 	}
@@ -727,7 +727,7 @@ static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name
 
 	if (g_strcmp0(name, "Adapter") == 0) {
 		g_free(self->priv->adapter);
-		self->priv->adapter = (gchar *)g_value_dup_boxed(value);
+		self->priv->adapter = (gchar *) g_value_dup_boxed(value);
 	} else if (g_strcmp0(name, "Address") == 0) {
 		g_free(self->priv->address);
 		self->priv->address = g_value_dup_string(value);

@@ -27,9 +27,30 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <glib.h>
 
 #include "lib/bluez-dbus.h"
+
+static gboolean need_unregister = TRUE;
+static GMainLoop *mainloop = NULL;
+
+static void sigterm_handler(int sig)
+{
+	g_message("%s received", sig == SIGTERM ? "SIGTERM" : "SIGINT");
+	g_main_loop_quit(mainloop);
+}
+
+static void agent_released(Agent *agent, gpointer data)
+{
+	g_assert(data != NULL);
+	GMainLoop *mainloop = data;
+
+	need_unregister = FALSE;
+
+	if (g_main_loop_is_running(mainloop))
+		g_main_loop_quit(mainloop);
+}
 
 static gchar *adapter_arg = NULL;
 
@@ -66,6 +87,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	mainloop = g_main_loop_new(NULL, FALSE);
+
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
 
 	Adapter *adapter = find_adapter(adapter_arg, &error);
@@ -76,18 +99,31 @@ int main(int argc, char *argv[])
 	adapter_register_agent(adapter, DBUS_AGENT_PATH, "DisplayYesNo", &error);
 	exit_if_error(error);
 
-	GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
+	g_signal_connect(agent, "AgentReleased", G_CALLBACK(agent_released), mainloop);
+
+	/* Add SIGTERM && SIGINT handlers */
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = sigterm_handler;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+
 	g_main_loop_run(mainloop);
 
-	// TODO: Add SIGINT handler (Ctrl+C)
+	if (need_unregister) {
+		adapter_unregister_agent(adapter, DBUS_AGENT_PATH, &error);
+		exit_if_error(error);
 
-	adapter_unregister_agent(adapter, DBUS_AGENT_PATH, &error);
-	exit_if_error(error);
+		/* Waiting for AgentReleased signal */
+		g_main_loop_run(mainloop);
+	}
 
-	g_main_loop_unref(mainloop);
 	g_object_unref(agent);
 	g_object_unref(adapter);
 	g_object_unref(manager);
+
+	g_main_loop_unref(mainloop);
+
 	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);

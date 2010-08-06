@@ -38,16 +38,28 @@
 #define AGENT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), AGENT_TYPE, AgentPrivate))
 
 struct _AgentPrivate {
+	/* Unused */
 	DBusGProxy *proxy;
 };
 
 G_DEFINE_TYPE(Agent, agent, G_TYPE_OBJECT);
+
+enum {
+	AGENT_RELEASED,
+
+	LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = {0};
 
 static void agent_dispose(GObject *gobject)
 {
 	Agent *self = AGENT(gobject);
 
 	dbus_g_connection_unregister_g_object(conn, gobject);
+
+	/* Proxy free */
+	//g_object_unref(self->priv->proxy);
 
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(agent_parent_class)->dispose(gobject);
@@ -60,6 +72,14 @@ static void agent_class_init(AgentClass *klass)
 	gobject_class->dispose = agent_dispose;
 
 	g_type_class_add_private(klass, sizeof(AgentPrivate));
+
+	/* Signals registation */
+	signals[AGENT_RELEASED] = g_signal_new("AgentReleased",
+			G_TYPE_FROM_CLASS(gobject_class),
+			G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
+			0, NULL, NULL,
+			g_cclosure_marshal_VOID__VOID,
+			G_TYPE_NONE, 0);
 }
 
 static void agent_init(Agent *self)
@@ -78,6 +98,9 @@ static void agent_init(Agent *self)
 gboolean agent_release(Agent *self, GError **error)
 {
 	g_print("Agent released\n");
+
+	g_signal_emit(self, signals[AGENT_RELEASED], 0);
+
 	return TRUE;
 }
 
