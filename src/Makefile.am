@@ -30,27 +30,22 @@ obexd_sources = lib/obexd/obexagent.c lib/obexd/obexagent.h \
 		lib/obexd/obexsession.c lib/obexd/obexsession.h \
 		lib/obexd/obextransfer.c lib/obexd/obextransfer.h
 
-ods_sources = 	lib/ods/obexmanager.c lib/ods/obexmanager.h \
-		lib/ods/obexserver.c lib/ods/obexserver.h \
-		lib/ods/obexserver_session.c lib/ods/obexserver_session.h \
-		lib/ods/obexsession.c lib/ods/obexsession.h
-
 lib_sources = 	lib/marshallers.c lib/marshallers.h \
 		lib/dbus-common.c lib/dbus-common.h \
 		lib/helpers.c lib/helpers.h \
 		lib/sdp.c lib/sdp.h \
-		lib/bluez-api.h lib/obexd-api.h lib/ods-api.h
+		lib/bluez-api.h lib/obexd-api.h
 
 bin_PROGRAMS = bt-monitor bt-adapter bt-agent bt-device bt-input bt-audio bt-network bt-serial bt-obex
-bt_monitor_SOURCES = $(lib_sources) $(bluez_sources) bt-monitor.c
-bt_adapter_SOURCES = ${lib_sources} $(bluez_sources) bt-adapter.c
-bt_agent_SOURCES = $(lib_sources) $(bluez_sources) bt-agent.c
-bt_device_SOURCES = $(lib_sources) $(bluez_sources) bt-device.c
-bt_input_SOURCES = $(lib_sources) $(bluez_sources) bt-input.c
-bt_audio_SOURCES = $(lib_sources) $(bluez_sources) bt-audio.c
-bt_network_SOURCES = $(lib_sources) $(bluez_sources) bt-network.c
-bt_serial_SOURCES = $(lib_sources) $(bluez_sources) bt-serial.c
-bt_obex_SOURCES = $(lib_sources) $(bluez_sources) $(ods_sources) bt-obex.c
+bt_monitor_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-monitor.c
+bt_adapter_SOURCES = ${lib_sources} $(bluez_sources) $(obexd_sources) bt-adapter.c
+bt_agent_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-agent.c
+bt_device_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-device.c
+bt_input_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-input.c
+bt_audio_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-audio.c
+bt_network_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-network.c
+bt_serial_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-serial.c
+bt_obex_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-obex.c
 
 CLEANFILES =	Makefile.in \
 		lib/marshallers.c lib/marshallers.h

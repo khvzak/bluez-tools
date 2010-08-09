@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <string.h>
+#include <glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -123,6 +123,9 @@ static void audio_class_init(AudioClass *klass)
 static void audio_init(Audio *self)
 {
 	self->priv = AUDIO_GET_PRIVATE(self);
+
+	/* DBusGProxy init */
+	self->priv->dbus_g_proxy = NULL;
 
 	g_assert(system_conn != NULL);
 }

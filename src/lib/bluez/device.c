@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <string.h>
+#include <glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -231,6 +231,9 @@ static void device_class_init(DeviceClass *klass)
 static void device_init(Device *self)
 {
 	self->priv = DEVICE_GET_PRIVATE(self);
+
+	/* DBusGProxy init */
+	self->priv->dbus_g_proxy = NULL;
 
 	g_assert(system_conn != NULL);
 }

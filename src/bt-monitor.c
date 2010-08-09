@@ -29,7 +29,9 @@
 #include <string.h>
 #include <glib.h>
 
-#include "lib/bluez-dbus.h"
+#include "lib/dbus-common.h"
+#include "lib/helpers.h"
+#include "lib/bluez-api.h"
 
 static gchar *adapter_arg = NULL;
 
@@ -103,7 +105,7 @@ static void adapter_device_created(Adapter *adapter, const gchar *device_path, g
 {
 	//g_print("adapter_device_created()\n");
 
-	if (intf_is_supported(device_path, DEVICE_INTF)) {
+	if (intf_supported(BLUEZ_DBUS_NAME, device_path, DEVICE_DBUS_INTERFACE)) {
 		Device *device = g_object_new(DEVICE_TYPE, "DBusObjectPath", device_path, NULL);
 		g_print("[Adapter: %s (%s)] Device created: %s (%s)\n", adapter_get_name(adapter), adapter_get_address(adapter), device_get_alias(device), device_get_address(device));
 		capture_device(device);
@@ -393,17 +395,17 @@ static void reload_device_services(Device *device)
 	}
 
 	// Capturing signals from available services
-	if (intf_is_supported(device_get_dbus_object_path(device), AUDIO_INTF)) {
+	if (intf_supported(BLUEZ_DBUS_NAME, device_get_dbus_object_path(device), AUDIO_DBUS_INTERFACE)) {
 		Audio *audio = g_object_new(AUDIO_TYPE, "DBusObjectPath", device_get_dbus_object_path(device), NULL);
 		g_signal_connect(audio, "PropertyChanged", G_CALLBACK(audio_property_changed), device);
 		t2 = g_slist_append(t2, audio);
 	}
-	if (intf_is_supported(device_get_dbus_object_path(device), INPUT_INTF)) {
+	if (intf_supported(BLUEZ_DBUS_NAME, device_get_dbus_object_path(device), INPUT_DBUS_INTERFACE)) {
 		Input *input = g_object_new(INPUT_TYPE, "DBusObjectPath", device_get_dbus_object_path(device), NULL);
 		g_signal_connect(input, "PropertyChanged", G_CALLBACK(input_property_changed), device);
 		t2 = g_slist_append(t2, input);
 	}
-	if (intf_is_supported(device_get_dbus_object_path(device), NETWORK_INTF)) {
+	if (intf_supported(BLUEZ_DBUS_NAME, device_get_dbus_object_path(device), NETWORK_DBUS_INTERFACE)) {
 		Network *network = g_object_new(NETWORK_TYPE, "DBusObjectPath", device_get_dbus_object_path(device), NULL);
 		g_signal_connect(network, "PropertyChanged", G_CALLBACK(network_property_changed), device);
 		t2 = g_slist_append(t2, network);
@@ -423,6 +425,7 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 
 	g_type_init();
+	dbus_init();
 
 	context = g_option_context_new("- a bluetooth monitor");
 	g_option_context_add_main_entries(context, entries, NULL);
@@ -440,8 +443,15 @@ int main(int argc, char *argv[])
 
 	g_option_context_free(context);
 
-	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s\n", error->message);
+	if (!dbus_system_connect(&error)) {
+		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		exit(EXIT_FAILURE);
+	}
+
+	/* Check, that bluetooth daemon is running */
+	if (!intf_supported(BLUEZ_DBUS_NAME, MANAGER_DBUS_PATH, MANAGER_DBUS_INTERFACE)) {
+		g_printerr("%s: BLUEZ service does not found\n", g_get_prgname());
+		g_printerr("Did you forget to run bluetoothd?\n");
 		exit(EXIT_FAILURE);
 	}
 

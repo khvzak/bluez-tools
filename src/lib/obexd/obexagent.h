@@ -63,7 +63,7 @@ GType obexagent_get_type(void) G_GNUC_CONST;
  * Method definitions
  */
 
-/* Agent API */
+/* Server API */
 gboolean obexagent_authorize(OBEXAgent *self, const gchar *transfer, const gchar *bt_address, const gchar *name, const gchar *type, gint length, gint time, gchar **ret, GError **error);
 gboolean obexagent_cancel(OBEXAgent *self, GError **error);
 

@@ -29,7 +29,10 @@
 #include <string.h>
 #include <glib.h>
 
-#include "lib/bluez-dbus.h"
+#include "lib/dbus-common.h"
+#include "lib/helpers.h"
+#include "lib/sdp.h"
+#include "lib/bluez-api.h"
 
 enum {
 	REC,
@@ -45,6 +48,7 @@ enum {
 
 static int xml_t[LAST_E] = {0, 0, 0, 0, -1, -1};
 
+/* Main arguments */
 static gchar *adapter_arg = NULL;
 static gboolean list_arg = FALSE;
 static gchar *connect_arg = NULL;
@@ -248,6 +252,7 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 
 	g_type_init();
+	dbus_init();
 
 	context = g_option_context_new("- a bluetooth device manager");
 	g_option_context_add_main_entries(context, entries, NULL);
@@ -255,13 +260,15 @@ int main(int argc, char *argv[])
 	g_option_context_set_description(context,
 			"Services Options:\n"
 			"  -s, --services <name|mac> [<pattern>]\n"
-			"  Where `pattern` is an optional specific UUID\n\n"
+			"  Where `pattern` is an optional specific UUID to search\n\n"
 			"Set Options:\n"
 			"  --set <name|mac> <property> <value>\n"
-			"  Where `property` is one of:\n"
-			"     Alias\n"
-			"     Trusted\n"
-			"     Blocked\n\n"
+			"  Where\n"
+			"    `name|mac` is a device name or MAC\n"
+			"    `property` is one of:\n"
+			"       Alias\n"
+			"       Trusted\n"
+			"       Blocked\n\n"
 			//"Report bugs to <"PACKAGE_BUGREPORT">."
 			"Project home page <"PACKAGE_URL">."
 			);
@@ -277,7 +284,7 @@ int main(int argc, char *argv[])
 		g_print("%s: Invalid arguments for --services\n", g_get_prgname());
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
-	} else if (set_arg && (argc != 4 || strlen(argv[1]) == 0 || strlen(argv[2]) ==0 || strlen(argv[3]) == 0)) {
+	} else if (set_arg && (argc != 4 || strlen(argv[1]) == 0 || strlen(argv[2]) == 0 || strlen(argv[3]) == 0)) {
 		g_print("%s: Invalid arguments for --set\n", g_get_prgname());
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
@@ -285,8 +292,15 @@ int main(int argc, char *argv[])
 
 	g_option_context_free(context);
 
-	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s\n", error->message);
+	if (!dbus_system_connect(&error)) {
+		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		exit(EXIT_FAILURE);
+	}
+
+	/* Check, that bluetooth daemon is running */
+	if (!intf_supported(BLUEZ_DBUS_NAME, MANAGER_DBUS_PATH, MANAGER_DBUS_INTERFACE)) {
+		g_printerr("%s: BLUEZ service does not found\n", g_get_prgname());
+		g_printerr("Did you forget to run bluetoothd?\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -314,7 +328,7 @@ int main(int argc, char *argv[])
 		Agent *agent = g_object_new(AGENT_TYPE, NULL);
 		GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
 
-		adapter_create_paired_device_begin(adapter, create_paired_device_done, mainloop, connect_arg, DBUS_AGENT_PATH, "DisplayYesNo");
+		adapter_create_paired_device_begin(adapter, create_paired_device_done, mainloop, connect_arg, AGENT_DBUS_PATH, "DisplayYesNo");
 		g_main_loop_run(mainloop);
 		gchar *created_device = adapter_create_paired_device_end(adapter, &error);
 		exit_if_error(error);
@@ -376,7 +390,7 @@ int main(int argc, char *argv[])
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
 			n++;
 			if (n == 1) g_print("\n");
-			g_print("[RECORD:%d]\n", (int)key);
+			g_print("[RECORD:%d]\n", (gint) key);
 			GMarkupParser xml_parser = {xml_start_element, xml_end_element, NULL, NULL, NULL};
 			GMarkupParseContext *xml_parse_context = g_markup_parse_context_new(&xml_parser, 0, NULL, NULL);
 			g_markup_parse_context_parse(xml_parse_context, value, strlen(value), &error);

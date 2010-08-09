@@ -27,12 +27,13 @@
 
 #include "bluez-api.h"
 #include "obexd-api.h"
-#include "ods-api.h"
 
 #include "dbus-common.h"
 
 DBusGConnection *session_conn = NULL;
 DBusGConnection *system_conn = NULL;
+
+static gboolean dbus_initialized = FALSE;
 
 void dbus_init()
 {
@@ -41,19 +42,19 @@ void dbus_init()
 	 */
 	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__STRING_BOXED, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
 	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__INT_INT, G_TYPE_NONE, G_TYPE_INT, G_TYPE_INT, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__STRING_BOOLEAN, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__UINT64, G_TYPE_NONE, G_TYPE_UINT64, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__STRING_STRING, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__STRING_STRING_UINT64, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT64, G_TYPE_INVALID);
-	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__BOXED_STRING_STRING, G_TYPE_NONE, G_TYPE_VALUE, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
+	dbus_g_object_register_marshaller(g_cclosure_bt_marshal_VOID__BOXED_BOOLEAN, G_TYPE_NONE, G_TYPE_VALUE, G_TYPE_BOOLEAN, G_TYPE_INVALID);
 
 	/* Agents installation */
 	dbus_g_object_type_install_info(AGENT_TYPE, &dbus_glib_agent_object_info);
 	dbus_g_object_type_install_info(OBEXAGENT_TYPE, &dbus_glib_obexagent_object_info);
+
+	dbus_initialized = TRUE;
 }
 
 gboolean dbus_session_connect(GError **error)
 {
+	g_assert(dbus_initialized == TRUE);
+
 	session_conn = dbus_g_bus_get(DBUS_BUS_SESSION, error);
 	if (!session_conn) {
 		return FALSE;
@@ -69,6 +70,8 @@ void dbus_session_disconnect()
 
 gboolean dbus_system_connect(GError **error)
 {
+	g_assert(dbus_initialized == TRUE);
+
 	system_conn = dbus_g_bus_get(DBUS_BUS_SYSTEM, error);
 	if (!system_conn) {
 		return FALSE;
@@ -80,5 +83,13 @@ gboolean dbus_system_connect(GError **error)
 void dbus_system_disconnect()
 {
 	dbus_g_connection_unref(system_conn);
+}
+
+void dbus_disconnect()
+{
+	if (system_conn)
+		dbus_g_connection_unref(system_conn);
+	if (session_conn)
+		dbus_g_connection_unref(session_conn);
 }
 

@@ -29,31 +29,12 @@
 
 #include "bluez-api.h"
 #include "obexd-api.h"
-#include "ods-api.h"
 
-enum {
-	DEVICE_INTF,
+/* DBus helpers */
+gboolean intf_supported(const gchar *dbus_service_name, const gchar *dbus_object_path, const gchar *intf_name);
 
-	/* BlueZ Interfaces */
-	AUDIO_INTF,
-	INPUT_INTF,
-	NETWORK_INTF,
-	NETWORK_HUB_INTF,
-	NETWORK_PEER_INTF,
-	NETWORK_ROUTER_INTF,
-	SERIAL_INTF,
-
-	/* OBEX Interfaces */
-	OBEXMANAGER_INTF,
-	OBEXSESSION_INRF,
-	OBEXSERVER_INTF,
-	OBEXSERVER_SESSION_INTF,
-};
-
-/* Adapter helpers */
+/* BlueZ helpers */
 Adapter *find_adapter(const gchar *name, GError **error);
-
-/* Device helpers */
 Device *find_device(Adapter *adapter, const gchar *name, GError **error);
 
 /* Others helpers */
@@ -72,9 +53,6 @@ inline int xtoi(const gchar *str)
 
 const gchar *uuid2name(const gchar *uuid);
 const gchar *name2uuid(const gchar *name);
-
-/* Interface helpers */
-gboolean intf_is_supported(const gchar *dbus_object_path, int intf_id);
 
 #endif /* __HELPERS_H */
 

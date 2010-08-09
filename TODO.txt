@@ -1,4 +1,0 @@
-Interfaces:
-- How to use RequestSession() && ReleaseSession() in org.bluez.Adapter intf ?
-
-bt-monitor:

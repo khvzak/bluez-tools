@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <string.h>
+#include <glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -91,6 +91,9 @@ static void network_server_class_init(NetworkServerClass *klass)
 static void network_server_init(NetworkServer *self)
 {
 	self->priv = NETWORK_SERVER_GET_PRIVATE(self);
+
+	/* DBusGProxy init */
+	self->priv->dbus_g_proxy = NULL;
 
 	g_assert(system_conn != NULL);
 }

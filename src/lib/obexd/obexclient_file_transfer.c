@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <string.h>
+#include <glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -91,6 +91,9 @@ static void obexclient_file_transfer_class_init(OBEXClientFileTransferClass *kla
 static void obexclient_file_transfer_init(OBEXClientFileTransfer *self)
 {
 	self->priv = OBEXCLIENT_FILE_TRANSFER_GET_PRIVATE(self);
+
+	/* DBusGProxy init */
+	self->priv->dbus_g_proxy = NULL;
 
 	g_assert(session_conn != NULL);
 }

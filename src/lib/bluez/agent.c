@@ -87,10 +87,9 @@ static void agent_init(Agent *self)
 {
 	self->priv = AGENT_GET_PRIVATE(self);
 
-	g_assert(conn != NULL);
+	g_assert(system_conn != NULL);
 
 	dbus_g_connection_register_g_object(system_conn, AGENT_DBUS_PATH, G_OBJECT(self));
-
 	g_print("Agent registered\n");
 }
 

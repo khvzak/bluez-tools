@@ -25,14 +25,12 @@
 #include <config.h>
 #endif
 
+#include <string.h>
 #include <glib.h>
 #include <dbus/dbus-glib.h>
-#include <string.h>
 
 #include "dbus-common.h"
 #include "helpers.h"
-
-#include "bluez-api.h"
 
 /* UUID Name lookup table */
 typedef struct {
@@ -188,11 +186,8 @@ Adapter *find_adapter(const gchar *name, GError **error)
 
 Device *find_device(Adapter *adapter, const gchar *name, GError **error)
 {
-	g_assert(adapter != NULL);
-	g_assert(ADAPTER_IS(adapter));
-
-	g_assert(name);
-	g_assert(strlen(name) > 0);
+	g_assert(adapter != NULL && ADAPTER_IS(adapter));
+	g_assert(name != NULL && strlen(name) > 0);
 
 	gchar *device_path = NULL;
 	Device *device = NULL;
@@ -230,68 +225,25 @@ Device *find_device(Adapter *adapter, const gchar *name, GError **error)
 	return device;
 }
 
-gboolean intf_is_supported(const gchar *dbus_object_path, int intf_id)
+gboolean intf_supported(const gchar *dbus_service_name, const gchar *dbus_object_path, const gchar *intf_name)
 {
-	g_assert(conn != NULL);
-	g_assert(dbus_object_path != NULL);
-	g_assert(strlen(dbus_object_path) > 0);
-	gboolean intf_supported = FALSE;
+	g_assert(dbus_service_name != NULL && strlen(dbus_service_name) > 0);
+	g_assert(dbus_object_path != NULL && strlen(dbus_object_path) > 0);
+	g_assert(intf_name != NULL && strlen(intf_name) > 0);
 
-	gchar *check_intf_regex_str = NULL;
-	const gchar *dbus_service_name = NULL;
-	switch (intf_id) {
-	case DEVICE_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_DEVICE_INTERFACE, "\">", NULL);
-		dbus_service_name = BLUEZ_DBUS_NAME;
-		break;
-	case AUDIO_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_AUDIO_INTERFACE, "\">", NULL);
-		dbus_service_name = BLUEZ_DBUS_NAME;
-		break;
-	case INPUT_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_INPUT_INTERFACE, "\">", NULL);
-		dbus_service_name = BLUEZ_DBUS_NAME;
-		break;
-	case NETWORK_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_INTERFACE, "\">", NULL);
-		dbus_service_name = BLUEZ_DBUS_NAME;
-		break;
-	case NETWORK_HUB_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_HUB_INTERFACE, "\">", NULL);
-		dbus_service_name = BLUEZ_DBUS_NAME;
-		break;
-	case NETWORK_PEER_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_PEER_INTERFACE, "\">", NULL);
-		dbus_service_name = BLUEZ_DBUS_NAME;
-		break;
-	case NETWORK_ROUTER_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_NETWORK_ROUTER_INTERFACE, "\">", NULL);
-		dbus_service_name = BLUEZ_DBUS_NAME;
-		break;
-	case SERIAL_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_SERIAL_INTERFACE, "\">", NULL);
-		dbus_service_name = BLUEZ_DBUS_NAME;
-		break;
-	case OBEXMANAGER_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_OBEXMANAGER_INTERFACE, "\">", NULL);
-		dbus_service_name = OBEX_DBUS_NAME;
-		break;
-	case OBEXSESSION_INRF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_OBEXSESSION_INTERFACE, "\">", NULL);
-		dbus_service_name = OBEX_DBUS_NAME;
-		break;
-	case OBEXSERVER_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_OBEXSERVER_INTERFACE, "\">", NULL);
-		dbus_service_name = OBEX_DBUS_NAME;
-		break;
-	case OBEXSERVER_SESSION_INTF:
-		check_intf_regex_str = g_strconcat("<interface name=\"", BLUEZ_DBUS_OBEXSERVER_SESSION_INTERFACE, "\">", NULL);
-		dbus_service_name = OBEX_DBUS_NAME;
-		break;
-	default:
-		check_intf_regex_str = g_strconcat("<interface name=\"", "undefined", "\">", NULL);
-		dbus_service_name = BLUEZ_DBUS_NAME;
+	gboolean supported = FALSE;
+	DBusGConnection *conn = NULL;
+
+	if (g_strcmp0(dbus_service_name, BLUEZ_DBUS_NAME) == 0) {
+		conn = system_conn;
+	} else if (g_strcmp0(dbus_service_name, OBEXD_DBUS_NAME) == 0) {
+		conn = session_conn;
+	} else {
+		return FALSE;
 	}
+	g_assert(conn != NULL);
+
+	gchar *check_intf_regex_str = g_strconcat("<interface name=\"", intf_name, "\">", NULL);
 
 	/* Getting introspection XML */
 	DBusGProxy *introspection_g_proxy = dbus_g_proxy_new_for_name(conn, dbus_service_name, dbus_object_path, "org.freedesktop.DBus.Introspectable");
@@ -309,13 +261,13 @@ gboolean intf_is_supported(const gchar *dbus_object_path, int intf_id)
 	g_assert(error == NULL);
 
 	if (g_regex_match_simple(check_intf_regex_str, introspection_xml, 0, 0)) {
-		intf_supported = TRUE;
+		supported = TRUE;
 	}
 
 	g_free(check_intf_regex_str);
 	g_free(introspection_xml);
 	g_object_unref(introspection_g_proxy);
 
-	return intf_supported;
+	return supported;
 }
 

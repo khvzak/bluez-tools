@@ -26,4 +26,3 @@ API_VERSION=0.30
 
 ./gen-dbus-gobject.pl -header obexd-api-${API_VERSION}-fixed/obexd-api.txt 3 > ../src/lib/obexd/obexsession.h
 ./gen-dbus-gobject.pl -source obexd-api-${API_VERSION}-fixed/obexd-api.txt 3 > ../src/lib/obexd/obexsession.c
-

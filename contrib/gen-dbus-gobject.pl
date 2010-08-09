@@ -327,8 +327,8 @@ sub generate_source {
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <string.h>
+#include <glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -432,6 +432,9 @@ static void {\$object}_class_init({\$Object}Class *klass)
 static void {\$object}_init({\$Object} *self)
 {
 	self->priv = {\$OBJECT}_GET_PRIVATE(self);
+
+	/* DBusGProxy init */
+	self->priv->dbus_g_proxy = NULL;
 
 	{IF_ASYNC_CALLS}
 	/* Async calls init */

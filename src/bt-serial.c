@@ -29,7 +29,9 @@
 #include <string.h>
 #include <glib.h>
 
-#include "lib/bluez-dbus.h"
+#include "lib/dbus-common.h"
+#include "lib/helpers.h"
+#include "lib/bluez-api.h"
 
 static gchar *adapter_arg = NULL;
 static gboolean connect_arg = FALSE;
@@ -52,6 +54,7 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 
 	g_type_init();
+	dbus_init();
 
 	context = g_option_context_new(" - a bluetooth serial manager");
 	g_option_context_add_main_entries(context, entries, NULL);
@@ -59,14 +62,17 @@ int main(int argc, char *argv[])
 	g_option_context_set_description(context,
 			"Connect Options:\n"
 			"  -c, --connect <name|mac> <pattern>\n"
-			"  Where `pattern` is:\n"
-			"     UUID 128 bit string\n"
-			"     Profile short name, e.g: spp, dun\n"
-			"     RFCOMM channel, 1-30\n\n"
+			"  Where\n"
+			"    `name|mac` is a device name or MAC\n"
+			"    `pattern` is:\n"
+			"       UUID 128 bit string\n"
+			"       Profile short name, e.g: spp, dun\n"
+			"       RFCOMM channel, 1-30\n\n"
 			"Disconnect Options:\n"
 			"  -d, --disconnect <name|mac> <tty_device>\n"
-			"  Where `tty_device` is:\n"
-			"     RFCOMM TTY device that has been connected\n\n"
+			"  Where\n"
+			"    `name|mac` is a device name or MAC\n"
+			"    `tty_device` is a RFCOMM TTY device that has been connected\n\n"
 			//"Report bugs to <"PACKAGE_BUGREPORT">."
 			"Project home page <"PACKAGE_URL">."
 			);
@@ -98,8 +104,15 @@ int main(int argc, char *argv[])
 		disconnect_tty_device_arg = argv[2];
 	}
 
-	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s\n", error->message);
+	if (!dbus_system_connect(&error)) {
+		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		exit(EXIT_FAILURE);
+	}
+
+	/* Check, that bluetooth daemon is running */
+	if (!intf_supported(BLUEZ_DBUS_NAME, MANAGER_DBUS_PATH, MANAGER_DBUS_INTERFACE)) {
+		g_printerr("%s: BLUEZ service does not found\n", g_get_prgname());
+		g_printerr("Did you forget to run bluetoothd?\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -109,7 +122,7 @@ int main(int argc, char *argv[])
 	Device *device = find_device(adapter, connect_device_arg != NULL ? connect_device_arg : disconnect_device_arg, &error);
 	exit_if_error(error);
 
-	if (!intf_is_supported(device_get_dbus_object_path(device), SERIAL_INTF)) {
+	if (!intf_supported(BLUEZ_DBUS_NAME, device_get_dbus_object_path(device), SERIAL_DBUS_INTERFACE)) {
 		g_printerr("Serial service is not supported by this device\n");
 		exit(EXIT_FAILURE);
 	}

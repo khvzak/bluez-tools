@@ -29,7 +29,9 @@
 #include <string.h>
 #include <glib.h>
 
-#include "lib/bluez-dbus.h"
+#include "lib/dbus-common.h"
+#include "lib/helpers.h"
+#include "lib/bluez-api.h"
 
 static void audio_property_changed(Audio *audio, const gchar *name, const GValue *value, gpointer data)
 {
@@ -66,6 +68,7 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 
 	g_type_init();
+	dbus_init();
 
 	context = g_option_context_new("- a bluetooth generic audio manager");
 	g_option_context_add_main_entries(context, entries, NULL);
@@ -86,8 +89,15 @@ int main(int argc, char *argv[])
 
 	g_option_context_free(context);
 
-	if (!dbus_connect(&error)) {
-		g_printerr("Couldn't connect to dbus: %s\n", error->message);
+	if (!dbus_system_connect(&error)) {
+		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		exit(EXIT_FAILURE);
+	}
+
+	/* Check, that bluetooth daemon is running */
+	if (!intf_supported(BLUEZ_DBUS_NAME, MANAGER_DBUS_PATH, MANAGER_DBUS_INTERFACE)) {
+		g_printerr("%s: BLUEZ service does not found\n", g_get_prgname());
+		g_printerr("Did you forget to run bluetoothd?\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -97,7 +107,7 @@ int main(int argc, char *argv[])
 	Device *device = find_device(adapter, connect_arg != NULL ? connect_arg : disconnect_arg, &error);
 	exit_if_error(error);
 
-	if (!intf_is_supported(device_get_dbus_object_path(device), AUDIO_INTF)) {
+	if (!intf_supported(BLUEZ_DBUS_NAME, device_get_dbus_object_path(device), AUDIO_DBUS_INTERFACE)) {
 		g_printerr("Audio service is not supported by this device\n");
 		exit(EXIT_FAILURE);
 	}

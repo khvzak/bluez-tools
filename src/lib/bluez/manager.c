@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <string.h>
+#include <glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -148,6 +148,9 @@ static void manager_class_init(ManagerClass *klass)
 static void manager_init(Manager *self)
 {
 	self->priv = MANAGER_GET_PRIVATE(self);
+
+	/* DBusGProxy init */
+	self->priv->dbus_g_proxy = NULL;
 
 	g_assert(system_conn != NULL);
 

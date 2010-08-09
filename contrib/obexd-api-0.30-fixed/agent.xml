@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node name="/ObexAgent">
+  <interface name="org.openobex.Agent">
+    <annotation name="org.freedesktop.DBus.GLib.CSymbol" value="obexagent"/>
+
+    <method name="Authorize">
+      <arg type="o" name="transfer" direction="in"/>
+      <arg type="s" name="bt_address" direction="in"/>
+      <arg type="s" name="name" direction="in"/>
+      <arg type="s" name="type" direction="in"/>
+      <arg type="i" name="length" direction="in"/>
+      <arg type="i" name="time" direction="in"/>
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="Cancel"/>
+
+    <method name="Release"/>
+    <method name="Request">
+      <arg type="o" name="transfer" direction="in"/>
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="Progress">
+      <arg type="o" name="transfer" direction="in"/>
+      <arg type="t" name="transferred" direction="in"/>
+    </method>
+    <method name="Complete">
+      <arg type="o" name="transfer" direction="in"/>
+    </method>
+    <method name="Error">
+      <arg type="o" name="transfer" direction="in"/>
+      <arg type="s" name="message" direction="in"/>
+    </method>
+
+  </interface>
+</node>

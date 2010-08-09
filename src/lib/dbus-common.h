@@ -39,5 +39,6 @@ gboolean dbus_session_connect(GError **error);
 void dbus_session_disconnect();
 gboolean dbus_system_connect(GError **error);
 void dbus_system_disconnect();
+void dbus_disconnect();
 
 #endif /* __DBUS_COMMON_H */

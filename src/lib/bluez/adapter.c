@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <string.h>
+#include <glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -229,6 +229,9 @@ static void adapter_class_init(AdapterClass *klass)
 static void adapter_init(Adapter *self)
 {
 	self->priv = ADAPTER_GET_PRIVATE(self);
+
+	/* DBusGProxy init */
+	self->priv->dbus_g_proxy = NULL;
 
 	/* Async calls init */
 	self->priv->create_paired_device_call = NULL;

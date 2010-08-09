@@ -70,7 +70,7 @@ extern void g_cclosure_bt_marshal_VOID__INT_INT (GClosure     *closure,
                                                  gpointer      invocation_hint,
                                                  gpointer      marshal_data);
 
-/* VOID:STRING,BOOLEAN (lib/marshallers.list:14) */
+/* VOID:STRING,BOOLEAN (lib/marshallers.list:16) */
 extern void g_cclosure_bt_marshal_VOID__STRING_BOOLEAN (GClosure     *closure,
                                                         GValue       *return_value,
                                                         guint         n_param_values,
@@ -78,7 +78,15 @@ extern void g_cclosure_bt_marshal_VOID__STRING_BOOLEAN (GClosure     *closure,
                                                         gpointer      invocation_hint,
                                                         gpointer      marshal_data);
 
-/* BOOLEAN:BOXED,STRING,STRING,STRING,INT,INT,POINTER,POINTER (lib/marshallers.list:17) */
+/* VOID:BOXED,BOOLEAN (lib/marshallers.list:17) */
+extern void g_cclosure_bt_marshal_VOID__BOXED_BOOLEAN (GClosure     *closure,
+                                                       GValue       *return_value,
+                                                       guint         n_param_values,
+                                                       const GValue *param_values,
+                                                       gpointer      invocation_hint,
+                                                       gpointer      marshal_data);
+
+/* BOOLEAN:BOXED,STRING,STRING,STRING,INT,INT,POINTER,POINTER (lib/marshallers.list:20) */
 extern void g_cclosure_bt_marshal_BOOLEAN__BOXED_STRING_STRING_STRING_INT_INT_POINTER_POINTER (GClosure     *closure,
                                                                                                GValue       *return_value,
                                                                                                guint         n_param_values,
@@ -86,7 +94,7 @@ extern void g_cclosure_bt_marshal_BOOLEAN__BOXED_STRING_STRING_STRING_INT_INT_PO
                                                                                                gpointer      invocation_hint,
                                                                                                gpointer      marshal_data);
 
-/* BOOLEAN:BOXED,UINT64,POINTER (lib/marshallers.list:20) */
+/* BOOLEAN:BOXED,UINT64,POINTER (lib/marshallers.list:23) */
 extern void g_cclosure_bt_marshal_BOOLEAN__BOXED_UINT64_POINTER (GClosure     *closure,
                                                                  GValue       *return_value,
                                                                  guint         n_param_values,
@@ -94,53 +102,13 @@ extern void g_cclosure_bt_marshal_BOOLEAN__BOXED_UINT64_POINTER (GClosure     *c
                                                                  gpointer      invocation_hint,
                                                                  gpointer      marshal_data);
 
-/* BOOLEAN:BOXED,POINTER (lib/marshallers.list:21) */
+/* BOOLEAN:BOXED,POINTER (lib/marshallers.list:24) */
 extern void g_cclosure_bt_marshal_BOOLEAN__BOXED_POINTER (GClosure     *closure,
                                                           GValue       *return_value,
                                                           guint         n_param_values,
                                                           const GValue *param_values,
                                                           gpointer      invocation_hint,
                                                           gpointer      marshal_data);
-
-/* VOID:STRING,STRING (lib/marshallers.list:25) */
-extern void g_cclosure_bt_marshal_VOID__STRING_STRING (GClosure     *closure,
-                                                       GValue       *return_value,
-                                                       guint         n_param_values,
-                                                       const GValue *param_values,
-                                                       gpointer      invocation_hint,
-                                                       gpointer      marshal_data);
-
-/* VOID:UINT64 (lib/marshallers.list:26) */
-extern void g_cclosure_bt_marshal_VOID__UINT64 (GClosure     *closure,
-                                                GValue       *return_value,
-                                                guint         n_param_values,
-                                                const GValue *param_values,
-                                                gpointer      invocation_hint,
-                                                gpointer      marshal_data);
-
-/* VOID:STRING,STRING,UINT64 (lib/marshallers.list:27) */
-extern void g_cclosure_bt_marshal_VOID__STRING_STRING_UINT64 (GClosure     *closure,
-                                                              GValue       *return_value,
-                                                              guint         n_param_values,
-                                                              const GValue *param_values,
-                                                              gpointer      invocation_hint,
-                                                              gpointer      marshal_data);
-
-/* VOID:STRING,STRING,STRING (lib/marshallers.list:30) */
-extern void g_cclosure_bt_marshal_VOID__STRING_STRING_STRING (GClosure     *closure,
-                                                              GValue       *return_value,
-                                                              guint         n_param_values,
-                                                              const GValue *param_values,
-                                                              gpointer      invocation_hint,
-                                                              gpointer      marshal_data);
-
-/* VOID:BOXED,STRING,STRING (lib/marshallers.list:31) */
-extern void g_cclosure_bt_marshal_VOID__BOXED_STRING_STRING (GClosure     *closure,
-                                                             GValue       *return_value,
-                                                             guint         n_param_values,
-                                                             const GValue *param_values,
-                                                             gpointer      invocation_hint,
-                                                             gpointer      marshal_data);
 
 G_END_DECLS
 

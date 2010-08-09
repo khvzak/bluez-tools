@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <string.h>
+#include <glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -91,6 +91,9 @@ static void serial_class_init(SerialClass *klass)
 static void serial_init(Serial *self)
 {
 	self->priv = SERIAL_GET_PRIVATE(self);
+
+	/* DBusGProxy init */
+	self->priv->dbus_g_proxy = NULL;
 
 	g_assert(system_conn != NULL);
 }

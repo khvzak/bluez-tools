@@ -34,4 +34,3 @@ API_VERSION=4.69
 # serial-api.txt
 ./gen-dbus-gobject.pl -header bluez-api-${API_VERSION}-fixed/serial-api.txt > ../src/lib/bluez/serial.h
 ./gen-dbus-gobject.pl -source bluez-api-${API_VERSION}-fixed/serial-api.txt > ../src/lib/bluez/serial.c
-

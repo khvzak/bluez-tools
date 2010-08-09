@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 
-#include <glib.h>
 #include <string.h>
+#include <glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -72,6 +72,9 @@ static void obexclient_class_init(OBEXClientClass *klass)
 static void obexclient_init(OBEXClient *self)
 {
 	self->priv = OBEXCLIENT_GET_PRIVATE(self);
+
+	/* DBusGProxy init */
+	self->priv->dbus_g_proxy = NULL;
 
 	g_assert(session_conn != NULL);
 
