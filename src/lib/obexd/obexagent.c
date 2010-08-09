@@ -244,7 +244,7 @@ gboolean obexagent_progress(OBEXAgent *self, const gchar *transfer, guint64 tran
 {
 	OBEXClientTransfer *transfer_t = g_object_new(OBEXCLIENT_TRANSFER_TYPE, "DBusObjectPath", transfer, NULL);
 	guint64 total = obexclient_transfer_get_size(transfer_t);
-	
+
 	guint pp = (transferred / (gfloat) total)*100;
 
 	static gboolean update_progress = FALSE;
@@ -259,7 +259,7 @@ gboolean obexagent_progress(OBEXAgent *self, const gchar *transfer, guint64 tran
 		g_print("\n");
 		update_progress = FALSE;
 	}
-	
+
 	g_object_unref(transfer_t);
 
 	return TRUE;

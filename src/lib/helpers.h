@@ -40,7 +40,7 @@ Device *find_device(Adapter *adapter, const gchar *name, GError **error);
 /* Others helpers */
 #define exit_if_error(error) G_STMT_START{ \
 if (error) { \
-	g_printerr("%s\n", error->message); \
+	g_printerr("%s: %s\n", (dbus_g_error_get_name(error) != NULL && strlen(dbus_g_error_get_name(error)) ? dbus_g_error_get_name(error) : "Error"), error->message); \
 	exit(EXIT_FAILURE); \
 }; }G_STMT_END
 

@@ -38,8 +38,25 @@
 #include "lib/bluez-api.h"
 #include "lib/obexd-api.h"
 
-GHashTable *server_transfers = NULL;
-GMainLoop *mainloop = NULL;
+static GHashTable *server_transfers = NULL;
+static GMainLoop *mainloop = NULL;
+
+static void sigterm_handler(int sig)
+{
+	g_message("%s received", sig == SIGTERM ? "SIGTERM" : "SIGINT");
+
+	if (g_main_loop_is_running(mainloop))
+		g_main_loop_quit(mainloop);
+}
+
+static void agent_released(OBEXAgent *agent, gpointer data)
+{
+	g_assert(data != NULL);
+	GMainLoop *mainloop = data;
+
+	if (g_main_loop_is_running(mainloop))
+		g_main_loop_quit(mainloop);
+}
 
 /* OBEXTransfer signals */
 static void obextransfer_progress(OBEXTransfer *transfer, gint total, gint transfered, gpointer data)
@@ -107,13 +124,13 @@ static gchar *server_path_arg = NULL;
 static gboolean opp_arg = FALSE;
 static gchar *opp_device_arg = NULL;
 static gchar *opp_file_arg = NULL;
-static gchar *ftp_arg = NULL;
+//static gchar *ftp_arg = NULL;
 
 static GOptionEntry entries[] = {
 	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
 	{"server", 's', 0, G_OPTION_ARG_NONE, &server_arg, "Register self at OBEX server", NULL},
 	{"opp", 'p', 0, G_OPTION_ARG_NONE, &opp_arg, "Send file to remote device", NULL},
-	{"ftp", 'f', 0, G_OPTION_ARG_STRING, &ftp_arg, "Start FTP session with remote device", "<name|mac>"},
+	//{"ftp", 'f', 0, G_OPTION_ARG_STRING, &ftp_arg, "Start FTP session with remote device", "<name|mac>"},
 	{NULL}
 };
 
@@ -144,7 +161,7 @@ int main(int argc, char *argv[])
 		g_print("%s: %s\n", g_get_prgname(), error->message);
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
-	} else if (!server_arg && !opp_arg && (!ftp_arg || strlen(ftp_arg) == 0)) {
+	} else if (!server_arg && !opp_arg /*&& (!ftp_arg || strlen(ftp_arg) == 0)*/) {
 		g_print("%s", g_option_context_get_help(context, FALSE, NULL));
 		exit(EXIT_FAILURE);
 	} else if (server_arg && argc != 1 && (argc != 2 || strlen(argv[1]) == 0)) {
@@ -221,11 +238,17 @@ int main(int argc, char *argv[])
 		exit_if_error(error);
 
 		mainloop = g_main_loop_new(NULL, FALSE);
+
+		/* Add SIGTERM && SIGINT handlers */
+		struct sigaction sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_handler = sigterm_handler;
+		sigaction(SIGTERM, &sa, NULL);
+		sigaction(SIGINT, &sa, NULL);
+
 		g_main_loop_run(mainloop);
 
 		/* Waiting for connections... */
-
-		// TODO: Add SIGINT handler
 
 		g_main_loop_unref(mainloop);
 
@@ -293,24 +316,29 @@ int main(int argc, char *argv[])
 		g_hash_table_insert(device_dict, "Source", &source);
 		g_hash_table_insert(device_dict, "Destination", &destination);
 
-		OBEXClient *client = g_object_new(OBEXCLIENT_TYPE, NULL);
-		OBEXAgent *agent = g_object_new(OBEXAGENT_TYPE, NULL);
-
 		mainloop = g_main_loop_new(NULL, FALSE);
 
+		OBEXClient *client = g_object_new(OBEXCLIENT_TYPE, NULL);
+
+		OBEXAgent *agent = g_object_new(OBEXAGENT_TYPE, NULL);
+		g_signal_connect(agent, "AgentReleased", G_CALLBACK(agent_released), mainloop);
+
 		/* Sending file(s) */
-		obexclient_send_files_begin(client, send_files_done, mainloop, device_dict, files_to_send, OBEXAGENT_DBUS_PATH);
+		obexclient_send_files(client, device_dict, files_to_send, OBEXAGENT_DBUS_PATH, &error);
+		exit_if_error(error);
+
+		/* Add SIGTERM && SIGINT handlers */
+		struct sigaction sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_handler = sigterm_handler;
+		sigaction(SIGTERM, &sa, NULL);
+		sigaction(SIGINT, &sa, NULL);
 
 		g_main_loop_run(mainloop);
 
 		/* Sending files process here ?? */
 
-		// TODO: Add SIGINT handler ??
-
 		g_main_loop_unref(mainloop);
-
-		obexclient_send_files_end(client, &error);
-		exit_if_error(error);
 
 		g_object_unref(agent);
 		g_object_unref(client);
@@ -322,14 +350,14 @@ int main(int argc, char *argv[])
 		g_free(src_address);
 		g_free(dst_address);
 		g_strfreev(files_to_send);
-	} else if (ftp_arg) {
+	} /*else if (ftp_arg) {
 		/* Get source address (address of adapter) */
-		Adapter *adapter = find_adapter(adapter_arg, &error);
+		/*Adapter *adapter = find_adapter(adapter_arg, &error);
 		exit_if_error(error);
 		gchar *src_address = g_strdup(adapter_get_address(adapter));
 
 		/* Get destination address (address of remote device) */
-		Device *device = find_device(adapter, ftp_arg, &error);
+		/*/Device *device = find_device(adapter, ftp_arg, &error);
 		exit_if_error(error);
 		gchar *dst_address = g_strdup(device == NULL ? ftp_arg : device_get_address(device));
 
@@ -337,7 +365,7 @@ int main(int argc, char *argv[])
 		g_object_unref(adapter);
 
 		/* Build arguments */
-		GHashTable *device_dict = g_hash_table_new(g_str_hash, g_str_equal);
+		/*GHashTable *device_dict = g_hash_table_new(g_str_hash, g_str_equal);
 		GValue source = {0};
 		GValue destination = {0};
 		GValue target = {0};
@@ -355,24 +383,20 @@ int main(int argc, char *argv[])
 		OBEXAgent *agent = g_object_new(OBEXAGENT_TYPE, NULL);
 
 		/* Create FTP session */
-		gchar *session_path = obexclient_create_session(client, device_dict, &error);
-		exit_if_error(error);
+		//gchar *session_path = obexclient_create_session(client, device_dict, &error);
+		//exit_if_error(error);
 
-		OBEXClientFileTransfer *ftp_session = g_object_new(OBEXCLIENT_FILE_TRANSFER_TYPE, "DBusObjectPath", session_path, NULL);
+		//OBEXClientFileTransfer *ftp_session = g_object_new(OBEXCLIENT_FILE_TRANSFER_TYPE, "DBusObjectPath", session_path, NULL);
 
-		g_print("FTP session opened\n");
+		/*g_print("FTP session opened\n");
 
 		while (TRUE) {
 			g_print("> ");
 			gchar cmd[128] = {0,};
-			errno = 0;
-			if (scanf("%128s", cmd) == EOF && errno) {
-				g_warning("%s\n", strerror(errno));
-			}
-
+			if (!fgets(cmd, 127, stdin)) continue;
 			g_print("cmd: %s\n", cmd);
 		}
-	}
+	}*/
 
 	dbus_disconnect();
 

@@ -40,7 +40,9 @@ static GMainLoop *mainloop = NULL;
 static void sigterm_handler(int sig)
 {
 	g_message("%s received", sig == SIGTERM ? "SIGTERM" : "SIGINT");
-	g_main_loop_quit(mainloop);
+
+	if (g_main_loop_is_running(mainloop))
+		g_main_loop_quit(mainloop);
 }
 
 static void agent_released(Agent *agent, gpointer data)
@@ -128,11 +130,11 @@ int main(int argc, char *argv[])
 		g_main_loop_run(mainloop);
 	}
 
+	g_main_loop_unref(mainloop);
+
 	g_object_unref(agent);
 	g_object_unref(adapter);
 	g_object_unref(manager);
-
-	g_main_loop_unref(mainloop);
 
 	dbus_disconnect();
 
