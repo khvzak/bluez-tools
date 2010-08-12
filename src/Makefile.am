@@ -65,4 +65,6 @@ if OBEX
 man_MANS += bt-obex.1
 endif
 
+dist_man_MANS = $(man_MANS)
+
 #CLEANFILES =	lib/marshallers.c lib/marshallers.h
