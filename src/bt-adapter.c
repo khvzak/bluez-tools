@@ -89,7 +89,7 @@ static gchar *set_value_arg = NULL;
 
 static GOptionEntry entries[] = {
 	{"list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List all available adapters", NULL},
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
 	{"info", 'i', 0, G_OPTION_ARG_NONE, &info_arg, "Show adapter info", NULL},
 	{"discover", 'd', 0, G_OPTION_ARG_NONE, &discover_arg, "Discover remote devices", NULL},
 	{"set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set adapter property", NULL},
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_system_connect(&error)) {
-		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		g_printerr("Couldn't connect to DBus system bus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 

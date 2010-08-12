@@ -158,7 +158,7 @@ static void _obexagent_set_property(GObject *object, guint property_id, const GV
 /* Server API */
 gboolean obexagent_authorize(OBEXAgent *self, const gchar *transfer, const gchar *bt_address, const gchar *name, const gchar *type, gint length, gint time, gchar **ret, GError **error)
 {
-	g_assert(self->priv->root_folder != NULL && strlen(self->priv->root_folder));
+	g_assert(self->priv->root_folder != NULL && strlen(self->priv->root_folder) > 0);
 
 	*ret = NULL;
 	g_print("[ObjectPush Request]\n");
@@ -180,11 +180,9 @@ gboolean obexagent_authorize(OBEXAgent *self, const gchar *transfer, const gchar
 	}
 	if (g_strcmp0(yn, "y") == 0 || g_strcmp0(yn, "yes") == 0) {
 		if (!g_path_is_absolute(self->priv->root_folder)) {
-			gchar *current_dir = g_get_current_dir();
-			gchar *end_path = g_build_filename(self->priv->root_folder, name, NULL);
-			*ret = g_build_filename(current_dir, end_path, NULL);
-			g_free(current_dir);
-			g_free(end_path);
+			gchar *abs_path = get_absolute_path(self->priv->root_folder);
+			*ret = g_build_filename(abs_path, name, NULL);
+			g_free(abs_path);
 		} else {
 			*ret = g_build_filename(self->priv->root_folder, name, NULL);
 		}

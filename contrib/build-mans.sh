@@ -10,3 +10,5 @@ pod2man -n bt-audio -c "bluez-tools" -r "" man/bt-audio.pod > ../src/bt-audio.1
 pod2man -n bt-input -c "bluez-tools" -r "" man/bt-input.pod > ../src/bt-input.1
 pod2man -n bt-network -c "bluez-tools" -r "" man/bt-network.pod > ../src/bt-network.1
 pod2man -n bt-serial -c "bluez-tools" -r "" man/bt-serial.pod > ../src/bt-serial.1
+
+pod2man -n bt-obex -c "bluez-tools" -r "" man/bt-obex.pod > ../src/bt-obex.1

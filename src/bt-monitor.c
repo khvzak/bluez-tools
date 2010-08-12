@@ -273,7 +273,7 @@ static void capture_adapter(Adapter *adapter)
 	g_assert(ADAPTER_IS(adapter));
 
 	GSList *t = g_slist_append(NULL, adapter);
-	g_hash_table_insert(captured_adapters_devices_t, adapter_get_dbus_object_path(adapter), t);
+	g_hash_table_insert(captured_adapters_devices_t, g_strdup(adapter_get_dbus_object_path(adapter)), t);
 
 	g_signal_connect(adapter, "DeviceCreated", G_CALLBACK(adapter_device_created), NULL);
 	g_signal_connect(adapter, "DeviceDisappeared", G_CALLBACK(adapter_device_disappeared), NULL);
@@ -333,8 +333,8 @@ static void capture_device(Device *device)
 	g_signal_connect(device, "DisconnectRequested", G_CALLBACK(device_disconnect_requested), NULL);
 	g_signal_connect(device, "PropertyChanged", G_CALLBACK(device_property_changed), NULL);
 
-	g_hash_table_insert(captured_adapters_devices_t, device_get_adapter(device), t);
-	g_hash_table_insert(captured_devices_services_t, device_get_dbus_object_path(device), t2);
+	g_hash_table_insert(captured_adapters_devices_t, g_strdup(device_get_adapter(device)), t);
+	g_hash_table_insert(captured_devices_services_t, g_strdup(device_get_dbus_object_path(device)), t2);
 
 	reload_device_services(device);
 }
@@ -348,7 +348,7 @@ static void release_device(Device *device)
 	GSList *t = g_hash_table_lookup(captured_adapters_devices_t, device_get_adapter(device));
 	if (t != NULL) {
 		t = g_slist_remove(t, device);
-		g_hash_table_insert(captured_adapters_devices_t, device_get_adapter(device), t);
+		g_hash_table_insert(captured_adapters_devices_t, g_strdup(device_get_adapter(device)), t);
 	}
 
 	GSList *t2 = g_hash_table_lookup(captured_devices_services_t, device_get_dbus_object_path(device));
@@ -396,11 +396,11 @@ static void reload_device_services(Device *device)
 		t2 = g_slist_append(t2, network);
 	}
 
-	g_hash_table_insert(captured_devices_services_t, device_get_dbus_object_path(device), t2);
+	g_hash_table_insert(captured_devices_services_t, g_strdup(device_get_dbus_object_path(device)), t2);
 }
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
 	{NULL}
 };
 
@@ -429,7 +429,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_system_connect(&error)) {
-		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		g_printerr("Couldn't connect to DBus system bus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 

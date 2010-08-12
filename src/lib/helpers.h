@@ -57,5 +57,9 @@ inline int xtoi(const gchar *str)
 const gchar *uuid2name(const gchar *uuid);
 const gchar *name2uuid(const gchar *name);
 
+gboolean is_file(const gchar *filename, GError **error);
+gboolean is_dir(const gchar *dirname, GError **error);
+gchar *get_absolute_path(const gchar *path);
+
 #endif /* __HELPERS_H */
 

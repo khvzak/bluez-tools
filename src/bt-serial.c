@@ -43,9 +43,9 @@ static gchar *disconnect_device_arg = NULL;
 static gchar *disconnect_tty_device_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
-	{"connect", 'c', 0, G_OPTION_ARG_NONE, &connect_arg, "Connect to a serial device", NULL},
-	{"disconnect", 'd', 0, G_OPTION_ARG_NONE, &disconnect_arg, "Disconnect from a serial device", NULL},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
+	{"connect", 'c', 0, G_OPTION_ARG_NONE, &connect_arg, "Connect to the serial device", NULL},
+	{"disconnect", 'd', 0, G_OPTION_ARG_NONE, &disconnect_arg, "Disconnect from the serial device", NULL},
 	{NULL}
 };
 
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 			"Disconnect Options:\n"
 			"  -d, --disconnect <name|mac> <tty_device>\n"
 			"  Where\n"
-			"    `name|mac` is a device name or MAC\n"
+			"    `name|mac` is a device Name or MAC\n"
 			"    `tty_device` is a RFCOMM TTY device that has been connected\n\n"
 			//"Report bugs to <"PACKAGE_BUGREPORT">."
 			"Project home page <"PACKAGE_URL">."
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!dbus_system_connect(&error)) {
-		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		g_printerr("Couldn't connect to DBus system bus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 

@@ -57,9 +57,9 @@ static gchar *connect_arg = NULL;
 static gchar *disconnect_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
-	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to an audio device", "<name|mac>"},
-	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from an audio device", "<name|mac>"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
+	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to the audio device", "<name|mac>"},
+	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from the audio device", "<name|mac>"},
 	{NULL}
 };
 
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_system_connect(&error)) {
-		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		g_printerr("Couldn't connect to DBus system bus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 

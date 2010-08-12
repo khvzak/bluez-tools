@@ -68,9 +68,9 @@ static gchar *server_uuid_arg = NULL;
 static gchar *server_brige_arg = NULL;
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
-	{"connect", 'c', 0, G_OPTION_ARG_NONE, &connect_arg, "Connect to a network device", NULL},
-	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from a network device", "<name|mac>"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
+	{"connect", 'c', 0, G_OPTION_ARG_NONE, &connect_arg, "Connect to the network device", NULL},
+	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from the network device", "<name|mac>"},
 	{"server", 's', 0, G_OPTION_ARG_NONE, &server_arg, "Start GN/PANU/NAP server", NULL},
 	{NULL}
 };
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 			"Connect Options:\n"
 			"  -c, --connect <name|mac> <uuid>\n"
 			"  Where\n"
-			"    `name|mac` is a device name or MAC\n"
+			"    `name|mac` is a device Name or MAC\n"
 			"    `uuid` is:\n"
 			"       Profile short name: gn, panu or nap\n\n"
 			"Server Options:\n"
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_system_connect(&error)) {
-		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		g_printerr("Couldn't connect to DBus system bus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
@@ -195,7 +195,6 @@ int main(int argc, char *argv[])
 		gchar *server_uuid_upper = g_ascii_strup(server_uuid_arg, -1);
 
 		NetworkServer *network_server = g_object_new(NETWORK_SERVER_TYPE, "DBusObjectPath", adapter_get_dbus_object_path(adapter), NULL);
-
 		network_server_register(network_server, server_uuid_arg, server_brige_arg, &error);
 		exit_if_error(error);
 		g_print("%s server registered\n", server_uuid_upper);

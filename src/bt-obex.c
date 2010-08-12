@@ -28,10 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <errno.h>
+
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -99,7 +96,7 @@ static void obexmanager_transfer_started(OBEXManager *manager, const gchar *tran
 
 	OBEXTransfer *t = g_object_new(OBEXTRANSFER_TYPE, "DBusObjectPath", transfer_path, NULL);
 	g_signal_connect(t, "Progress", G_CALLBACK(obextransfer_progress), NULL);
-	g_hash_table_insert(server_transfers, transfer_path, t);
+	g_hash_table_insert(server_transfers, g_strdup(transfer_path), t);
 }
 
 static void obexmanager_transfer_completed(OBEXManager *manager, const gchar *transfer_path, gboolean success, gpointer data)
@@ -182,12 +179,12 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_system_connect(&error)) {
-		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		g_printerr("Couldn't connect to DBus system bus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!dbus_session_connect(&error)) {
-		g_printerr("Couldn't connect to dbus session bus: %s\n", error->message);
+		g_printerr("Couldn't connect to DBus session bus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
@@ -211,20 +208,9 @@ int main(int argc, char *argv[])
 		}
 
 		/* Check that `path` is valid */
-		gchar *root_dir = NULL;
-		if (server_path_arg == NULL) {
-			root_dir = g_get_current_dir();
-		} else {
-			struct stat buf;
-			if (stat(server_path_arg, &buf) != 0) {
-				g_printerr("%s: %s\n", g_get_prgname(), strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			if (!S_ISDIR(buf.st_mode)) {
-				g_printerr("%s: Invalid directory: %s\n", g_get_prgname(), server_path_arg);
-				exit(EXIT_FAILURE);
-			}
-			root_dir = g_strdup(server_path_arg);
+		gchar *root_folder = server_path_arg == NULL ? g_get_current_dir() : g_strdup(server_path_arg);
+		if (!is_dir(root_folder, &error)) {
+			exit_if_error(error);
 		}
 
 		server_transfers = g_hash_table_new(g_str_hash, g_str_equal);
@@ -235,9 +221,9 @@ int main(int argc, char *argv[])
 		g_signal_connect(manager, "TransferStarted", G_CALLBACK(obexmanager_transfer_started), NULL);
 		g_signal_connect(manager, "TransferCompleted", G_CALLBACK(obexmanager_transfer_completed), NULL);
 
-		OBEXAgent *agent = g_object_new(OBEXAGENT_TYPE, "RootFolder", root_dir, NULL);
+		OBEXAgent *agent = g_object_new(OBEXAGENT_TYPE, "RootFolder", root_folder, NULL);
 
-		g_free(root_dir);
+		g_free(root_folder);
 
 		obexmanager_register_agent(manager, OBEXAGENT_DBUS_PATH, &error);
 		exit_if_error(error);
@@ -263,7 +249,7 @@ int main(int argc, char *argv[])
 		g_hash_table_iter_init(&iter, server_transfers);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
 			OBEXTransfer *t = OBEXTRANSFER(value);
-			obextransfer_cancel(t, NULL);
+			obextransfer_cancel(t, NULL); // skip errors
 			g_object_unref(t);
 			g_hash_table_iter_remove(&iter);
 		}
@@ -276,26 +262,13 @@ int main(int argc, char *argv[])
 		opp_device_arg = argv[1];
 		opp_file_arg = argv[2];
 
-		/* Check that `file` is valid and readable */
-		{
-			struct stat buf;
-			if (stat(opp_file_arg, &buf) != 0) {
-				g_printerr("%s: %s\n", g_get_prgname(), strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			if (!S_ISREG(buf.st_mode)) {
-				g_printerr("%s: Invalid file: %s\n", g_get_prgname(), opp_file_arg);
-				exit(EXIT_FAILURE);
-			}
+		/* Check that `file` is valid */
+		if (!is_file(opp_file_arg, &error)) {
+			exit_if_error(error);
 		}
+
 		gchar * files_to_send[] = {NULL, NULL};
-		if (!g_path_is_absolute(opp_file_arg)) {
-			gchar *current_dir = g_get_current_dir();
-			files_to_send[0] = g_build_filename(current_dir, opp_file_arg, NULL);
-			g_free(current_dir);
-		} else {
-			files_to_send[0] = g_strdup(opp_file_arg);
-		}
+		files_to_send[0] = g_path_is_absolute(opp_file_arg) ? g_strdup(opp_file_arg) : get_absolute_path(opp_file_arg);
 
 		/* Get source address (address of adapter) */
 		Adapter *adapter = find_adapter(adapter_arg, &error);
@@ -313,14 +286,14 @@ int main(int argc, char *argv[])
 
 		/* Build arguments */
 		GHashTable *device_dict = g_hash_table_new(g_str_hash, g_str_equal);
-		GValue source = {0};
-		GValue destination = {0};
-		g_value_init(&source, G_TYPE_STRING);
-		g_value_init(&destination, G_TYPE_STRING);
-		g_value_set_string(&source, src_address);
-		g_value_set_string(&destination, dst_address);
-		g_hash_table_insert(device_dict, "Source", &source);
-		g_hash_table_insert(device_dict, "Destination", &destination);
+		GValue src_v = {0};
+		GValue dst_v = {0};
+		g_value_init(&src_v, G_TYPE_STRING);
+		g_value_init(&dst_v, G_TYPE_STRING);
+		g_value_set_string(&src_v, src_address);
+		g_value_set_string(&dst_v, dst_address);
+		g_hash_table_insert(device_dict, "Source", &src_v);
+		g_hash_table_insert(device_dict, "Destination", &dst_v);
 
 		mainloop = g_main_loop_new(NULL, FALSE);
 
@@ -349,8 +322,8 @@ int main(int argc, char *argv[])
 		g_object_unref(agent);
 		g_object_unref(client);
 
-		g_value_unset(&source);
-		g_value_unset(&destination);
+		g_value_unset(&src_v);
+		g_value_unset(&dst_v);
 		g_hash_table_unref(device_dict);
 
 		g_free(src_address);
@@ -373,18 +346,18 @@ int main(int argc, char *argv[])
 
 		/* Build arguments */
 		GHashTable *device_dict = g_hash_table_new(g_str_hash, g_str_equal);
-		GValue source = {0};
-		GValue destination = {0};
-		GValue target = {0};
-		g_value_init(&source, G_TYPE_STRING);
-		g_value_init(&destination, G_TYPE_STRING);
-		g_value_init(&target, G_TYPE_STRING);
-		g_value_set_string(&source, src_address);
-		g_value_set_string(&destination, dst_address);
-		g_value_set_string(&target, "FTP");
-		g_hash_table_insert(device_dict, "Source", &source);
-		g_hash_table_insert(device_dict, "Destination", &destination);
-		g_hash_table_insert(device_dict, "Target", &target);
+		GValue src_v = {0};
+		GValue dst_v = {0};
+		GValue target_v = {0};
+		g_value_init(&src_v, G_TYPE_STRING);
+		g_value_init(&dst_v, G_TYPE_STRING);
+		g_value_init(&target_v, G_TYPE_STRING);
+		g_value_set_string(&src_v, src_address);
+		g_value_set_string(&dst_v, dst_address);
+		g_value_set_string(&target_v, "FTP");
+		g_hash_table_insert(device_dict, "Source", &src_v);
+		g_hash_table_insert(device_dict, "Destination", &dst_v);
+		g_hash_table_insert(device_dict, "Target", &target_v);
 
 		OBEXClient *client = g_object_new(OBEXCLIENT_TYPE, NULL);
 		OBEXAgent *agent = g_object_new(OBEXAGENT_TYPE, NULL);
@@ -400,7 +373,7 @@ int main(int argc, char *argv[])
 
 		while (TRUE) {
 			gchar *cmd = readline("> ");
-			if (cmd == NULL || strlen(cmd) == 0) {
+			if (cmd == NULL) {
 				continue;
 			} else {
 				add_history(cmd);
@@ -413,6 +386,9 @@ int main(int argc, char *argv[])
 				g_print("%s\n", error->message);
 				g_error_free(error);
 				error = NULL;
+
+				g_free(cmd);
+				continue;
 			}
 
 			/* Execute commands */
@@ -450,40 +426,67 @@ int main(int argc, char *argv[])
 					} else {
 						for (int i = 0; i < folders->len; i++) {
 							GHashTable *el = g_ptr_array_index(folders, i);
-							g_print("%s\n", g_value_get_string(g_hash_table_lookup(el, "Name")));
+							g_print(
+									"%s\t%llu\t%s\n",
+									g_value_get_string(g_hash_table_lookup(el, "Type")),
+									G_VALUE_HOLDS_UINT64(g_hash_table_lookup(el, "Size")) ? 
+										g_value_get_uint64(g_hash_table_lookup(el, "Size")) :
+										0,
+									g_value_get_string(g_hash_table_lookup(el, "Name"))
+									);
 						}
-						//g_ptr_array_unref(folders);
-
-						/*obexclient_remove_session(client, obexclient_file_transfer_get_dbus_object_path(ftp_session), &error);
-						exit_if_error(error);
-						g_object_unref(ftp_session);
-						session_path = obexclient_create_session(client, device_dict, &error);
-						exit_if_error(error);
-						ftp_session = g_object_new(OBEXCLIENT_FILE_TRANSFER_TYPE, "DBusObjectPath", session_path, NULL);
-						g_free(session_path);*/
 					}
+
+					if (folders) g_ptr_array_unref(folders);
+
+					/*obexclient_remove_session(client, obexclient_file_transfer_get_dbus_object_path(ftp_session), &error);
+					exit_if_error(error);
+					g_object_unref(ftp_session);
+					session_path = obexclient_create_session(client, device_dict, &error);
+					exit_if_error(error);
+					ftp_session = g_object_new(OBEXCLIENT_FILE_TRANSFER_TYPE, "DBusObjectPath", session_path, NULL);
+					g_free(session_path);*/
+
 				}
 			} else if (g_strcmp0(f_argv[0], "get") == 0) {
 				if (f_argc != 3 || strlen(f_argv[1]) == 0 || strlen(f_argv[2]) == 0) {
 					g_print("invalid arguments\n");
 				} else {
-					obexclient_file_transfer_get_file(ftp_session, f_argv[1], f_argv[2], &error);
-					if (error) {
+					gchar *abs_dst_path = get_absolute_path(f_argv[2]);
+					gchar *dir = g_path_get_dirname(abs_dst_path);
+					if (!is_dir(dir, &error)) {
 						g_print("%s\n", error->message);
 						g_error_free(error);
 						error = NULL;
+					} else {
+						obexclient_file_transfer_get_file(ftp_session, abs_dst_path, f_argv[1], &error);
+						if (error) {
+							g_print("%s\n", error->message);
+							g_error_free(error);
+							error = NULL;
+						}
 					}
+					g_free(dir);
+					g_free(abs_dst_path);
 				}
 			} else if (g_strcmp0(f_argv[0], "put") == 0) {
 				if (f_argc != 3 || strlen(f_argv[1]) == 0 || strlen(f_argv[2]) == 0) {
 					g_print("invalid arguments\n");
 				} else {
-					obexclient_file_transfer_put_file(ftp_session, f_argv[1], f_argv[2], &error);
-					if (error) {
+					gchar *abs_src_path = get_absolute_path(f_argv[1]);
+					if (!is_file(abs_src_path, &error)) {
 						g_print("%s\n", error->message);
 						g_error_free(error);
 						error = NULL;
+					} else {
+						obexclient_file_transfer_put_file(ftp_session, abs_src_path, f_argv[2], &error);
+						if (error) {
+							g_print("%s\n", error->message);
+							g_error_free(error);
+							error = NULL;
+						}
 					}
+					g_free(abs_src_path);
 				}
 			} else if (g_strcmp0(f_argv[0], "cp") == 0) {
 				if (f_argc != 3 || strlen(f_argv[1]) == 0 || strlen(f_argv[2]) == 0) {
@@ -519,11 +522,22 @@ int main(int argc, char *argv[])
 					}
 				}
 			} else if (g_strcmp0(f_argv[0], "help") == 0) {
-
+				g_print(
+						"help\t\t\tShow this message\n"
+						"exit\t\t\tClose FTP session\n"
+						"cd <folder>\t\tChange the current folder of the remote device\n"
+						"mkdir <folder>\t\tCreate a new folder in the remote device\n"
+						"ls\t\t\tList folder contents\n"
+						"get <src> <dst>\t\tCopy the src file (from remote device) to the dst file (on local filesystem)\n"
+						"put <src> <dst>\t\tCopy the src file (from local filesystem) to the dst file (on remote device)\n"
+						"cp <src> <dst>\t\tCopy a file within the remote device from src file to dst file\n"
+						"mv <src> <dst>\t\tMove a file within the remote device from src file to dst file\n"
+						"rm <target>\t\tDeletes the specified file/folder\n"
+						);
 			} else if (g_strcmp0(f_argv[0], "exit") == 0 || g_strcmp0(f_argv[0], "quit") == 0) {
 				obexclient_remove_session(client, obexclient_file_transfer_get_dbus_object_path(ftp_session), &error);
 				exit_if_error(error);
-				
+
 				g_strfreev(f_argv);
 				g_free(cmd);
 				break;
@@ -534,6 +548,18 @@ int main(int argc, char *argv[])
 			g_strfreev(f_argv);
 			g_free(cmd);
 		}
+
+		g_object_unref(agent);
+		g_object_unref(client);
+		g_object_unref(ftp_session);
+
+		g_value_unset(&src_v);
+		g_value_unset(&dst_v);
+		g_value_unset(&target_v);
+		g_hash_table_unref(device_dict);
+
+		g_free(src_address);
+		g_free(dst_address);
 	}
 
 	dbus_disconnect();

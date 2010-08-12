@@ -26,6 +26,10 @@
 #endif
 
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 #include <glib.h>
 #include <dbus/dbus-glib.h>
@@ -272,5 +276,62 @@ gboolean intf_supported(const gchar *dbus_service_name, const gchar *dbus_object
 	g_object_unref(introspection_g_proxy);
 
 	return supported;
+}
+
+gboolean is_file(const gchar *filename, GError **error)
+{
+	g_assert(filename != NULL && strlen(filename) > 0);
+
+	struct stat buf;
+	if (stat(filename, &buf) != 0) {
+		if (error) {
+			*error = g_error_new(g_quark_from_string("bluez-tools"), 1, "%s: %s", g_strdup(filename), strerror(errno));
+		}
+		return FALSE;
+	}
+
+	if (!S_ISREG(buf.st_mode)) {
+		if (error) {
+			*error = g_error_new(g_quark_from_string("bluez-tools"), 2, "%s: Invalid file", g_strdup(filename));
+		}
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean is_dir(const gchar *dirname, GError **error)
+{
+	g_assert(dirname != NULL && strlen(dirname) > 0);
+
+	struct stat buf;
+	if (stat(dirname, &buf) != 0) {
+		if (error) {
+			*error = g_error_new(g_quark_from_string("bluez-tools"), 1, "%s: %s", g_strdup(dirname), strerror(errno));
+		}
+		return FALSE;
+	}
+
+	if (!S_ISDIR(buf.st_mode)) {
+		if (error) {
+			*error = g_error_new(g_quark_from_string("bluez-tools"), 2, "%s: Invalid directory", g_strdup(dirname));
+		}
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gchar *get_absolute_path(const gchar *path)
+{
+	if (g_path_is_absolute(path)) {
+		return g_strdup(path);
+	}
+
+	gchar *current_dir = g_get_current_dir();
+	gchar *abs_path = g_build_filename(current_dir, path, NULL);
+	g_free(current_dir);
+
+	return abs_path;
 }
 

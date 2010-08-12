@@ -236,14 +236,14 @@ static void create_paired_device_done(gpointer data)
 }
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
+	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
 	{"list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List added devices", NULL},
-	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to a device", "<mac>"},
+	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to the remote device", "<mac>"},
 	{"remove", 'r', 0, G_OPTION_ARG_STRING, &remove_arg, "Remove device", "<name|mac>"},
 	{"info", 'i', 0, G_OPTION_ARG_STRING, &info_arg, "Get info about device", "<name|mac>"},
 	{"services", 's', 0, G_OPTION_ARG_NONE, &services_arg, "Discover device services", NULL},
 	{"set", 0, 0, G_OPTION_ARG_NONE, &set_arg, "Set device property", NULL},
-	{"verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose_arg, "Verbosely list services", NULL},
+	{"verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose_arg, "Verbosely display remote service records", NULL},
 	{NULL}
 };
 
@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
 			"Set Options:\n"
 			"  --set <name|mac> <property> <value>\n"
 			"  Where\n"
-			"    `name|mac` is a device name or MAC\n"
+			"    `name|mac` is a device Name or MAC\n"
 			"    `property` is one of:\n"
 			"       Alias\n"
 			"       Trusted\n"
@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
 	g_option_context_free(context);
 
 	if (!dbus_system_connect(&error)) {
-		g_printerr("Couldn't connect to dbus system bus: %s\n", error->message);
+		g_printerr("Couldn't connect to DBus system bus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
