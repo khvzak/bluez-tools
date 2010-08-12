@@ -46,7 +46,7 @@ endif
 
 bin_PROGRAMS = bt-monitor bt-adapter bt-agent bt-device bt-input bt-audio bt-network bt-serial
 bt_monitor_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-monitor.c
-bt_adapter_SOURCES = ${lib_sources} $(bluez_sources) $(obexd_sources) bt-adapter.c
+bt_adapter_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-adapter.c
 bt_agent_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-agent.c
 bt_device_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-device.c
 bt_input_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-input.c

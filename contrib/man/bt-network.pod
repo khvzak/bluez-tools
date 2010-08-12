@@ -30,15 +30,15 @@ B<-a, --adapter E<lt>name|macE<gt>>
     (if this option does not defined - default adapter used)
 
 B<-c, --connect E<lt>name|macE<gt> E<lt>uuidE<gt>>
-    Connect to the network device and return the network interface name,
-    uuid can be either one of "gn", "panu" or "nap"
+    Connect to the network device and return the network interface
+    name, uuid can be either one of "gn", "panu" or "nap"
 
 B<-d, --disconnect E<lt>name|macE<gt>>
     Disconnect from the network device
 
 B<-s, --server E<lt>gn|panu|napE<gt> E<lt>brigeE<gt>>
-    Register server for the provided UUID,
-    every new connection to this server will be added the bridge interface
+    Register server for the provided UUID, every new connection to
+    this server will be added the bridge interface
 
 =head1 AUTHOR
 

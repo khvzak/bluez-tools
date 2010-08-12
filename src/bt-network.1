@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "bt-network 1"
-.TH bt-network 1 "2010-08-12" "" "bluez-tools"
+.TH bt-network 1 "2010-08-13" "" "bluez-tools"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -157,15 +157,15 @@ All servers will be automatically unregistered when the application terminates.
     (if this option does not defined \- default adapter used)
 .PP
 \&\fB\-c, \-\-connect <name|mac> <uuid>\fR
-    Connect to the network device and return the network interface name,
-    uuid can be either one of \*(L"gn\*(R", \*(L"panu\*(R" or \*(L"nap\*(R"
+    Connect to the network device and return the network interface
+    name, uuid can be either one of \*(L"gn\*(R", \*(L"panu\*(R" or \*(L"nap\*(R"
 .PP
 \&\fB\-d, \-\-disconnect <name|mac>\fR
     Disconnect from the network device
 .PP
 \&\fB\-s, \-\-server <gn|panu|nap> <brige>\fR
-    Register server for the provided \s-1UUID\s0,
-    every new connection to this server will be added the bridge interface
+    Register server for the provided \s-1UUID\s0, every new connection to
+    this server will be added the bridge interface
 .SH "AUTHOR"
 .IX Header "AUTHOR"
 Alexander Orlenko <zxteam@gmail.com>.
