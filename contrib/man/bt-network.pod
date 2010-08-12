@@ -1,22 +1,24 @@
 =head1 NAME
 
-bt-adapter - a bluetooth network manager
+bt-network - a bluetooth network manager
 
 =head1 SYNOPSIS
 
-bt-input [OPTION...]
+bt-network [OPTION...]
 
 Help Options:
   -h, --help
 
 Application Options:
   -a, --adapter=<name|mac>
-  -c, --connect=<name|mac>
+  -c, --connect <name|mac> <uuid>
   -d, --disconnect=<name|mac>
+  -s, --server <gn|panu|nap> <brige>
 
 =head1 DESCRIPTION
 
-This utility is used to manage outgoing input (HID) service connections.
+This utility is used to manage network services (client/server).
+All servers will be automatically unregistered when the application terminates.
 
 =head1 OPTIONS
 
@@ -27,11 +29,16 @@ B<-a, --adapter E<lt>name|macE<gt>>
     Specify adapter to use by his Name or MAC address
     (if this option does not defined - default adapter used)
 
-B<-c, --connect E<lt>name|macE<gt>>
-    Connect to the input device
+B<-c, --connect E<lt>name|macE<gt> E<lt>uuidE<gt>>
+    Connect to the network device and return the network interface name,
+    uuid can be either one of "gn", "panu" or "nap"
 
 B<-d, --disconnect E<lt>name|macE<gt>>
-    Disconnect from the input device
+    Disconnect from the network device
+
+B<-s, --server E<lt>gn|panu|napE<gt> E<lt>brigeE<gt>>
+    Register server for the provided UUID,
+    every new connection to this server will be added the bridge interface
 
 =head1 AUTHOR
 
@@ -39,4 +46,4 @@ Alexander Orlenko <zxteam@gmail.com>.
 
 =head1 SEE ALSO
 
-bt-agent(1) bt-device(1)
+bt-adapter(1) bt-agent(1) bt-audio(1) bt-device(1) bt-input(1) bt-monitor(1) bt-serial(1)

@@ -26,7 +26,9 @@
 #endif
 
 #include <string.h>
+
 #include <glib.h>
+#include <dbus/dbus-glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -562,28 +564,12 @@ void adapter_register_agent(Adapter *self, const gchar *agent, const gchar *capa
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "RegisterAgent", error, DBUS_TYPE_G_OBJECT_PATH, agent, G_TYPE_STRING, capability, G_TYPE_INVALID, G_TYPE_INVALID);
 }
 
-/* void ReleaseSession() */
-void adapter_release_session(Adapter *self, GError **error)
-{
-	g_assert(ADAPTER_IS(self));
-
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "ReleaseSession", error, G_TYPE_INVALID, G_TYPE_INVALID);
-}
-
 /* void RemoveDevice(object device) */
 void adapter_remove_device(Adapter *self, const gchar *device, GError **error)
 {
 	g_assert(ADAPTER_IS(self));
 
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "RemoveDevice", error, DBUS_TYPE_G_OBJECT_PATH, device, G_TYPE_INVALID, G_TYPE_INVALID);
-}
-
-/* void RequestSession() */
-void adapter_request_session(Adapter *self, GError **error)
-{
-	g_assert(ADAPTER_IS(self));
-
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "RequestSession", error, G_TYPE_INVALID, G_TYPE_INVALID);
 }
 
 /* void SetProperty(string name, variant value) */

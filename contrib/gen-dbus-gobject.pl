@@ -328,7 +328,9 @@ sub generate_source {
 #endif
 
 #include <string.h>
+
 #include <glib.h>
+#include <dbus/dbus-glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"

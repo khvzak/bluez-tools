@@ -38,7 +38,7 @@ B<-l, --list>
     List added devices
 
 B<-c, --connect E<lt>macE<gt>>
-    Connect to the remote device by his MAC and retrieve all SDP
+    Connect to the remote device by his MAC, retrieve all SDP
     records and then initiate the pairing
 
 B<-r, --remove>
@@ -110,4 +110,4 @@ Alexander Orlenko <zxteam@gmail.com>.
 
 =head1 SEE ALSO
 
-bt-agent(1) bt-adapter(1)
+bt-adapter(1) bt-agent(1) bt-audio(1) bt-input(1) bt-monitor(1) bt-network(1) bt-serial(1)

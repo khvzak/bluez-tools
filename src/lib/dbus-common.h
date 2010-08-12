@@ -42,3 +42,4 @@ void dbus_system_disconnect();
 void dbus_disconnect();
 
 #endif /* __DBUS_COMMON_H */
+

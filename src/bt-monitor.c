@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+
 #include <glib.h>
 
 #include "lib/dbus-common.h"
@@ -180,20 +181,6 @@ static void device_disconnect_requested(Device *device, gpointer data)
 	g_print("[Device: %s (%s)] Disconnect requested\n", device_get_alias(device), device_get_address(device));
 }
 
-static void device_node_created(Device *device, const gchar *node, gpointer data)
-{
-	//g_print("device_node_created()\n");
-
-	g_print("[Device: %s (%s)] Node created: %s\n", device_get_alias(device), device_get_address(device), node);
-}
-
-static void device_node_removed(Device *device, const gchar *node, gpointer data)
-{
-	//g_print("device_node_removed()\n");
-
-	g_print("[Device: %s (%s)] Node removed: %s\n", device_get_alias(device), device_get_address(device), node);
-}
-
 static void device_property_changed(Device *device, const gchar *name, const GValue *value, gpointer data)
 {
 	//g_print("device_property_changed()\n");
@@ -344,8 +331,6 @@ static void capture_device(Device *device)
 	t2 = g_slist_append(t2, device);
 
 	g_signal_connect(device, "DisconnectRequested", G_CALLBACK(device_disconnect_requested), NULL);
-	g_signal_connect(device, "NodeCreated", G_CALLBACK(device_node_created), NULL);
-	g_signal_connect(device, "NodeRemoved", G_CALLBACK(device_node_removed), NULL);
 	g_signal_connect(device, "PropertyChanged", G_CALLBACK(device_property_changed), NULL);
 
 	g_hash_table_insert(captured_adapters_devices_t, device_get_adapter(device), t);

@@ -25,8 +25,13 @@
 #include <config.h>
 #endif
 
+#include <glib.h>
+#include <dbus/dbus-glib.h>
+
 #include "bluez-api.h"
+#ifdef OBEX_SUPPORT
 #include "obexd-api.h"
+#endif
 
 #include "dbus-common.h"
 
@@ -46,7 +51,9 @@ void dbus_init()
 
 	/* Agents installation */
 	dbus_g_object_type_install_info(AGENT_TYPE, &dbus_glib_agent_object_info);
+#ifdef OBEX_SUPPORT
 	dbus_g_object_type_install_info(OBEXAGENT_TYPE, &dbus_glib_obexagent_object_info);
+#endif
 
 	dbus_initialized = TRUE;
 }

@@ -26,6 +26,7 @@
 #endif
 
 #include <string.h>
+
 #include <glib.h>
 #include <dbus/dbus-glib.h>
 
@@ -236,8 +237,10 @@ gboolean intf_supported(const gchar *dbus_service_name, const gchar *dbus_object
 
 	if (g_strcmp0(dbus_service_name, BLUEZ_DBUS_NAME) == 0) {
 		conn = system_conn;
+#ifdef OBEX_SUPPORT
 	} else if (g_strcmp0(dbus_service_name, OBEXD_DBUS_NAME) == 0) {
 		conn = session_conn;
+#endif
 	} else {
 		return FALSE;
 	}

@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+
 #include <glib.h>
 
 #include "lib/dbus-common.h"
@@ -63,7 +64,7 @@ int main(int argc, char *argv[])
 			"Connect Options:\n"
 			"  -c, --connect <name|mac> <pattern>\n"
 			"  Where\n"
-			"    `name|mac` is a device name or MAC\n"
+			"    `name|mac` is a device Name or MAC\n"
 			"    `pattern` is:\n"
 			"       UUID 128 bit string\n"
 			"       Profile short name, e.g: spp, dun\n"

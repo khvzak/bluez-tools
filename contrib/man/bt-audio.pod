@@ -1,6 +1,6 @@
 =head1 NAME
 
-bt-adapter - a bluetooth generic audio manager
+bt-audio - a bluetooth generic audio manager
 
 =head1 SYNOPSIS
 
@@ -39,4 +39,4 @@ Alexander Orlenko <zxteam@gmail.com>.
 
 =head1 SEE ALSO
 
-bt-agent(1) bt-device(1)
+bt-adapter(1) bt-agent(1) bt-device(1) bt-input(1) bt-monitor(1) bt-network(1) bt-serial(1)

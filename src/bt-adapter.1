@@ -147,37 +147,38 @@ Application Options:
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 This utility is used to manage Bluetooth adapters. You can list all available adapters,
-show information about adapter, set adapter properties or discover remote devices.
+show information about adapter, change adapter properties or discover remote devices.
 .SH "OPTIONS"
 .IX Header "OPTIONS"
-\&\fB\-h\fR
+\&\fB\-h, \-\-help\fR
     Show help
 .PP
-\&\fB\-l\fR
+\&\fB\-l, \-\-list\fR
     List all available adapters
 .PP
-\&\fB\-a <name|mac>\fR
+\&\fB\-a, \-\-adapter <name|mac>\fR
     Specify adapter to use by his Name or \s-1MAC\s0 address
     (if this option does not defined \- default adapter used)
 .PP
-\&\fB\-i\fR
+\&\fB\-i, \-\-info\fR
     Show information about adapter (returns all properties)
 .PP
-\&\fB\-d\fR
+\&\fB\-d, \-\-discover\fR
     Discover remote devices (with remote device name resolving)
 .PP
 \&\fB\-\-set <property> <value>\fR
-    Set adapter property (see \s-1PROPERTIES\s0 section for list of available properties)
+    Change adapter properties (see \s-1PROPERTIES\s0 section for list of
+    available properties)
 .SH "ADAPTER PROPERTIES"
 .IX Header "ADAPTER PROPERTIES"
 string  Address [ro]
-          The Bluetooth adapter address (\s-1MAC\s0).
+        The Bluetooth adapter address (\s-1MAC\s0).
 .PP
 string  Name [rw]
-          The Bluetooth adapter friendly name.
+        The Bluetooth adapter friendly name.
 .PP
 uint32  Class [ro]
-    The Bluetooth class of device.
+        The Bluetooth class of device.
 .PP
 boolean Powered [rw]
         Switch an adapter on or off. This will also set the
@@ -223,10 +224,11 @@ boolean Discovering [ro]
         Indicates that a device discovery procedure is active.
 .PP
 list    UUIDs [ro]
-        List of 128\-bit UUIDs that represents the available local services.
+        List of 128\-bit UUIDs that represents the available local
+        services.
 .SH "AUTHOR"
 .IX Header "AUTHOR"
 Alexander Orlenko <zxteam@gmail.com>.
 .SH "SEE ALSO"
 .IX Header "SEE ALSO"
-\&\fIbt\-agent\fR\|(1) \fIbt\-device\fR\|(1)
+\&\fIbt\-agent\fR\|(1) \fIbt\-audio\fR\|(1) \fIbt\-device\fR\|(1) \fIbt\-input\fR\|(1) \fIbt\-monitor\fR\|(1) \fIbt\-network\fR\|(1) \fIbt\-serial\fR\|(1)

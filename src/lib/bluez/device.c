@@ -26,7 +26,9 @@
 #endif
 
 #include <string.h>
+
 #include <glib.h>
+#include <dbus/dbus-glib.h>
 
 #include "../dbus-common.h"
 #include "../marshallers.h"
@@ -52,7 +54,6 @@ struct _DevicePrivate {
 	gchar *icon;
 	gboolean legacy_pairing;
 	gchar *name;
-	GPtrArray *nodes;
 	gboolean paired;
 	gboolean trusted;
 	gchar **uuids;
@@ -73,7 +74,6 @@ enum {
 	PROP_ICON, /* readonly */
 	PROP_LEGACY_PAIRING, /* readonly */
 	PROP_NAME, /* readonly */
-	PROP_NODES, /* readonly */
 	PROP_PAIRED, /* readonly */
 	PROP_TRUSTED, /* readwrite */
 	PROP_UUIDS /* readonly */
@@ -84,8 +84,6 @@ static void _device_set_property(GObject *object, guint property_id, const GValu
 
 enum {
 	DISCONNECT_REQUESTED,
-	NODE_CREATED,
-	NODE_REMOVED,
 	PROPERTY_CHANGED,
 
 	LAST_SIGNAL
@@ -94,8 +92,6 @@ enum {
 static guint signals[LAST_SIGNAL] = {0};
 
 static void disconnect_requested_handler(DBusGProxy *dbus_g_proxy, gpointer data);
-static void node_created_handler(DBusGProxy *dbus_g_proxy, const gchar *node, gpointer data);
-static void node_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *node, gpointer data);
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data);
 
 static void device_dispose(GObject *gobject)
@@ -104,8 +100,6 @@ static void device_dispose(GObject *gobject)
 
 	/* DBus signals disconnection */
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "DisconnectRequested", G_CALLBACK(disconnect_requested_handler), self);
-	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "NodeCreated", G_CALLBACK(node_created_handler), self);
-	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "NodeRemoved", G_CALLBACK(node_removed_handler), self);
 	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
 
 	/* Properties free */
@@ -114,7 +108,6 @@ static void device_dispose(GObject *gobject)
 	g_free(self->priv->alias);
 	g_free(self->priv->icon);
 	g_free(self->priv->name);
-	g_ptr_array_unref(self->priv->nodes);
 	g_strfreev(self->priv->uuids);
 
 	/* Proxy free */
@@ -182,10 +175,6 @@ static void device_class_init(DeviceClass *klass)
 	pspec = g_param_spec_string("Name", NULL, NULL, NULL, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_NAME, pspec);
 
-	/* array{object} Nodes [readonly] */
-	pspec = g_param_spec_boxed("Nodes", NULL, NULL, G_TYPE_PTR_ARRAY, G_PARAM_READABLE);
-	g_object_class_install_property(gobject_class, PROP_NODES, pspec);
-
 	/* boolean Paired [readonly] */
 	pspec = g_param_spec_boolean("Paired", NULL, NULL, FALSE, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_PAIRED, pspec);
@@ -205,20 +194,6 @@ static void device_class_init(DeviceClass *klass)
 			0, NULL, NULL,
 			g_cclosure_marshal_VOID__VOID,
 			G_TYPE_NONE, 0);
-
-	signals[NODE_CREATED] = g_signal_new("NodeCreated",
-			G_TYPE_FROM_CLASS(gobject_class),
-			G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
-			0, NULL, NULL,
-			g_cclosure_marshal_VOID__STRING,
-			G_TYPE_NONE, 1, G_TYPE_STRING);
-
-	signals[NODE_REMOVED] = g_signal_new("NodeRemoved",
-			G_TYPE_FROM_CLASS(gobject_class),
-			G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
-			0, NULL, NULL,
-			g_cclosure_marshal_VOID__STRING,
-			G_TYPE_NONE, 1, G_TYPE_STRING);
 
 	signals[PROPERTY_CHANGED] = g_signal_new("PropertyChanged",
 			G_TYPE_FROM_CLASS(gobject_class),
@@ -267,14 +242,6 @@ static void device_post_init(Device *self, const gchar *dbus_object_path)
 	/* DisconnectRequested() */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "DisconnectRequested", G_TYPE_INVALID);
 	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "DisconnectRequested", G_CALLBACK(disconnect_requested_handler), self, NULL);
-
-	/* NodeCreated(object node) */
-	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "NodeCreated", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
-	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "NodeCreated", G_CALLBACK(node_created_handler), self, NULL);
-
-	/* NodeRemoved(object node) */
-	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "NodeRemoved", DBUS_TYPE_G_OBJECT_PATH, G_TYPE_INVALID);
-	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "NodeRemoved", G_CALLBACK(node_removed_handler), self, NULL);
 
 	/* PropertyChanged(string name, variant value) */
 	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
@@ -351,13 +318,6 @@ static void device_post_init(Device *self, const gchar *dbus_object_path)
 		self->priv->name = g_strdup("undefined");
 	}
 
-	/* array{object} Nodes [readonly] */
-	if (g_hash_table_lookup(properties, "Nodes")) {
-		self->priv->nodes = g_value_dup_boxed(g_hash_table_lookup(properties, "Nodes"));
-	} else {
-		self->priv->nodes = g_ptr_array_new();
-	}
-
 	/* boolean Paired [readonly] */
 	if (g_hash_table_lookup(properties, "Paired")) {
 		self->priv->paired = g_value_get_boolean(g_hash_table_lookup(properties, "Paired"));
@@ -428,10 +388,6 @@ static void _device_get_property(GObject *object, guint property_id, GValue *val
 		g_value_set_string(value, device_get_name(self));
 		break;
 
-	case PROP_NODES:
-		g_value_set_boxed(value, device_get_nodes(self));
-		break;
-
 	case PROP_PAIRED:
 		g_value_set_boolean(value, device_get_paired(self));
 		break;
@@ -493,17 +449,6 @@ void device_cancel_discovery(Device *self, GError **error)
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "CancelDiscovery", error, G_TYPE_INVALID, G_TYPE_INVALID);
 }
 
-/* object CreateNode(string uuid) */
-gchar *device_create_node(Device *self, const gchar *uuid, GError **error)
-{
-	g_assert(DEVICE_IS(self));
-
-	gchar *ret = NULL;
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "CreateNode", error, G_TYPE_STRING, uuid, G_TYPE_INVALID, DBUS_TYPE_G_OBJECT_PATH, &ret, G_TYPE_INVALID);
-
-	return ret;
-}
-
 /* void Disconnect() */
 void device_disconnect(Device *self, GError **error)
 {
@@ -532,14 +477,6 @@ GHashTable *device_get_properties(Device *self, GError **error)
 	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
 
 	return ret;
-}
-
-/* void RemoveNode(object node) */
-void device_remove_node(Device *self, const gchar *node, GError **error)
-{
-	g_assert(DEVICE_IS(self));
-
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "RemoveNode", error, DBUS_TYPE_G_OBJECT_PATH, node, G_TYPE_INVALID, G_TYPE_INVALID);
 }
 
 /* void SetProperty(string name, variant value) */
@@ -657,13 +594,6 @@ const gchar *device_get_name(Device *self)
 	return self->priv->name;
 }
 
-const GPtrArray *device_get_nodes(Device *self)
-{
-	g_assert(DEVICE_IS(self));
-
-	return self->priv->nodes;
-}
-
 const gboolean device_get_paired(Device *self)
 {
 	g_assert(DEVICE_IS(self));
@@ -711,20 +641,6 @@ static void disconnect_requested_handler(DBusGProxy *dbus_g_proxy, gpointer data
 	g_signal_emit(self, signals[DISCONNECT_REQUESTED], 0);
 }
 
-static void node_created_handler(DBusGProxy *dbus_g_proxy, const gchar *node, gpointer data)
-{
-	Device *self = DEVICE(data);
-
-	g_signal_emit(self, signals[NODE_CREATED], 0, node);
-}
-
-static void node_removed_handler(DBusGProxy *dbus_g_proxy, const gchar *node, gpointer data)
-{
-	Device *self = DEVICE(data);
-
-	g_signal_emit(self, signals[NODE_REMOVED], 0, node);
-}
-
 static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data)
 {
 	Device *self = DEVICE(data);
@@ -752,9 +668,6 @@ static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name
 	} else if (g_strcmp0(name, "Name") == 0) {
 		g_free(self->priv->name);
 		self->priv->name = g_value_dup_string(value);
-	} else if (g_strcmp0(name, "Nodes") == 0) {
-		g_ptr_array_unref(self->priv->nodes);
-		self->priv->nodes = g_value_dup_boxed(value);
 	} else if (g_strcmp0(name, "Paired") == 0) {
 		self->priv->paired = g_value_get_boolean(value);
 	} else if (g_strcmp0(name, "Trusted") == 0) {

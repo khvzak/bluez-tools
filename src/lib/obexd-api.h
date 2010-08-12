@@ -24,10 +24,15 @@
 #ifndef __OBEXD_API_H
 #define __OBEXD_API_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 /* Global includes */
 #include <glib.h>
 #include <dbus/dbus-glib.h>
 
+#ifdef OBEX_SUPPORT
 #define OBEXD_DBUS_NAME "org.openobex"
 
 /* OBEXD DBus API */
@@ -39,6 +44,7 @@
 #include "obexd/obexmanager.h"
 #include "obexd/obexsession.h"
 #include "obexd/obextransfer.h"
+#endif
 
 #endif /* __OBEXD_API_H */
 

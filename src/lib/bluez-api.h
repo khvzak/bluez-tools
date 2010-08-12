@@ -24,6 +24,10 @@
 #ifndef __BLUEZ_API_H
 #define __BLUEZ_API_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 /* Global includes */
 #include <glib.h>
 #include <dbus/dbus-glib.h>

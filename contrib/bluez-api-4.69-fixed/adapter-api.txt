@@ -31,7 +31,7 @@ Methods		dict GetProperties()
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
 
-		void RequestSession()
+		void RequestSession() {unneeded_in_bluez_tools}
 
 			This method will request a client session that
 			provides operational Bluetooth. A possible mode
@@ -39,7 +39,7 @@ Methods		dict GetProperties()
 
 			Possible Errors: org.bluez.Error.Rejected
 
-		void ReleaseSession()
+		void ReleaseSession() {unneeded_in_bluez_tools}
 
 			Release a previous requested session.
 

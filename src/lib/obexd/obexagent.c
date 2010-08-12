@@ -28,7 +28,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+
 #include <glib.h>
+#include <dbus/dbus-glib.h>
 
 #include "../dbus-common.h"
 #include "../helpers.h"

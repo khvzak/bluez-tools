@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+
 #include <glib.h>
 
 #include "lib/dbus-common.h"
@@ -355,7 +356,7 @@ int main(int argc, char *argv[])
 		g_print("  Alias: %s [rw]\n", device_get_alias(device));
 		g_print("  Address: %s\n", device_get_address(device));
 		g_print("  Icon: %s\n", device_get_icon(device));
-		g_print("  Class: %x\n", device_get_class(device));
+		g_print("  Class: 0x%x\n", device_get_class(device));
 		g_print("  Paired: %d\n", device_get_paired(device));
 		g_print("  Trusted: %d [rw]\n", device_get_trusted(device));
 		g_print("  Blocked: %d [rw]\n", device_get_blocked(device));

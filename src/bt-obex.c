@@ -25,12 +25,17 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+
+#include <readline/readline.h>
+#include <readline/history.h>
+
 #include <glib.h>
 
 #include "lib/dbus-common.h"
@@ -124,13 +129,13 @@ static gchar *server_path_arg = NULL;
 static gboolean opp_arg = FALSE;
 static gchar *opp_device_arg = NULL;
 static gchar *opp_file_arg = NULL;
-//static gchar *ftp_arg = NULL;
+static gchar *ftp_arg = NULL;
 
 static GOptionEntry entries[] = {
 	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
 	{"server", 's', 0, G_OPTION_ARG_NONE, &server_arg, "Register self at OBEX server", NULL},
 	{"opp", 'p', 0, G_OPTION_ARG_NONE, &opp_arg, "Send file to remote device", NULL},
-	//{"ftp", 'f', 0, G_OPTION_ARG_STRING, &ftp_arg, "Start FTP session with remote device", "<name|mac>"},
+	{"ftp", 'f', 0, G_OPTION_ARG_STRING, &ftp_arg, "Start FTP session with remote device", "<name|mac>"},
 	{NULL}
 };
 
@@ -161,7 +166,7 @@ int main(int argc, char *argv[])
 		g_print("%s: %s\n", g_get_prgname(), error->message);
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
-	} else if (!server_arg && !opp_arg /*&& (!ftp_arg || strlen(ftp_arg) == 0)*/) {
+	} else if (!server_arg && !opp_arg && (!ftp_arg || strlen(ftp_arg) == 0)) {
 		g_print("%s", g_option_context_get_help(context, FALSE, NULL));
 		exit(EXIT_FAILURE);
 	} else if (server_arg && argc != 1 && (argc != 2 || strlen(argv[1]) == 0)) {
@@ -299,7 +304,8 @@ int main(int argc, char *argv[])
 
 		/* Get destination address (address of remote device) */
 		Device *device = find_device(adapter, opp_device_arg, &error);
-		exit_if_error(error);
+		if (error && g_strcmp0(dbus_g_error_get_name(error), "org.bluez.Error.DoesNotExist") != 0)
+			exit_if_error(error);
 		gchar *dst_address = g_strdup(device == NULL ? opp_device_arg : device_get_address(device));
 
 		g_object_unref(device);
@@ -349,15 +355,16 @@ int main(int argc, char *argv[])
 
 		g_free(src_address);
 		g_free(dst_address);
-		g_strfreev(files_to_send);
-	} /*else if (ftp_arg) {
+		g_free(files_to_send[0]);
+		files_to_send[0] = NULL;
+	} else if (ftp_arg) {
 		/* Get source address (address of adapter) */
-		/*Adapter *adapter = find_adapter(adapter_arg, &error);
+		Adapter *adapter = find_adapter(adapter_arg, &error);
 		exit_if_error(error);
 		gchar *src_address = g_strdup(adapter_get_address(adapter));
 
 		/* Get destination address (address of remote device) */
-		/*/Device *device = find_device(adapter, ftp_arg, &error);
+		Device *device = find_device(adapter, ftp_arg, &error);
 		exit_if_error(error);
 		gchar *dst_address = g_strdup(device == NULL ? ftp_arg : device_get_address(device));
 
@@ -365,7 +372,7 @@ int main(int argc, char *argv[])
 		g_object_unref(adapter);
 
 		/* Build arguments */
-		/*GHashTable *device_dict = g_hash_table_new(g_str_hash, g_str_equal);
+		GHashTable *device_dict = g_hash_table_new(g_str_hash, g_str_equal);
 		GValue source = {0};
 		GValue destination = {0};
 		GValue target = {0};
@@ -383,20 +390,151 @@ int main(int argc, char *argv[])
 		OBEXAgent *agent = g_object_new(OBEXAGENT_TYPE, NULL);
 
 		/* Create FTP session */
-		//gchar *session_path = obexclient_create_session(client, device_dict, &error);
-		//exit_if_error(error);
+		gchar *session_path = obexclient_create_session(client, device_dict, &error);
+		exit_if_error(error);
 
-		//OBEXClientFileTransfer *ftp_session = g_object_new(OBEXCLIENT_FILE_TRANSFER_TYPE, "DBusObjectPath", session_path, NULL);
+		OBEXClientFileTransfer *ftp_session = g_object_new(OBEXCLIENT_FILE_TRANSFER_TYPE, "DBusObjectPath", session_path, NULL);
+		g_free(session_path);
 
-		/*g_print("FTP session opened\n");
+		g_print("FTP session opened\n");
 
 		while (TRUE) {
-			g_print("> ");
-			gchar cmd[128] = {0,};
-			if (!fgets(cmd, 127, stdin)) continue;
-			g_print("cmd: %s\n", cmd);
+			gchar *cmd = readline("> ");
+			if (cmd == NULL || strlen(cmd) == 0) {
+				continue;
+			} else {
+				add_history(cmd);
+			}
+
+			gint f_argc;
+			gchar **f_argv;
+			/* Parsing command line */
+			if (!g_shell_parse_argv(cmd, &f_argc, &f_argv, &error)) {
+				g_print("%s\n", error->message);
+				g_error_free(error);
+				error = NULL;
+			}
+
+			/* Execute commands */
+			if (g_strcmp0(f_argv[0], "cd") == 0) {
+				if (f_argc != 2 || strlen(f_argv[1]) == 0) {
+					g_print("invalid arguments\n");
+				} else {
+					obexclient_file_transfer_change_folder(ftp_session, f_argv[1], &error);
+					if (error) {
+						g_print("%s\n", error->message);
+						g_error_free(error);
+						error = NULL;
+					}
+				}
+			} else if (g_strcmp0(f_argv[0], "mkdir") == 0) {
+				if (f_argc != 2 || strlen(f_argv[1]) == 0) {
+					g_print("invalid arguments\n");
+				} else {
+					obexclient_file_transfer_create_folder(ftp_session, f_argv[1], &error);
+					if (error) {
+						g_print("%s\n", error->message);
+						g_error_free(error);
+						error = NULL;
+					}
+				}
+			} else if (g_strcmp0(f_argv[0], "ls") == 0) {
+				if (f_argc != 1) {
+					g_print("invalid arguments\n");
+				} else {
+					GPtrArray *folders = obexclient_file_transfer_list_folder(ftp_session, &error);
+					if (error) {
+						g_print("%s\n", error->message);
+						g_error_free(error);
+						error = NULL;
+					} else {
+						for (int i = 0; i < folders->len; i++) {
+							GHashTable *el = g_ptr_array_index(folders, i);
+							g_print("%s\n", g_value_get_string(g_hash_table_lookup(el, "Name")));
+						}
+						//g_ptr_array_unref(folders);
+
+						/*obexclient_remove_session(client, obexclient_file_transfer_get_dbus_object_path(ftp_session), &error);
+						exit_if_error(error);
+						g_object_unref(ftp_session);
+						session_path = obexclient_create_session(client, device_dict, &error);
+						exit_if_error(error);
+						ftp_session = g_object_new(OBEXCLIENT_FILE_TRANSFER_TYPE, "DBusObjectPath", session_path, NULL);
+						g_free(session_path);*/
+					}
+				}
+			} else if (g_strcmp0(f_argv[0], "get") == 0) {
+				if (f_argc != 3 || strlen(f_argv[1]) == 0 || strlen(f_argv[2]) == 0) {
+					g_print("invalid arguments\n");
+				} else {
+					obexclient_file_transfer_get_file(ftp_session, f_argv[1], f_argv[2], &error);
+					if (error) {
+						g_print("%s\n", error->message);
+						g_error_free(error);
+						error = NULL;
+					}
+				}
+			} else if (g_strcmp0(f_argv[0], "put") == 0) {
+				if (f_argc != 3 || strlen(f_argv[1]) == 0 || strlen(f_argv[2]) == 0) {
+					g_print("invalid arguments\n");
+				} else {
+					obexclient_file_transfer_put_file(ftp_session, f_argv[1], f_argv[2], &error);
+					if (error) {
+						g_print("%s\n", error->message);
+						g_error_free(error);
+						error = NULL;
+					}
+				}
+			} else if (g_strcmp0(f_argv[0], "cp") == 0) {
+				if (f_argc != 3 || strlen(f_argv[1]) == 0 || strlen(f_argv[2]) == 0) {
+					g_print("invalid arguments\n");
+				} else {
+					obexclient_file_transfer_copy_file(ftp_session, f_argv[1], f_argv[2], &error);
+					if (error) {
+						g_print("%s\n", error->message);
+						g_error_free(error);
+						error = NULL;
+					}
+				}
+			} else if (g_strcmp0(f_argv[0], "mv") == 0) {
+				if (f_argc != 3 || strlen(f_argv[1]) == 0 || strlen(f_argv[2]) == 0) {
+					g_print("invalid arguments\n");
+				} else {
+					obexclient_file_transfer_move_file(ftp_session, f_argv[1], f_argv[2], &error);
+					if (error) {
+						g_print("%s\n", error->message);
+						g_error_free(error);
+						error = NULL;
+					}
+				}
+			} else if (g_strcmp0(f_argv[0], "rm") == 0) {
+				if (f_argc != 2 || strlen(f_argv[1]) == 0) {
+					g_print("invalid arguments\n");
+				} else {
+					obexclient_file_transfer_delete(ftp_session, f_argv[1], &error);
+					if (error) {
+						g_print("%s\n", error->message);
+						g_error_free(error);
+						error = NULL;
+					}
+				}
+			} else if (g_strcmp0(f_argv[0], "help") == 0) {
+
+			} else if (g_strcmp0(f_argv[0], "exit") == 0 || g_strcmp0(f_argv[0], "quit") == 0) {
+				obexclient_remove_session(client, obexclient_file_transfer_get_dbus_object_path(ftp_session), &error);
+				exit_if_error(error);
+				
+				g_strfreev(f_argv);
+				g_free(cmd);
+				break;
+			} else {
+				g_print("invalid command\n");
+			}
+
+			g_strfreev(f_argv);
+			g_free(cmd);
 		}
-	}*/
+	}
 
 	dbus_disconnect();
 

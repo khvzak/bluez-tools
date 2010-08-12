@@ -25,10 +25,13 @@
 #define __HELPERS_H
 
 #include <stdio.h>
+
 #include <glib.h>
 
 #include "bluez-api.h"
+#ifdef OBEX_SUPPORT
 #include "obexd-api.h"
+#endif
 
 /* DBus helpers */
 gboolean intf_supported(const gchar *dbus_service_name, const gchar *dbus_object_path, const gchar *intf_name);
@@ -40,7 +43,7 @@ Device *find_device(Adapter *adapter, const gchar *name, GError **error);
 /* Others helpers */
 #define exit_if_error(error) G_STMT_START{ \
 if (error) { \
-	g_printerr("%s: %s\n", (dbus_g_error_get_name(error) != NULL && strlen(dbus_g_error_get_name(error)) ? dbus_g_error_get_name(error) : "Error"), error->message); \
+	g_printerr("%s: %s\n", (error->domain == DBUS_GERROR && error->code == DBUS_GERROR_REMOTE_EXCEPTION && dbus_g_error_get_name(error) != NULL && strlen(dbus_g_error_get_name(error)) ? dbus_g_error_get_name(error) : "Error"), error->message); \
 	exit(EXIT_FAILURE); \
 }; }G_STMT_END
 
