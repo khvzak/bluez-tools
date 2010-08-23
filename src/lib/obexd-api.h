@@ -33,7 +33,8 @@
 #include <dbus/dbus-glib.h>
 
 #ifdef OBEX_SUPPORT
-#define OBEXD_DBUS_NAME "org.openobex"
+#define OBEXS_DBUS_NAME "org.openobex"
+#define OBEXC_DBUS_NAME "org.openobex.client"
 
 /* OBEXD DBus API */
 #include "obexd/obexagent.h"

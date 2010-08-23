@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Check, that obexd daemon is running */
-	if (!intf_supported(OBEXD_DBUS_NAME, OBEXMANAGER_DBUS_PATH, OBEXMANAGER_DBUS_INTERFACE)) {
+	if (!intf_supported(OBEXS_DBUS_NAME, OBEXMANAGER_DBUS_PATH, OBEXMANAGER_DBUS_INTERFACE)) {
 		g_printerr("%s: OBEXD service does not found\n", g_get_prgname());
 		g_printerr("Did you forget to run obexd?\n");
 		exit(EXIT_FAILURE);
@@ -433,9 +433,9 @@ int main(int argc, char *argv[])
 							g_print(
 									"%s\t%llu\t%s\n",
 									g_value_get_string(g_hash_table_lookup(el, "Type")),
-									G_VALUE_HOLDS_UINT64(g_hash_table_lookup(el, "Size")) ? 
-										g_value_get_uint64(g_hash_table_lookup(el, "Size")) :
-										0,
+									G_VALUE_HOLDS_UINT64(g_hash_table_lookup(el, "Size")) ?
+									g_value_get_uint64(g_hash_table_lookup(el, "Size")) :
+									0,
 									g_value_get_string(g_hash_table_lookup(el, "Name"))
 									);
 						}

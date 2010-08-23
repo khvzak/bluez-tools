@@ -203,8 +203,15 @@ gboolean obexagent_cancel(OBEXAgent *self, GError **error)
 }
 
 /* Client API */
+static gboolean update_progress = FALSE;
+
 gboolean obexagent_release(OBEXAgent *self, GError **error)
 {
+	if (update_progress) {
+		g_print("\n");
+		update_progress = FALSE;
+	}
+
 	g_print("OBEXAgent released\n");
 
 	g_signal_emit(self, signals[OBEXAGENT_RELEASED], 0);
@@ -215,22 +222,31 @@ gboolean obexagent_release(OBEXAgent *self, GError **error)
 gboolean obexagent_request(OBEXAgent *self, const gchar *transfer, gchar **ret, GError **error)
 {
 	*ret = NULL;
-	OBEXClientTransfer *transfer_t = g_object_new(OBEXCLIENT_TRANSFER_TYPE, "DBusObjectPath", transfer, NULL);
-	g_print("[Transfer Request]\n");
-	g_print("  Name: %s\n", obexclient_transfer_get_name(transfer_t));
-	g_print("  Size: %llu bytes\n", obexclient_transfer_get_size(transfer_t));
-	g_print("  Filename: %s\n", obexclient_transfer_get_filename(transfer_t));
-	g_object_unref(transfer_t);
 
-	gchar yn[4] = {0,};
-	g_print("Accept (yes/no)? ");
-	errno = 0;
-	if (scanf("%3s", yn) == EOF && errno) {
-		g_warning("%s\n", strerror(errno));
-	}
-	if (g_strcmp0(yn, "y") == 0 || g_strcmp0(yn, "yes") == 0) {
-		return TRUE;
+	if (intf_supported(OBEXC_DBUS_NAME, transfer, OBEXCLIENT_TRANSFER_DBUS_INTERFACE)) {
+		OBEXClientTransfer *transfer_t = g_object_new(OBEXCLIENT_TRANSFER_TYPE, "DBusObjectPath", transfer, NULL);
+		g_print("[Transfer Request]\n");
+		g_print("  Name: %s\n", obexclient_transfer_get_name(transfer_t));
+		g_print("  Size: %llu bytes\n", obexclient_transfer_get_size(transfer_t));
+		g_print("  Filename: %s\n", obexclient_transfer_get_filename(transfer_t));
+		g_object_unref(transfer_t);
+
+		gchar yn[4] = {0,};
+		g_print("Accept (yes/no)? ");
+		errno = 0;
+		if (scanf("%3s", yn) == EOF && errno) {
+			g_warning("%s\n", strerror(errno));
+		}
+		if (g_strcmp0(yn, "y") == 0 || g_strcmp0(yn, "yes") == 0) {
+			return TRUE;
+		} else {
+			// TODO: Fix error code
+			if (error)
+				*error = g_error_new(g_quark_from_static_string("org.openobex.Error.Rejected"), 0, "File transfer rejected");
+			return FALSE;
+		}
 	} else {
+		g_print("Error: Unknown transfer request\n");
 		// TODO: Fix error code
 		if (error)
 			*error = g_error_new(g_quark_from_static_string("org.openobex.Error.Rejected"), 0, "File transfer rejected");
@@ -242,43 +258,65 @@ gboolean obexagent_request(OBEXAgent *self, const gchar *transfer, gchar **ret, 
 
 gboolean obexagent_progress(OBEXAgent *self, const gchar *transfer, guint64 transferred, GError **error)
 {
-	OBEXClientTransfer *transfer_t = g_object_new(OBEXCLIENT_TRANSFER_TYPE, "DBusObjectPath", transfer, NULL);
-	guint64 total = obexclient_transfer_get_size(transfer_t);
+	if (intf_supported(OBEXC_DBUS_NAME, transfer, OBEXCLIENT_TRANSFER_DBUS_INTERFACE)) {
+		OBEXClientTransfer *transfer_t = g_object_new(OBEXCLIENT_TRANSFER_TYPE, "DBusObjectPath", transfer, NULL);
+		guint64 total = obexclient_transfer_get_size(transfer_t);
 
-	guint pp = (transferred / (gfloat) total)*100;
+		guint pp = (transferred / (gfloat) total)*100;
 
-	static gboolean update_progress = FALSE;
-	if (!update_progress) {
-		g_print("[Transfer#%s] Progress: %3u%%", obexclient_transfer_get_filename(transfer_t), pp);
-		update_progress = TRUE;
-	} else {
-		g_print("\b\b\b\b%3u%%", pp);
+		if (!update_progress) {
+			g_print("[Transfer#%s] Progress: %3u%%", obexclient_transfer_get_name(transfer_t), pp);
+			update_progress = TRUE;
+		} else {
+			g_print("\b\b\b\b%3u%%", pp);
+		}
+
+		if (pp == 100) {
+			g_print("\n");
+			update_progress = FALSE;
+		}
+
+		g_object_unref(transfer_t);
 	}
-
-	if (pp == 100) {
-		g_print("\n");
-		update_progress = FALSE;
-	}
-
-	g_object_unref(transfer_t);
 
 	return TRUE;
 }
 
 gboolean obexagent_complete(OBEXAgent *self, const gchar *transfer, GError **error)
 {
-	OBEXClientTransfer *transfer_t = g_object_new(OBEXCLIENT_TRANSFER_TYPE, "DBusObjectPath", transfer, NULL);
-	g_print("[Transfer#%s] Completed\n", obexclient_transfer_get_filename(transfer_t));
-	g_object_unref(transfer_t);
+	if (update_progress) {
+		g_print("\n");
+		update_progress = FALSE;
+	}
+
+	if (intf_supported(OBEXC_DBUS_NAME, transfer, OBEXCLIENT_TRANSFER_DBUS_INTERFACE)) {
+		OBEXClientTransfer *transfer_t = g_object_new(OBEXCLIENT_TRANSFER_TYPE, "DBusObjectPath", transfer, NULL);
+		g_print("[Transfer#%s] Completed\n", obexclient_transfer_get_name(transfer_t));
+		g_object_unref(transfer_t);
+	}
 
 	return TRUE;
 }
 
 gboolean obexagent_error(OBEXAgent *self, const gchar *transfer, const gchar *message, GError **error)
 {
-	OBEXClientTransfer *transfer_t = g_object_new(OBEXCLIENT_TRANSFER_TYPE, "DBusObjectPath", transfer, NULL);
-	g_print("[Transfer#%s] Error: %s\n", obexclient_transfer_get_filename(transfer_t), message);
-	g_object_unref(transfer_t);
+	if (update_progress) {
+		g_print("\n");
+		update_progress = FALSE;
+	}
+
+	g_print("[Transfer] Error: %s\n", message);
+
+	/*
+	 * Transfer interface does not exists
+	 * Code commented
+	 *
+	if (intf_supported(OBEXC_DBUS_NAME, transfer, OBEXCLIENT_TRANSFER_DBUS_INTERFACE)) {
+		OBEXClientTransfer *transfer_t = g_object_new(OBEXCLIENT_TRANSFER_TYPE, "DBusObjectPath", transfer, NULL);
+		g_print("[Transfer#%s] Error: %s\n", obexclient_transfer_get_name(transfer_t), message);
+		g_object_unref(transfer_t);
+	}
+	 */
 
 	return TRUE;
 }
