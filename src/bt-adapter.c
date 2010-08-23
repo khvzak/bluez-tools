@@ -46,8 +46,8 @@ static void adapter_device_found(Adapter *adapter, const gchar *address, GHashTa
 	if (g_hash_table_size(found_devices) == 0) g_print("\n");
 
 	g_print("[%s]\n", address);
-	g_print("  Name: %s\n", g_value_get_string(g_hash_table_lookup(values, "Name")));
-	g_print("  Alias: %s\n", g_value_get_string(g_hash_table_lookup(values, "Alias")));
+	g_print("  Name: %s\n", g_hash_table_lookup(values, "Name") != NULL ? g_value_get_string(g_hash_table_lookup(values, "Name")) : NULL);
+	g_print("  Alias: %s\n", g_hash_table_lookup(values, "Alias") != NULL ? g_value_get_string(g_hash_table_lookup(values, "Alias")) : NULL);
 	g_print("  Address: %s\n", g_value_get_string(g_hash_table_lookup(values, "Address")));
 	g_print("  Icon: %s\n", g_value_get_string(g_hash_table_lookup(values, "Icon")));
 	g_print("  Class: 0x%x\n", g_value_get_uint(g_hash_table_lookup(values, "Class")));

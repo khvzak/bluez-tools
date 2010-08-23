@@ -276,12 +276,16 @@ int main(int argc, char *argv[])
 		gchar *src_address = g_strdup(adapter_get_address(adapter));
 
 		/* Get destination address (address of remote device) */
-		Device *device = find_device(adapter, opp_device_arg, &error);
-		if (error && g_strcmp0(dbus_g_error_get_name(error), "org.bluez.Error.DoesNotExist") != 0)
+		gchar *dst_address = NULL;
+		if (g_regex_match_simple("^\\x{2}:\\x{2}:\\x{2}:\\x{2}:\\x{2}:\\x{2}$", opp_device_arg, 0, 0)) {
+			dst_address = g_strdup(opp_device_arg);
+		} else {
+			Device *device = find_device(adapter, opp_device_arg, &error);
 			exit_if_error(error);
-		gchar *dst_address = g_strdup(device == NULL ? opp_device_arg : device_get_address(device));
+			dst_address = g_strdup(device_get_address(device));
+			g_object_unref(device);
+		}
 
-		g_object_unref(device);
 		g_object_unref(adapter);
 
 		/* Build arguments */

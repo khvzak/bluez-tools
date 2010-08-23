@@ -40,8 +40,8 @@ B<-d, --discover>
     Discover remote devices (with remote device name resolving)
 
 B<--set E<lt>propertyE<gt> E<lt>valueE<gt>>
-    Change adapter properties (see PROPERTIES section for list of
-    available properties)
+    Change adapter properties (see ADAPTER PROPERTIES section for list
+    of available properties)
 
 =head1 ADAPTER PROPERTIES
 

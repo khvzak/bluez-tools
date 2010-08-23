@@ -174,9 +174,9 @@ int main(int argc, char *argv[])
 			}
 		}
 
+		g_main_loop_unref(mainloop);
 		g_object_unref(network);
 		g_object_unref(device);
-		g_main_loop_unref(mainloop);
 	} else if (server_arg) {
 		server_uuid_arg = argv[1];
 		server_brige_arg = argv[2];
@@ -214,8 +214,8 @@ int main(int argc, char *argv[])
 		exit_if_error(error);
 		g_print("%s server unregistered\n", server_uuid_upper);
 
-		g_free(server_uuid_upper);
 		g_main_loop_unref(mainloop);
+		g_free(server_uuid_upper);
 		g_object_unref(network_server);
 	}
 

@@ -32,15 +32,15 @@ B<-a, --adapter E<lt>name|macE<gt>>
 B<-s, --server [E<lt>pathE<gt>]>
     Register agent at OBEX server and set incoming/root directory to
     `path` or current folder will be used; Agent is used to
-    accept/reject imcoming bluetooth object push requests
+    accept/reject incoming bluetooth object push requests
 
 B<-p, --opp E<lt>name|macE<gt> E<lt>fileE<gt>>
-    Send local file to the specified remove device using object push
+    Send local file to the specified remote device using object push
     profile
 
 B<-f, --ftp E<lt>name|macE<gt>>
-    Start ftp session with remote device; If session opened
-    successfuly, ftp shell will be opened
+    Start FTP session with remote device; If session opened
+    successfuly, FTP shell will be opened
 
     FTP commands:
 
