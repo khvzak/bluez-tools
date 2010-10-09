@@ -47,16 +47,14 @@ if (error) { \
 	exit(EXIT_FAILURE); \
 }; }G_STMT_END
 
-inline int xtoi(const gchar *str)
-{
-	int i = 0;
-	sscanf(str, "0x%x", &i);
-	return i;
-}
+/* Convert hex string to int */
+int xtoi(const gchar *str);
 
+/* UUID converters */
 const gchar *uuid2name(const gchar *uuid);
 const gchar *name2uuid(const gchar *name);
 
+/* FS helpers */
 gboolean is_file(const gchar *filename, GError **error);
 gboolean is_dir(const gchar *dirname, GError **error);
 gchar *get_absolute_path(const gchar *path);

@@ -140,6 +140,13 @@ const gchar *name2uuid(const gchar *name)
 	return name;
 }
 
+int xtoi(const gchar *str)
+{
+	int i = 0;
+	sscanf(str, "0x%x", &i);
+	return i;
+}
+
 Adapter *find_adapter(const gchar *name, GError **error)
 {
 	gchar *adapter_path = NULL;
