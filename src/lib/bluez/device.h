@@ -78,6 +78,7 @@ const gchar *device_get_icon(Device *self);
 const gboolean device_get_legacy_pairing(Device *self);
 const gchar *device_get_name(Device *self);
 const gboolean device_get_paired(Device *self);
+const GPtrArray *device_get_services(Device *self);
 const gboolean device_get_trusted(Device *self);
 void device_set_trusted(Device *self, const gboolean value);
 const gchar **device_get_uuids(Device *self);

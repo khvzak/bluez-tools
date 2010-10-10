@@ -55,6 +55,7 @@ struct _DevicePrivate {
 	gboolean legacy_pairing;
 	gchar *name;
 	gboolean paired;
+	GPtrArray *services;
 	gboolean trusted;
 	gchar **uuids;
 };
@@ -75,6 +76,7 @@ enum {
 	PROP_LEGACY_PAIRING, /* readonly */
 	PROP_NAME, /* readonly */
 	PROP_PAIRED, /* readonly */
+	PROP_SERVICES, /* readonly */
 	PROP_TRUSTED, /* readwrite */
 	PROP_UUIDS /* readonly */
 };
@@ -108,6 +110,7 @@ static void device_dispose(GObject *gobject)
 	g_free(self->priv->alias);
 	g_free(self->priv->icon);
 	g_free(self->priv->name);
+	g_ptr_array_unref(self->priv->services);
 	g_strfreev(self->priv->uuids);
 
 	/* Proxy free */
@@ -178,6 +181,10 @@ static void device_class_init(DeviceClass *klass)
 	/* boolean Paired [readonly] */
 	pspec = g_param_spec_boolean("Paired", NULL, NULL, FALSE, G_PARAM_READABLE);
 	g_object_class_install_property(gobject_class, PROP_PAIRED, pspec);
+
+	/* array{object} Services [readonly] */
+	pspec = g_param_spec_boxed("Services", NULL, NULL, G_TYPE_PTR_ARRAY, G_PARAM_READABLE);
+	g_object_class_install_property(gobject_class, PROP_SERVICES, pspec);
 
 	/* boolean Trusted [readwrite] */
 	pspec = g_param_spec_boolean("Trusted", NULL, NULL, FALSE, G_PARAM_READWRITE);
@@ -325,6 +332,13 @@ static void device_post_init(Device *self, const gchar *dbus_object_path)
 		self->priv->paired = FALSE;
 	}
 
+	/* array{object} Services [readonly] */
+	if (g_hash_table_lookup(properties, "Services")) {
+		self->priv->services = g_value_dup_boxed(g_hash_table_lookup(properties, "Services"));
+	} else {
+		self->priv->services = g_ptr_array_new();
+	}
+
 	/* boolean Trusted [readwrite] */
 	if (g_hash_table_lookup(properties, "Trusted")) {
 		self->priv->trusted = g_value_get_boolean(g_hash_table_lookup(properties, "Trusted"));
@@ -390,6 +404,10 @@ static void _device_get_property(GObject *object, guint property_id, GValue *val
 
 	case PROP_PAIRED:
 		g_value_set_boolean(value, device_get_paired(self));
+		break;
+
+	case PROP_SERVICES:
+		g_value_set_boxed(value, device_get_services(self));
 		break;
 
 	case PROP_TRUSTED:
@@ -601,6 +619,13 @@ const gboolean device_get_paired(Device *self)
 	return self->priv->paired;
 }
 
+const GPtrArray *device_get_services(Device *self)
+{
+	g_assert(DEVICE_IS(self));
+
+	return self->priv->services;
+}
+
 const gboolean device_get_trusted(Device *self)
 {
 	g_assert(DEVICE_IS(self));
@@ -670,6 +695,9 @@ static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name
 		self->priv->name = g_value_dup_string(value);
 	} else if (g_strcmp0(name, "Paired") == 0) {
 		self->priv->paired = g_value_get_boolean(value);
+	} else if (g_strcmp0(name, "Services") == 0) {
+		g_ptr_array_unref(self->priv->services);
+		self->priv->services = g_value_dup_boxed(value);
 	} else if (g_strcmp0(name, "Trusted") == 0) {
 		self->priv->trusted = g_value_get_boolean(value);
 	} else if (g_strcmp0(name, "UUIDs") == 0) {
