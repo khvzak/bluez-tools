@@ -71,7 +71,7 @@ Methods		dict GetProperties()
 
 			Possible errors: org.bluez.Error.NotConnected
 
-		array{object} ListNodes() {deprecated}
+		array{object} ListNodes() {deprecated} {unsupported_in_bluez}
 
 			Returns list of device node object paths.
 
@@ -138,6 +138,10 @@ Properties	string Address [readonly]
 
 			List of 128-bit UUIDs that represents the available
 			remote services.
+
+		array{object} Services [readonly]
+
+			List of characteristics based services.
 
 		boolean Paired [readonly]
 
