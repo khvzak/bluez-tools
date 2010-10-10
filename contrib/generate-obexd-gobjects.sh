@@ -2,7 +2,7 @@
 
 # OBEXD API
 
-API_VERSION=0.30
+API_VERSION=0.34
 
 # client-api.txt
 ./gen-dbus-gobject.pl -header obexd-api-${API_VERSION}-fixed/client-api.txt > ../src/lib/obexd/obexclient.h
