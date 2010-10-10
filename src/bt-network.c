@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <locale.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
@@ -79,6 +80,9 @@ int main(int argc, char *argv[])
 {
 	GError *error = NULL;
 	GOptionContext *context;
+
+	/* Query current locale */
+	setlocale(LC_CTYPE, "");
 
 	g_type_init();
 	dbus_init();

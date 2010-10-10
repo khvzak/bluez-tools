@@ -25,10 +25,10 @@
 #include <config.h>
 #endif
 
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -140,6 +140,9 @@ int main(int argc, char *argv[])
 {
 	GError *error = NULL;
 	GOptionContext *context;
+
+	/* Query current locale */
+	setlocale(LC_CTYPE, "");
 
 	g_type_init();
 	dbus_init();
