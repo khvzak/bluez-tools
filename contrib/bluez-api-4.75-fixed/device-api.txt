@@ -71,7 +71,7 @@ Methods		dict GetProperties()
 
 			Possible errors: org.bluez.Error.NotConnected
 
-		array{object} ListNodes() {deprecated} {unsupported_in_bluez}
+		array{object} ListNodes() {deprecated} {unimplemented}
 
 			Returns list of device node object paths.
 
@@ -79,7 +79,7 @@ Methods		dict GetProperties()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.OutOfMemory
 
-		object CreateNode(string uuid) {unsupported_in_bluez}
+		object CreateNode(string uuid) {unimplemented}
 
 			Creates a persistent device node binding with a
 			remote device. The actual support for the specified
@@ -90,7 +90,7 @@ Methods		dict GetProperties()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NotSupported
 
-		void RemoveNode(object node) {unsupported_in_bluez}
+		void RemoveNode(object node) {unimplemented}
 
 			Removes a persistent device node binding.
 
@@ -108,11 +108,11 @@ Signals		PropertyChanged(string name, variant value)
 			disconnection to a remote device has been requested.
 			The actual disconnection will happen 2 seconds later.
 
-		NodeCreated(object node) {unsupported_in_bluez}
+		NodeCreated(object node) {unimplemented}
 
 			Parameter is object path of created device node.
 
-		NodeRemoved(object node) {unsupported_in_bluez}
+		NodeRemoved(object node) {unimplemented}
 
 			Parameter is object path of removed device node.
 
@@ -179,7 +179,7 @@ Properties	string Address [readonly]
 			emitted PropertyChanged signal will show the remote
 			name again.
 
-		array{object} Nodes [readonly] {unsupported_in_bluez}
+		array{object} Nodes [readonly] {unimplemented}
 
 			List of device node object paths.
 

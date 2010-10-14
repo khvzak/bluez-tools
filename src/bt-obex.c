@@ -193,14 +193,14 @@ int main(int argc, char *argv[])
 
 	/* Check, that bluetooth daemon is running */
 	if (!intf_supported(BLUEZ_DBUS_NAME, MANAGER_DBUS_PATH, MANAGER_DBUS_INTERFACE)) {
-		g_printerr("%s: BLUEZ service does not found\n", g_get_prgname());
+		g_printerr("%s: bluez service does not found\n", g_get_prgname());
 		g_printerr("Did you forget to run bluetoothd?\n");
 		exit(EXIT_FAILURE);
 	}
 
 	/* Check, that obexd daemon is running */
 	if (!intf_supported(OBEXS_DBUS_NAME, OBEXMANAGER_DBUS_PATH, OBEXMANAGER_DBUS_INTERFACE)) {
-		g_printerr("%s: OBEXD service does not found\n", g_get_prgname());
+		g_printerr("%s: obex service does not found\n", g_get_prgname());
 		g_printerr("Did you forget to run obexd?\n");
 		exit(EXIT_FAILURE);
 	}
