@@ -77,7 +77,6 @@ static gchar *adapter_arg = NULL;
 static gboolean connect_arg = FALSE;
 static gchar *connect_device_arg = NULL;
 static gchar *connect_uuid_arg = NULL;
-static gchar *disconnect_arg = NULL;
 static gboolean server_arg = FALSE;
 static gchar *server_uuid_arg = NULL;
 static gchar *server_brige_arg = NULL;
@@ -85,7 +84,6 @@ static gchar *server_brige_arg = NULL;
 static GOptionEntry entries[] = {
 	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
 	{"connect", 'c', 0, G_OPTION_ARG_NONE, &connect_arg, "Connect to the network device", NULL},
-	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect from the network device", "<name|mac>"},
 	{"server", 's', 0, G_OPTION_ARG_NONE, &server_arg, "Start GN/PANU/NAP server", NULL},
 	{NULL}
 };
@@ -122,7 +120,7 @@ int main(int argc, char *argv[])
 		g_print("%s: %s\n", g_get_prgname(), error->message);
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
-	} else if (!connect_arg && (!disconnect_arg || strlen(disconnect_arg) == 0) && !server_arg) {
+	} else if (!connect_arg && !server_arg) {
 		g_print("%s", g_option_context_get_help(context, FALSE, NULL));
 		exit(EXIT_FAILURE);
 	} else if (connect_arg && (argc != 3 || strlen(argv[1]) == 0 || strlen(argv[2]) == 0)) {
@@ -152,13 +150,11 @@ int main(int argc, char *argv[])
 	Adapter *adapter = find_adapter(adapter_arg, &error);
 	exit_if_error(error);
 
-	if (connect_arg || disconnect_arg) {
-		if (connect_arg) {
-			connect_device_arg = argv[1];
-			connect_uuid_arg = argv[2];
-		}
+	if (connect_arg) {
+		connect_device_arg = argv[1];
+		connect_uuid_arg = argv[2];
 
-		Device *device = find_device(adapter, connect_device_arg != NULL ? connect_device_arg : disconnect_arg, &error);
+		Device *device = find_device(adapter, connect_device_arg, &error);
 		exit_if_error(error);
 
 		if (!intf_supported(BLUEZ_DBUS_NAME, device_get_dbus_object_path(device), NETWORK_DBUS_INTERFACE)) {
@@ -171,24 +167,14 @@ int main(int argc, char *argv[])
 		Network *network = g_object_new(NETWORK_TYPE, "DBusObjectPath", device_get_dbus_object_path(device), NULL);
 		g_signal_connect(network, "PropertyChanged", G_CALLBACK(network_property_changed), mainloop);
 
-		if (connect_arg) {
-			if (network_get_connected(network) == TRUE) {
-				g_print("Network service is already connected\n");
-			} else {
-				gchar *intf = network_connect(network, connect_uuid_arg, &error);
-				exit_if_error(error);
-				trap_signals();
-				g_main_loop_run(mainloop);
-				g_free(intf);
-			}
-		} else if (disconnect_arg) {
-			if (network_get_connected(network) == FALSE) {
-				g_print("Network service is already disconnected\n");
-			} else {
-				network_disconnect(network, &error);
-				exit_if_error(error);
-				g_main_loop_run(mainloop);
-			}
+		if (network_get_connected(network) == TRUE) {
+			g_print("Network service is already connected\n");
+		} else {
+			gchar *intf = network_connect(network, connect_uuid_arg, &error);
+			exit_if_error(error);
+			trap_signals();
+			g_main_loop_run(mainloop);
+			g_free(intf);
 		}
 
 		g_main_loop_unref(mainloop);
