@@ -44,6 +44,16 @@ static void sigterm_handler(int sig)
 	g_main_loop_quit(mainloop);
 }
 
+static void trap_signals()
+{
+	/* Add SIGTERM && SIGINT handlers */
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = sigterm_handler;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+}
+
 static void network_property_changed(Network *network, const gchar *name, const GValue *value, gpointer data)
 {
 	g_assert(data != NULL);
@@ -54,8 +64,12 @@ static void network_property_changed(Network *network, const gchar *name, const 
 			g_print("Network service is connected\n");
 		} else {
 			g_print("Network service is disconnected\n");
+			g_main_loop_quit(mainloop);
 		}
-		g_main_loop_quit(mainloop);
+	} else if (g_strcmp0(name, "Interface") == 0) {
+		g_print("Interface: %s\n", g_value_get_string(value));
+	} else if (g_strcmp0(name, "UUID") == 0) {
+		g_print("UUID: %s (%s)\n", uuid2name(g_value_get_string(value)), g_value_get_string(value));
 	}
 }
 
@@ -152,7 +166,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		GMainLoop *mainloop = g_main_loop_new(NULL, FALSE);
+		mainloop = g_main_loop_new(NULL, FALSE);
 
 		Network *network = g_object_new(NETWORK_TYPE, "DBusObjectPath", device_get_dbus_object_path(device), NULL);
 		g_signal_connect(network, "PropertyChanged", G_CALLBACK(network_property_changed), mainloop);
@@ -163,11 +177,10 @@ int main(int argc, char *argv[])
 			} else {
 				gchar *intf = network_connect(network, connect_uuid_arg, &error);
 				exit_if_error(error);
+				trap_signals();
 				g_main_loop_run(mainloop);
 				g_free(intf);
 			}
-			g_print("Interface: %s\n", network_get_interface(network));
-			g_print("UUID: %s (%s)\n", uuid2name(network_get_uuid(network)), network_get_uuid(network));
 		} else if (disconnect_arg) {
 			if (network_get_connected(network) == FALSE) {
 				g_print("Network service is already disconnected\n");
@@ -205,12 +218,7 @@ int main(int argc, char *argv[])
 
 		mainloop = g_main_loop_new(NULL, FALSE);
 
-		/* Add SIGTERM && SIGINT handlers */
-		struct sigaction sa;
-		memset(&sa, 0, sizeof(sa));
-		sa.sa_handler = sigterm_handler;
-		sigaction(SIGTERM, &sa, NULL);
-		sigaction(SIGINT, &sa, NULL);
+		trap_signals();
 
 		g_main_loop_run(mainloop);
 
