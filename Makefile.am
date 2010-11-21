@@ -10,3 +10,4 @@ CLEANFILES = $(top_srcdir)/.version
 
 SUBDIRS = src
 
+EXTRA_DIST = git-version-gen
