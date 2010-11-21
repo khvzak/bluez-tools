@@ -29,6 +29,7 @@ bt-device
 - List added devices
 - Connect to the remote device by his MAC, retrieve all SDP records and then
  initiate the pairing
+- Disconnect the remote device
 - Remove device (and also the pairing information)
 - Show information about device (incl properties)
 - Service discovery
