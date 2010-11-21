@@ -174,6 +174,11 @@ int main(int argc, char *argv[])
 			exit_if_error(error);
 			trap_signals();
 			g_main_loop_run(mainloop);
+
+			/* Force disconnect from a connected device */
+			if (network_get_connected(network) == TRUE) {
+				network_disconnect(network, NULL);
+			}
 			g_free(intf);
 		}
 

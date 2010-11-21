@@ -1,5 +1,7 @@
 nbproject/
 *.o
+.deps
+.dirstamp
 .version
 .dep.inc
 Makefile
@@ -13,7 +15,6 @@ configure
 depcomp
 install-sh
 missing
-src/.deps/
 src/bt-adapter
 src/bt-agent
 src/bt-audio
@@ -23,10 +24,4 @@ src/bt-monitor
 src/bt-network
 src/bt-obex
 src/bt-serial
-src/lib/.deps/
-src/lib/.dirstamp
-src/lib/bluez/.deps/
-src/lib/bluez/.dirstamp
-src/lib/obexd/.deps/
-src/lib/obexd/.dirstamp
 stamp-h1
