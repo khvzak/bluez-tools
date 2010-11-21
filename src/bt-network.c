@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 			trap_signals();
 			g_main_loop_run(mainloop);
 
-			/* Force disconnect from a connected device */
+			/* Force disconnect the network device */
 			if (network_get_connected(network) == TRUE) {
 				network_disconnect(network, NULL);
 			}

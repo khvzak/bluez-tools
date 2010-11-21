@@ -60,11 +60,9 @@ bt_obex_SOURCES = $(lib_sources) $(bluez_sources) $(obexd_sources) bt-obex.c
 bt_obex_LDADD = $(LIBREADLINE)
 endif
 
-man_MANS = bt-monitor.1 bt-adapter.1 bt-agent.1 bt-device.1 bt-input.1 bt-audio.1 bt-network.1 bt-serial.1
+dist_man_MANS = bt-monitor.1 bt-adapter.1 bt-agent.1 bt-device.1 bt-input.1 bt-audio.1 bt-network.1 bt-serial.1
 if OBEX
-man_MANS += bt-obex.1
+dist_man_MANS += bt-obex.1
 endif
-
-dist_man_MANS = $(man_MANS)
 
 #CLEANFILES =	lib/marshallers.c lib/marshallers.h
