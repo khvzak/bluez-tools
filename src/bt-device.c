@@ -54,6 +54,7 @@ static int xml_t[LAST_E] = {0, 0, 0, 0, -1, -1};
 static gchar *adapter_arg = NULL;
 static gboolean list_arg = FALSE;
 static gchar *connect_arg = NULL;
+static gchar *disconnect_arg = NULL;
 static gchar *remove_arg = NULL;
 static gchar *info_arg = NULL;
 static gboolean services_arg = FALSE;
@@ -240,6 +241,7 @@ static GOptionEntry entries[] = {
 	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
 	{"list", 'l', 0, G_OPTION_ARG_NONE, &list_arg, "List added devices", NULL},
 	{"connect", 'c', 0, G_OPTION_ARG_STRING, &connect_arg, "Connect to the remote device", "<mac>"},
+	{"disconnect", 'd', 0, G_OPTION_ARG_STRING, &disconnect_arg, "Disconnect the remote device", "<name|mac>"},
 	{"remove", 'r', 0, G_OPTION_ARG_STRING, &remove_arg, "Remove device", "<name|mac>"},
 	{"info", 'i', 0, G_OPTION_ARG_STRING, &info_arg, "Get info about device", "<name|mac>"},
 	{"services", 's', 0, G_OPTION_ARG_NONE, &services_arg, "Discover device services", NULL},
@@ -282,7 +284,7 @@ int main(int argc, char *argv[])
 		g_print("%s: %s\n", g_get_prgname(), error->message);
 		g_print("Try `%s --help` for more information.\n", g_get_prgname());
 		exit(EXIT_FAILURE);
-	} else if (!list_arg && (!connect_arg || strlen(connect_arg) == 0) && (!remove_arg || strlen(remove_arg) == 0) && (!info_arg || strlen(info_arg) == 0) && !services_arg && !set_arg) {
+	} else if (!list_arg && (!connect_arg || strlen(connect_arg) == 0) && (!disconnect_arg || strlen(disconnect_arg) == 0) && (!remove_arg || strlen(remove_arg) == 0) && (!info_arg || strlen(info_arg) == 0) && !services_arg && !set_arg) {
 		g_print("%s", g_option_context_get_help(context, FALSE, NULL));
 		exit(EXIT_FAILURE);
 	} else if (services_arg && (argc != 2 || strlen(argv[1]) == 0) && (argc != 3 || strlen(argv[1]) == 0)) {
@@ -342,6 +344,16 @@ int main(int argc, char *argv[])
 		g_main_loop_unref(mainloop);
 		g_free(created_device);
 		g_object_unref(agent);
+	} else if (disconnect_arg) {
+		Device *device = find_device(adapter, disconnect_arg, &error);
+		exit_if_error(error);
+
+		g_print("Disconnecting: %s\n", disconnect_arg);
+		device_disconnect(device, &error);
+		exit_if_error(error);
+
+		g_print("Done\n");
+		g_object_unref(device);
 	} else if (remove_arg) {
 		Device *device = find_device(adapter, remove_arg, &error);
 		exit_if_error(error);

@@ -12,7 +12,6 @@ Help Options:
 Application Options:
   -a, --adapter=<name|mac>
   -c, --connect <name|mac> <uuid>
-  -d, --disconnect=<name|mac>
   -s, --server <gn|panu|nap> <brige>
 
 =head1 DESCRIPTION
@@ -32,9 +31,6 @@ B<-a, --adapter E<lt>name|macE<gt>>
 B<-c, --connect E<lt>name|macE<gt> E<lt>uuidE<gt>>
     Connect to the network device and return the network interface
     name, uuid can be either one of "gn", "panu" or "nap"
-
-B<-d, --disconnect E<lt>name|macE<gt>>
-    Disconnect from the network device
 
 B<-s, --server E<lt>gn|panu|napE<gt> E<lt>brigeE<gt>>
     Register server for the provided UUID, every new connection to

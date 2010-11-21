@@ -13,6 +13,7 @@ Application Options:
   -a, --adapter=<name|mac>
   -l, --list
   -c, --connect=<mac>
+  -d, --disconnect=<name|mac>
   -r, --remove=<name|mac>
   -i, --info=<name|mac>
   -s, --services <name|mac> [<pattern>]
@@ -22,8 +23,8 @@ Application Options:
 =head1 DESCRIPTION
 
 This utility is used to manage Bluetooth devices. You can list added devices,
-connect to a new device, remove added device, show info about device,
-discover remote device services or change device properties.
+connect to a new device, disconnect device, remove added device, show info
+about device, discover remote device services or change device properties.
 
 =head1 OPTIONS
 
@@ -40,6 +41,10 @@ B<-l, --list>
 B<-c, --connect E<lt>macE<gt>>
     Connect to the remote device by his MAC, retrieve all SDP
     records and then initiate the pairing
+
+B<-d, --disconnect E<lt>name|macE<gt>>
+    Disconnects a specific remote device by terminating the
+    low-level ACL connection.
 
 B<-r, --remove>
     Remove device (and also the pairing information)
