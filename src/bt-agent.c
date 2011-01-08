@@ -45,7 +45,8 @@ static GMainLoop *mainloop = NULL;
 static GHashTable *pin_hash_table = NULL;
 static gchar *pin_arg = NULL;
 
-static void read_pin_file(const gchar *filename, GHashTable *pin_hash_table, gboolean first_run) {
+static void read_pin_file(const gchar *filename, GHashTable *pin_hash_table, gboolean first_run)
+{
 	g_assert(filename != NULL && strlen(filename) > 0);
 	g_assert(pin_hash_table != NULL);
 
@@ -89,7 +90,7 @@ static void read_pin_file(const gchar *filename, GHashTable *pin_hash_table, gbo
 	ssize_t read;
 	guint n = 0;
 	GRegex *regex = g_regex_new("^(\\S+)\\s+(\\S+)$", 0, 0, NULL);
-	
+
 	while ((read = getline(&line, &len, fp)) != -1) {
 		n++;
 
@@ -131,7 +132,7 @@ static void signal_handler(int sig)
 		g_print("Re-reading PIN's file\n");
 		read_pin_file(pin_arg, pin_hash_table, FALSE);
 	} else if (sig == SIGTERM || sig == SIGINT) {
-		
+
 
 		if (g_main_loop_is_running(mainloop))
 			g_main_loop_quit(mainloop);
@@ -195,11 +196,11 @@ int main(int argc, char *argv[])
 
 	if (capability_arg) {
 		if (
-		    g_strcmp0(capability_arg, "DisplayOnly") != 0 &&
-		    g_strcmp0(capability_arg, "DisplayYesNo") != 0 &&
-		    g_strcmp0(capability_arg, "KeyboardOnly") != 0 &&
-		    g_strcmp0(capability_arg, "NoInputNoOutput") != 0
-		    ) {
+				g_strcmp0(capability_arg, "DisplayOnly") != 0 &&
+				g_strcmp0(capability_arg, "DisplayYesNo") != 0 &&
+				g_strcmp0(capability_arg, "KeyboardOnly") != 0 &&
+				g_strcmp0(capability_arg, "NoInputNoOutput") != 0
+				) {
 			g_print("%s: Invalid capability: %s\n", g_get_prgname(), capability_arg);
 			g_print("Try `%s --help` for more information.\n", g_get_prgname());
 			exit(EXIT_FAILURE);
