@@ -25,3 +25,4 @@ src/bt-network
 src/bt-obex
 src/bt-serial
 stamp-h1
+test_*
