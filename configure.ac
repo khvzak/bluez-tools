@@ -44,7 +44,6 @@ AC_HEADER_STDC
 # Check for the availability of dbus and glib libs
 PKG_PROG_PKG_CONFIG
 
-PKG_CHECK_MODULES([DBUS], [dbus-1 >= 1.2.16])
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0])
 PKG_CHECK_MODULES([DBUS_GLIB], [dbus-glib-1 >= 0.84])
 
