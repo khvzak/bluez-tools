@@ -27,11 +27,11 @@ die "usage: -header|source FILE <hid>\n" unless $ARGV[0] && $ARGV[1] && $ARGV[0]
 
 sub parse_doc_api {
     my ($doc_api_file, $hierarchy_id) = @_;
-    
+
     $hierarchy_id = 1 unless defined $hierarchy_id && $hierarchy_id > 0;
-    
+
     my %data;
-    
+
     open INPUT, "<$doc_api_file" or die "Can't open '$doc_api_file': $!\n";
     my $n = 0;
     my $hierarchy_n = 0;
@@ -39,32 +39,32 @@ sub parse_doc_api {
     while(<INPUT>) {
         $n++;
         s/\s+$//;
-        
-	if ($n == 1) {
-	    if (/^BlueZ D-Bus \S+ API description$/) {
-		$data{'dbus_conn'} = 'system_conn';
-	    } elsif (/^obex.*?API description$/i) {
-		$data{'dbus_conn'} = 'session_conn';
-	    } elsif (/^ODS API description$/) {
-		$data{'dbus_conn'} = 'system_conn';
-	    } else {
-		die "invalid file format (1)\n";
-	    }
-	    
-	    next;
-	}
-        
+
+        if ($n == 1) {
+            if (/^BlueZ D-Bus \S+ API description$/) {
+                $data{'dbus_conn'} = 'system_conn';
+            } elsif (/^obex.*?API description$/i) {
+                $data{'dbus_conn'} = 'session_conn';
+            } elsif (/^ODS API description$/) {
+                $data{'dbus_conn'} = 'system_conn';
+            } else {
+                die "invalid file format (1)\n";
+            }
+
+            next;
+        }
+
         /^\s*$/ && next;
-        
+
         if (/^(.+) hierarchy$/) {
             my $hierarchy = $1;
             $section = 'hierarchy';
             $hierarchy_n++;
-	    my $dbus_conn = $data{'dbus_conn'};
+            my $dbus_conn = $data{'dbus_conn'};
             undef %data if $hierarchy_n == $hierarchy_id;
             last if $hierarchy_n == $hierarchy_id+1;
             $data{'hierarchy'} = $hierarchy;
-	    $data{'dbus_conn'} = $dbus_conn;
+            $data{'dbus_conn'} = $dbus_conn;
         } elsif (/^Service\s*(.+)$/) {
             my $service = $1;
             die "invalid file format (2)\n" unless $section eq 'hierarchy';
@@ -75,7 +75,7 @@ sub parse_doc_api {
             die "invalid file format (3)\n" unless $section eq 'hierarchy';
             die "invalid interface: $intf\n" unless $intf =~ /^org\.(bluez|openobex)/;
             $data{'intf'} = $intf;
-            
+
             $data{$intf} = undef;
             $data{$intf}{'methods'} = undef;
             $data{$intf}{'signals'} = undef;
@@ -101,14 +101,14 @@ sub parse_doc_api {
             $section = 'properties';
             s/Properties/          /;
         }
-        
+
         if (defined $section && $section eq 'methods' && /^\s+((\S+) (\w+)\((.*)\)( \[(\w+)\])?)$/) {
             my $decl = $1;
             my $ret = $2;
             my $name = $3;
             my $args = $4;
             my $flag = $6;
-	    
+
             $data{$data{'intf'}}{'methods'}{$name}{'decl'} = $decl;
             $data{$data{'intf'}}{'methods'}{$name}{'ret'} = $ret;
             $data{$data{'intf'}}{'methods'}{$name}{'flag'} = $flag;
@@ -117,7 +117,7 @@ sub parse_doc_api {
             my $decl = $1;
             my $name = $2;
             my $args = $3;
-            
+
             $data{$data{'intf'}}{'signals'}{$name}{'decl'} = $decl;
             @{$data{$data{'intf'}}{'signals'}{$name}{'args'}} = map {type => (split / /, $_)[0], name => (split / /, $_)[1]}, (split /, /, $args);
         } elsif (defined $section && $section eq 'properties' && /^\s+((\S+) (\w+) \[(readonly|readwrite)\])$/) {
@@ -125,16 +125,16 @@ sub parse_doc_api {
             my $type = $2;
             my $name = $3;
             my $mode = $4;
-            
+
             $data{$data{'intf'}}{'properties'}{$name}{'decl'} = $decl;
             $data{$data{'intf'}}{'properties'}{$name}{'type'} = $type;
             $data{$data{'intf'}}{'properties'}{$name}{'mode'} = $mode;
-	    
-	    die "can't find method 'GetProperties'\n" unless defined $data{$data{'intf'}}{'methods'}{'GetProperties'};
-	    die "can't find method 'SetProperty'" if $mode eq 'readwrite' && !defined $data{$data{'intf'}}{'methods'}{'SetProperty'};
+
+            die "can't find method 'GetProperties'\n" unless defined $data{$data{'intf'}}{'methods'}{'GetProperties'};
+            die "can't find method 'SetProperty'" if $mode eq 'readwrite' && !defined $data{$data{'intf'}}{'methods'}{'SetProperty'};
         }
     }
-    
+
     return \%data;
 }
 
@@ -166,7 +166,7 @@ EOH
 sub get_g_type {
     my $obj_type = shift;
     my $g_type;
-    
+
     $g_type = 'void ' if $obj_type eq 'void';
     $g_type = 'gchar *' if $obj_type eq 'object' || $obj_type eq 'string';
     $g_type = 'GHashTable *' if $obj_type =~ /^dict/;
@@ -179,16 +179,16 @@ sub get_g_type {
     $g_type = 'GPtrArray *' if $obj_type eq 'array{object}' || $obj_type eq 'array{dict}';
     $g_type = 'gchar **' if $obj_type eq 'array{string}';
     $g_type = 'guchar ' if $obj_type eq 'byte';
-    
+
     die "unknown object type (1): $obj_type\n" unless defined $g_type;
-    
+
     return $g_type;
 }
 
 sub get_g_type_name {
     my $obj_type = shift;
     my $g_type_name;
-    
+
     $g_type_name = 'DBUS_TYPE_G_OBJECT_PATH' if $obj_type eq 'object';
     $g_type_name = 'G_TYPE_STRING' if $obj_type eq 'string';
     $g_type_name = 'G_TYPE_VALUE' if $obj_type eq 'variant';
@@ -203,22 +203,22 @@ sub get_g_type_name {
     $g_type_name = 'G_TYPE_STRV' if $obj_type eq 'array{string}';
     $g_type_name = 'G_TYPE_UCHAR' if $obj_type eq 'byte';
     $g_type_name = 'DBUS_TYPE_G_HASH_TABLE_ARRAY' if $obj_type eq 'array{dict}';
-    
+
     die "unknown object type (2): $obj_type\n" unless defined $g_type_name;
-    
+
     return $g_type_name;
 }
 
 sub get_default_value {
     my $c_type = shift;
     my $default_value;
-    
+
     $default_value = 'NULL' if $c_type =~ /\*$/;
     $default_value = 'FALSE' if $c_type =~ /boolean/;
     $default_value = '0' if $c_type =~ /int/;
-    
+
     die "unknown C type (3): $c_type\n" unless defined $default_value;
-    
+
     return $default_value;
 }
 
@@ -268,23 +268,23 @@ GType {\$object}_get_type(void) G_GNUC_CONST;
 
 #endif /* __{\$OBJECT}_H */
 EOT
-    
+
     my $intf = $node->{'intf'};
     my $obj = exists $node->{'objectName'} ? $node->{'objectName'} : (split /\./, $intf)[-1];
     my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
-    
+
     my $dbus_object_defs = "";
     $dbus_object_defs .= "#define {\$OBJECT}_DBUS_PATH \"$node->{'objectPath'}\"\n"  if defined $node->{'objectPath'};
     $dbus_object_defs .= "#define {\$OBJECT}_DBUS_INTERFACE \"$node->{'intf'}\"";
-    
+
     my $method_defs = "";
-    
+
     for my $method (sort keys %{$node->{$intf}{'methods'}}) {
         my @a = $method =~ /([A-Z]+[a-z]*)/g;
-	my %m = %{$node->{$intf}{'methods'}{$method}};
-        
-	my $in_args = join ', ', (map "const ".get_g_type($_->{'type'}).$_->{'name'}, @{$m{'args'}});
+        my %m = %{$node->{$intf}{'methods'}{$method}};
+
+        my $in_args = join ', ', (map "const ".get_g_type($_->{'type'}).$_->{'name'}, @{$m{'args'}});
         if (defined $m{'flag'} && $m{'flag'} eq 'async') {
             $method_defs .=
             "void {\$object}_".(join '_', (map lc $_, @a))."_begin({\$Object} *self, void (*AsyncNotifyFunc)(gpointer data), gpointer data".
@@ -297,31 +297,31 @@ EOT
         }
     }
     $method_defs .= "\n";
-    
+
     $method_defs .= "const gchar *{\$object}_get_dbus_object_path({\$Object} *self);\n" unless defined $node->{'objectPath'};
     for my $property (sort keys %{$node->{$intf}{'properties'}}) {
         my @a = $property =~ /([A-Z]+[a-z]*)/g;
         my %p = %{$node->{$intf}{'properties'}{$property}};
-        
+
         $method_defs .= "const ".get_g_type($p{'type'})."{\$object}_get_".(join '_', (map lc $_, @a))."({\$Object} *self);\n";
         $method_defs .= "void {\$object}_set_".(join '_', (map lc $_, @a))."({\$Object} *self, const ".get_g_type($p{'type'})."value);\n" if $p{'mode'} eq 'readwrite';
     }
-    
+
     $method_defs =~ s/\s+$//s;
-    
+
     my $output = "$HEADER\n$HEADER_TEMPLATE\n";
     $output =~ s/{DBUS_OBJECT_DEFS}/$dbus_object_defs/;
     $output =~ s/{METHOD_DEFS}/$method_defs/;
     $output =~ s/{\$OBJECT}/$obj_uc/g;
     $output =~ s/{\$Object}/$obj/g;
     $output =~ s/{\$object}/$obj_lc/g;
-    
+
     return $output;
 }
 
 sub generate_source {
     my $node = shift;
-    
+
     my $SOURCE_TEMPLATE = <<EOT;
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -579,18 +579,18 @@ EOT
     my $obj = exists $node->{'objectName'} ? $node->{'objectName'} : (split /\./, $intf)[-1];
     my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
-    
+
     my $methods = "";
     my $async_flag = 0;
     my $priv_async_calls = '';
     my $priv_async_calls_init = '';
     for my $method (sort keys %{$node->{$intf}{'methods'}}) {
         my @a = $method =~ /([A-Z]+[a-z]*)/g;
-	my %m = %{$node->{$intf}{'methods'}{$method}};
-        
-	my $in_args = join ', ', (map "const ".get_g_type($_->{'type'}).$_->{'name'}, @{$m{'args'}});
+        my %m = %{$node->{$intf}{'methods'}{$method}};
+
+        my $in_args = join ', ', (map "const ".get_g_type($_->{'type'}).$_->{'name'}, @{$m{'args'}});
         my $in_args2 = join ', ', (map get_g_type_name($_->{'type'}).", $_->{'name'}", @{$m{'args'}});
-        
+
         if (defined $m{'flag'} && $m{'flag'} eq 'async') {
             $async_flag = 1;
             $priv_async_calls .= "\tDBusGProxyCall *".(join '_', (map lc $_, @a))."_call;\n";
@@ -625,7 +625,7 @@ EOT
             my $method_def =
             get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."({\$Object} *self, ".
             ($in_args eq '' ? "" : "$in_args, ")."GError **error)";
-            
+
             $methods .=
             "/* $m{'decl'} */\n".
             "$method_def\n".
@@ -644,7 +644,7 @@ EOT
     $priv_async_calls =~ s/^\t(.+?)\s+$/$1/s;
     $priv_async_calls_init =~ s/^\t(.+?)\s+$/$1/s;
     $methods =~ s/\s+$//s;
-    
+
     my $enum_signals = "";
     my $signals_handlers_def = "";
     my $signals_registration = "";
@@ -654,18 +654,18 @@ EOT
     for my $signal (sort keys %{$node->{$intf}{'signals'}}) {
         my @a = $signal =~ /([A-Z]+[a-z]*)/g;
         my %s = %{$node->{$intf}{'signals'}{$signal}};
-        
+
         my $enum = join '_', (map uc $_, @a);
         my $handler_name = (join '_', (map lc $_, @a))."_handler";
-	my $in_args = join ', ', map(($_->{'type'} ne 'dict' ? "const " : "").get_g_type($_->{'type'}).$_->{'name'}, @{$s{'args'}});
+        my $in_args = join ', ', map(($_->{'type'} ne 'dict' ? "const " : "").get_g_type($_->{'type'}).$_->{'name'}, @{$s{'args'}});
         my $handler = "static void $handler_name(DBusGProxy *dbus_g_proxy, ".($in_args eq '' ? "" : "$in_args, ")."gpointer data)";
-        
+
         $signals_registration .=
         "\tsignals[$enum] = g_signal_new(\"$signal\",\n".
         "\t\t\tG_TYPE_FROM_CLASS(gobject_class),\n".
         "\t\t\tG_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,\n".
         "\t\t\t0, NULL, NULL,\n";
-	# TODO: fix this
+        # TODO: fix this
         my $arg_t = join '_', map($_->{'type'}, @{$s{'args'}});
         if ($arg_t eq '') {
             $signals_registration .=
@@ -710,16 +710,16 @@ EOT
         } else {
             die "unknown signal arguments: $arg_t\n";
         }
-        
-	my $in_args2 = join ', ', (map get_g_type_name($_->{'type'}), @{$s{'args'}});
+
+        my $in_args2 = join ', ', (map get_g_type_name($_->{'type'}), @{$s{'args'}});
         $signals_connection .=
         "\t/* $s{'decl'} */\n".
         "\tdbus_g_proxy_add_signal(self->priv->dbus_g_proxy, \"$signal\", ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID);\n".
         "\tdbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, \"$signal\", G_CALLBACK($handler_name), self, NULL);\n\n";
-        
+
         $signals_disconnection .=
         "\tdbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, \"$signal\", G_CALLBACK($handler_name), self);\n";
-        
+
         my $args = join ', ', map($_->{'name'}, @{$s{'args'}});
         $signals_handlers .= "$handler\n".
         "{\n".
@@ -727,7 +727,7 @@ EOT
         ($handler_name eq 'property_changed_handler' ? "\t{PROPERTIES_CHANGED_HANDLER}\n\n" : "").
         "\tg_signal_emit(self, signals[$enum], 0".($args eq '' ? "" : ", $args").");\n".
         "}\n\n";
-        
+
         $enum_signals .= "\t$enum,\n";
         $signals_handlers_def .= "$handler;\n";
     }
@@ -737,7 +737,7 @@ EOT
     $signals_connection =~ s/^\t(.+?)\s+$/$1/s;
     $signals_disconnection =~ s/^\t(.+?)\s+$/$1/s;
     $signals_handlers =~ s/\s+$//s;
-    
+
     my $priv_properties = "";
     my $enum_properties = "";
     my $properties_registration = "";
@@ -759,17 +759,17 @@ EOT
         "\t/* object DBusObjectPath [readwrite, construct only] */\n".
         "\tpspec = g_param_spec_string(\"DBusObjectPath\", \"dbus_object_path\", \"Adapter D-Bus object path\", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);\n".
         "\tg_object_class_install_property(gobject_class, PROP_DBUS_OBJECT_PATH, pspec);\n\n";
-        
+
         $get_properties .=
         "\tcase PROP_DBUS_OBJECT_PATH:\n".
         "\t\tg_value_set_string(value, {\$object}_get_dbus_object_path(self));\n".
         "\t\tbreak;\n\n";
-        
+
         $set_properties .=
         "\tcase PROP_DBUS_OBJECT_PATH:\n".
-	"\t\t{\$object}_post_init(self, g_value_get_string(value));\n".
+        "\t\t{\$object}_post_init(self, g_value_get_string(value));\n".
         "\t\tbreak;\n\n";
-        
+
         $properties_access_methods .=
         "const gchar *{\$object}_get_dbus_object_path({\$Object} *self)\n".
         "{\n".
@@ -780,12 +780,12 @@ EOT
     for my $property (sort keys %{$node->{$intf}{'properties'}}) {
         my @a = $property =~ /([A-Z]+[a-z]*)/g;
         my %p = %{$node->{$intf}{'properties'}{$property}};
-        
+
         my $property_var = join '_', (map lc $_, @a);
         my $enum = "PROP_".(join '_', (map uc $_, @a));
         my $property_get_method = "{\$object}_get_$property_var";
         my $property_set_method = "{\$object}_set_$property_var";
-        
+
         $priv_properties .= "\t".get_g_type($p{'type'})."$property_var;\n";
         $enum_properties .= "\t$enum, /* $p{'mode'} */\n";
         $properties_registration .= "\t/* $p{'decl'} */\n";
@@ -796,12 +796,12 @@ EOT
         "\tg_assert({\$OBJECT}_IS(self));\n\n".
         "\treturn self->priv->$property_var;\n".
         "}\n\n";
-        
+
         $properties_changed_handler .= "\"$property\") == 0) {\n";
         $get_properties .= "\tcase $enum:\n";
         if ($p{'type'} eq 'string') {
             $properties_registration .= "\tpspec = g_param_spec_string(\"$property\", NULL, NULL, NULL, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .=
+            $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
             "\t\tself->priv->$property_var = g_value_dup_string(g_hash_table_lookup(properties, \"$property\"));\n".
             "\t} else {\n".
@@ -814,7 +814,7 @@ EOT
             "\t\tself->priv->$property_var = g_value_dup_string(value);\n";
         } elsif ($p{'type'} eq 'object') {
             $properties_registration .= "\tpspec = g_param_spec_string(\"$property\", NULL, NULL, NULL, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .=
+            $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
             "\t\tself->priv->$property_var = (gchar *) g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
             "\t} else {\n".
@@ -827,7 +827,7 @@ EOT
             "\t\tself->priv->$property_var = (gchar *) g_value_dup_boxed(value);\n";
         } elsif ($p{'type'} eq 'array{object}') {
             $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_PTR_ARRAY, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .=
+            $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
             "\t\tself->priv->$property_var = g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
             "\t} else {\n".
@@ -840,7 +840,7 @@ EOT
             "\t\tself->priv->$property_var = g_value_dup_boxed(value);\n";
         } elsif ($p{'type'} eq 'array{string}') {
             $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_STRV, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .=
+            $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
             "\t\tself->priv->$property_var = (gchar **) g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
             "\t} else {\n".
@@ -854,7 +854,7 @@ EOT
             "\t\tself->priv->$property_var = (gchar **) g_value_dup_boxed(value);\n";
         } elsif ($p{'type'} eq 'uint32') {
             $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 0xFFFFFFFF, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .=
+            $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
             "\t\tself->priv->$property_var = g_value_get_uint(g_hash_table_lookup(properties, \"$property\"));\n".
             "\t} else {\n".
@@ -864,7 +864,7 @@ EOT
             $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uint(value);\n";
         } elsif ($p{'type'} eq 'uint64') {
             $properties_registration .= "\tpspec = g_param_spec_uint64(\"$property\", NULL, NULL, 0, 0xFFFFFFFFFFFFFFFF, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .=
+            $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
             "\t\tself->priv->$property_var = g_value_get_uint64(g_hash_table_lookup(properties, \"$property\"));\n".
             "\t} else {\n".
@@ -874,7 +874,7 @@ EOT
             $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uint64(value);\n";
         } elsif ($p{'type'} eq 'boolean') {
             $properties_registration .= "\tpspec = g_param_spec_boolean(\"$property\", NULL, NULL, FALSE, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .=
+            $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
             "\t\tself->priv->$property_var = g_value_get_boolean(g_hash_table_lookup(properties, \"$property\"));\n".
             "\t} else {\n".
@@ -884,7 +884,7 @@ EOT
             $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_boolean(value);\n";
         } elsif ($p{'type'} eq 'byte') {
             $properties_registration .= "\tpspec = g_param_spec_uchar(\"$property\", NULL, NULL, 0, 0xFF, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-	    $properties_init .=
+            $properties_init .=
             "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
             "\t\tself->priv->$property_var = g_value_get_uchar(g_hash_table_lookup(properties, \"$property\"));\n".
             "\t} else {\n".
@@ -899,13 +899,13 @@ EOT
         $properties_init .= "\n";
         $get_properties .= "\t\tbreak;\n\n";
         $properties_changed_handler .= "\t} else if (g_strcmp0(name, ";
-	
-	if ($p{'mode'} eq 'readwrite') {
-	    $set_properties .=
-	    "\tcase $enum:\n".
+
+        if ($p{'mode'} eq 'readwrite') {
+            $set_properties .=
+            "\tcase $enum:\n".
             "\t\t{\$object}_set_property(self, \"$property\", value, &error);\n".
-	    "\t\tbreak;\n\n";
-            
+            "\t\tbreak;\n\n";
+
             $properties_access_methods .=
             "void $property_set_method({\$Object} *self, const ".get_g_type($p{'type'})."value)\n".
             "{\n".
@@ -930,11 +930,11 @@ EOT
             "\t}\n".
             "\tg_assert(error == NULL);\n".
             "}\n\n";
-	}
+        }
     }
     $properties_init .=
     "\tg_hash_table_unref(properties);\n\n";
-    
+
     $priv_properties =~ s/^\t(.+?)\s+$/$1/s;
     $enum_properties =~ s/^\t(.+), (\/\* .+? \*\/)\s+$/$1 $2/s;
     $properties_registration =~ s/^\t(.+?)\s+$/$1/s;
@@ -944,9 +944,9 @@ EOT
     $properties_access_methods =~ s/\s+$//s;
     $properties_free =~ s/^\t(.+?)\s+$/$1/s;
     $properties_changed_handler =~ s/^\t(.+?) else if \(g_strcmp0\(name, $/$1/s;
-    
+
     $properties_free ="/* none */" if $properties_free eq '';
-    
+
     my $output = "$HEADER\n$SOURCE_TEMPLATE";
     if (defined $node->{'objectPath'}) {
         $output =~ s/\{IF_INIT\}\s+(.+?)\s+\{FI_INIT\}/$1/gs;
@@ -961,14 +961,14 @@ EOT
         $output =~ s/\s+\{IF_SIGNALS\}.+?\{FI_SIGNALS\}//gs;
     }
     if (scalar keys %{$node->{$intf}{'properties'}} > 0 || !defined $node->{'objectPath'}) {
-	$output =~ s/\{IF_PROPERTIES\}\s+(.+?)\s+\{FI_PROPERTIES\}/$1/gs;
+        $output =~ s/\{IF_PROPERTIES\}\s+(.+?)\s+\{FI_PROPERTIES\}/$1/gs;
     } else {
-	$output =~ s/\s+\{IF_PROPERTIES\}.+?\{FI_PROPERTIES\}//gs;
+        $output =~ s/\s+\{IF_PROPERTIES\}.+?\{FI_PROPERTIES\}//gs;
     }
     if (scalar keys %{$node->{$intf}{'properties'}} > 0) {
-	$output =~ s/\{IF_PROPERTIES_EXT\}\s+(.+?)\s+\{FI_PROPERTIES_EXT\}/$1/gs;
+        $output =~ s/\{IF_PROPERTIES_EXT\}\s+(.+?)\s+\{FI_PROPERTIES_EXT\}/$1/gs;
     } else {
-	$output =~ s/\s+\{IF_PROPERTIES_EXT\}.+?\{FI_PROPERTIES_EXT\}//gs;
+        $output =~ s/\s+\{IF_PROPERTIES_EXT\}.+?\{FI_PROPERTIES_EXT\}//gs;
     }
     if ($async_flag == 1) {
         $output =~ s/\{IF_ASYNC_CALLS\}\s+(.+?)\s+\{FI_ASYNC_CALLS\}/$1/gs;
@@ -998,12 +998,12 @@ EOT
     $output =~ s/{\$OBJECT}/$obj_uc/g;
     $output =~ s/{\$Object}/$obj/g;
     $output =~ s/{\$object}/$obj_lc/g;
-    
+
     # Some formatting fixes
     $output =~ s/\s+?(\t*\})/\n$1/g;
     $output =~ s/(switch \(\w+\) \{\n)\s+?(\t+default:)/$1$2/s;
     $output =~ s/\s+$/\n\n/s;
-    
+
     return $output;
 }
 

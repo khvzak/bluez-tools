@@ -2,7 +2,7 @@
  *
  *  bluez-tools - a set of tools to manage bluetooth devices for linux
  *
- *  Copyright (C) 2010  Alexander Orlenko <zxteam@gmail.com>
+ *  Copyright (C) 2010-2011  Alexander Orlenko <zxteam@gmail.com>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include <glib.h>
 
@@ -80,11 +81,13 @@ static gchar *connect_uuid_arg = NULL;
 static gboolean server_arg = FALSE;
 static gchar *server_uuid_arg = NULL;
 static gchar *server_brige_arg = NULL;
+static gboolean daemon_arg = FALSE;
 
 static GOptionEntry entries[] = {
 	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
 	{"connect", 'c', 0, G_OPTION_ARG_NONE, &connect_arg, "Connect to the network device", NULL},
 	{"server", 's', 0, G_OPTION_ARG_NONE, &server_arg, "Start GN/PANU/NAP server", NULL},
+	{"daemon", 'd', 0, G_OPTION_ARG_NONE, &daemon_arg, "Run in background (as daemon)"},
 	{NULL}
 };
 
@@ -208,6 +211,28 @@ int main(int argc, char *argv[])
 		g_print("%s server registered\n", server_uuid_upper);
 
 		mainloop = g_main_loop_new(NULL, FALSE);
+
+		if (daemon_arg) {
+			pid_t pid, sid;
+	
+			/* Fork off the parent process */
+			pid = fork();
+			if (pid < 0)
+				exit(EXIT_FAILURE);
+			/* Ok, terminate parent proccess */
+			if (pid > 0)
+				exit(EXIT_SUCCESS);
+	
+			/* Create a new SID for the child process */
+			sid = setsid();
+			if (sid < 0)
+				exit(EXIT_FAILURE);
+	
+			/* Close out the standard file descriptors */
+			close(STDIN_FILENO);
+			close(STDOUT_FILENO);
+			close(STDERR_FILENO);
+		}
 
 		trap_signals();
 

@@ -2,7 +2,7 @@
 
 # BlueZ API
 
-API_VERSION=4.75
+API_VERSION=4.96
 
 # adapter-api.txt
 ./gen-dbus-gobject.pl -header bluez-api-${API_VERSION}-fixed/adapter-api.txt > ../src/lib/bluez/adapter.h

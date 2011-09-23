@@ -154,7 +154,7 @@ static void agent_released(Agent *agent, gpointer data)
 
 static gchar *adapter_arg = NULL;
 static gchar *capability_arg = NULL;
-static gchar *daemon_arg = FALSE;
+static gboolean daemon_arg = FALSE;
 
 static GOptionEntry entries[] = {
 	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
