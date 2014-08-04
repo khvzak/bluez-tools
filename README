@@ -14,7 +14,7 @@ Some bluez-tool source relied on the previous version of bluez (4), and have bee
 The project is currently a beta version, and hiccups will still be present in the code. Register bugs at the project git repository.
 
 Project website: http://code.google.com/p/bluez-tools/
-Project Git repository: http://gitorious.org/bluez-tools/
+Project Git repository: https://github.com/khvzak/bluez-tools
 
 
 bt-adapter
