@@ -1,4 +1,4 @@
-AM_CPPFLAGS = $(GLIB_CFLAGS) $(GIO_LIBS)
+AM_CPPFLAGS = $(GLIB_CFLAGS) $(GIO_CFLAGS)
 AM_LDFLAGS = $(GLIB_LIBS) $(GIO_LIBS)
 
 bluez_sources =	lib/bluez/adapter.c lib/bluez/adapter.h \
