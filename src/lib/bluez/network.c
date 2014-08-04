@@ -24,76 +24,53 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-
+#include <gio/gio.h>
+#include <glib.h>
 #include <string.h>
 
-#include <glib.h>
-#include <dbus/dbus-glib.h>
-
 #include "../dbus-common.h"
-#include "../marshallers.h"
+#include "../properties.h"
 
 #include "network.h"
 
 #define NETWORK_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), NETWORK_TYPE, NetworkPrivate))
 
 struct _NetworkPrivate {
-	DBusGProxy *dbus_g_proxy;
-
-	/* Introspection data */
-	DBusGProxy *introspection_g_proxy;
-	gchar *introspection_xml;
-
-	/* Properties */
-	gboolean connected;
-	gchar *interface;
-	gchar *uuid;
+	GDBusProxy *proxy;
+	Properties *properties;
+	gchar *object_path;
 };
 
-G_DEFINE_TYPE(Network, network, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(Network, network, G_TYPE_OBJECT);
 
 enum {
 	PROP_0,
-
-	PROP_DBUS_OBJECT_PATH, /* readwrite, construct only */
-	PROP_CONNECTED, /* readonly */
-	PROP_INTERFACE, /* readonly */
-	PROP_UUID /* readonly */
+	PROP_DBUS_OBJECT_PATH /* readwrite, construct only */
 };
 
 static void _network_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
 static void _network_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
-enum {
-	PROPERTY_CHANGED,
-
-	LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
-
-static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data);
+static void _network_create_gdbus_proxy(Network *self, const gchar *dbus_service_name, const gchar *dbus_object_path, GError **error);
 
 static void network_dispose(GObject *gobject)
 {
 	Network *self = NETWORK(gobject);
 
-	/* DBus signals disconnection */
-	dbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self);
-
-	/* Properties free */
-	g_free(self->priv->interface);
-	g_free(self->priv->uuid);
-
 	/* Proxy free */
-	g_object_unref(self->priv->dbus_g_proxy);
-
-	/* Introspection data free */
-	g_free(self->priv->introspection_xml);
-	g_object_unref(self->priv->introspection_g_proxy);
-
+	g_clear_object (&self->priv->proxy);
+	/* Properties free */
+	g_clear_object(&self->priv->properties);
+	/* Object path free */
+	g_free(self->priv->object_path);
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(network_parent_class)->dispose(gobject);
+}
+
+static void network_finalize (GObject *gobject)
+{
+	Network *self = NETWORK(gobject);
+	G_OBJECT_CLASS(network_parent_class)->finalize(gobject);
 }
 
 static void network_class_init(NetworkClass *klass)
@@ -102,109 +79,26 @@ static void network_class_init(NetworkClass *klass)
 
 	gobject_class->dispose = network_dispose;
 
-	g_type_class_add_private(klass, sizeof(NetworkPrivate));
-
 	/* Properties registration */
-	GParamSpec *pspec;
+	GParamSpec *pspec = NULL;
 
 	gobject_class->get_property = _network_get_property;
 	gobject_class->set_property = _network_set_property;
-
+	
 	/* object DBusObjectPath [readwrite, construct only] */
-	pspec = g_param_spec_string("DBusObjectPath", "dbus_object_path", "Adapter D-Bus object path", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	pspec = g_param_spec_string("DBusObjectPath", "dbus_object_path", "Network D-Bus object path", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 	g_object_class_install_property(gobject_class, PROP_DBUS_OBJECT_PATH, pspec);
-
-	/* boolean Connected [readonly] */
-	pspec = g_param_spec_boolean("Connected", NULL, NULL, FALSE, G_PARAM_READABLE);
-	g_object_class_install_property(gobject_class, PROP_CONNECTED, pspec);
-
-	/* string Interface [readonly] */
-	pspec = g_param_spec_string("Interface", NULL, NULL, NULL, G_PARAM_READABLE);
-	g_object_class_install_property(gobject_class, PROP_INTERFACE, pspec);
-
-	/* string UUID [readonly] */
-	pspec = g_param_spec_string("UUID", NULL, NULL, NULL, G_PARAM_READABLE);
-	g_object_class_install_property(gobject_class, PROP_UUID, pspec);
-
-	/* Signals registation */
-	signals[PROPERTY_CHANGED] = g_signal_new("PropertyChanged",
-			G_TYPE_FROM_CLASS(gobject_class),
-			G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
-			0, NULL, NULL,
-			g_cclosure_bt_marshal_VOID__STRING_BOXED,
-			G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_VALUE);
+	if (pspec)
+		g_param_spec_unref(pspec);
 }
 
 static void network_init(Network *self)
 {
-	self->priv = NETWORK_GET_PRIVATE(self);
-
-	/* DBusGProxy init */
-	self->priv->dbus_g_proxy = NULL;
-
+	self->priv = network_get_instance_private (self);
+	self->priv->proxy = NULL;
+	self->priv->properties = NULL;
+	self->priv->object_path = NULL;
 	g_assert(system_conn != NULL);
-}
-
-static void network_post_init(Network *self, const gchar *dbus_object_path)
-{
-	g_assert(dbus_object_path != NULL);
-	g_assert(strlen(dbus_object_path) > 0);
-	g_assert(self->priv->dbus_g_proxy == NULL);
-
-	GError *error = NULL;
-
-	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(system_conn, "org.bluez", dbus_object_path, "org.freedesktop.DBus.Introspectable");
-	self->priv->introspection_xml = NULL;
-	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
-		g_critical("%s", error->message);
-	}
-	g_assert(error == NULL);
-
-	gchar *check_intf_regex_str = g_strconcat("<interface name=\"", NETWORK_DBUS_INTERFACE, "\">", NULL);
-	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
-		g_critical("Interface \"%s\" does not exist in \"%s\"", NETWORK_DBUS_INTERFACE, dbus_object_path);
-		g_assert(FALSE);
-	}
-	g_free(check_intf_regex_str);
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(system_conn, "org.bluez", dbus_object_path, NETWORK_DBUS_INTERFACE);
-
-	/* DBus signals connection */
-
-	/* PropertyChanged(string name, variant value) */
-	dbus_g_proxy_add_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_TYPE_STRING, G_TYPE_VALUE, G_TYPE_INVALID);
-	dbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, "PropertyChanged", G_CALLBACK(property_changed_handler), self, NULL);
-
-	/* Properties init */
-	GHashTable *properties = network_get_properties(self, &error);
-	if (error != NULL) {
-		g_critical("%s", error->message);
-	}
-	g_assert(error == NULL);
-	g_assert(properties != NULL);
-
-	/* boolean Connected [readonly] */
-	if (g_hash_table_lookup(properties, "Connected")) {
-		self->priv->connected = g_value_get_boolean(g_hash_table_lookup(properties, "Connected"));
-	} else {
-		self->priv->connected = FALSE;
-	}
-
-	/* string Interface [readonly] */
-	if (g_hash_table_lookup(properties, "Interface")) {
-		self->priv->interface = g_value_dup_string(g_hash_table_lookup(properties, "Interface"));
-	} else {
-		self->priv->interface = g_strdup("undefined");
-	}
-
-	/* string UUID [readonly] */
-	if (g_hash_table_lookup(properties, "UUID")) {
-		self->priv->uuid = g_value_dup_string(g_hash_table_lookup(properties, "UUID"));
-	} else {
-		self->priv->uuid = g_strdup("undefined");
-	}
-
-	g_hash_table_unref(properties);
 }
 
 static void _network_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
@@ -214,18 +108,6 @@ static void _network_get_property(GObject *object, guint property_id, GValue *va
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
 		g_value_set_string(value, network_get_dbus_object_path(self));
-		break;
-
-	case PROP_CONNECTED:
-		g_value_set_boolean(value, network_get_connected(self));
-		break;
-
-	case PROP_INTERFACE:
-		g_value_set_string(value, network_get_interface(self));
-		break;
-
-	case PROP_UUID:
-		g_value_set_string(value, network_get_uuid(self));
 		break;
 
 	default:
@@ -241,7 +123,8 @@ static void _network_set_property(GObject *object, guint property_id, const GVal
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		network_post_init(self, g_value_get_string(value));
+		self->priv->object_path = g_value_dup_string(value);
+		_network_create_gdbus_proxy(self, NETWORK_DBUS_SERVICE, self->priv->object_path, &error);
 		break;
 
 	default:
@@ -249,22 +132,52 @@ static void _network_set_property(GObject *object, guint property_id, const GVal
 		break;
 	}
 
-	if (error != NULL) {
+	if (error != NULL)
 		g_critical("%s", error->message);
-	}
+
 	g_assert(error == NULL);
+}
+
+/* Constructor */
+Network *network_new(const gchar *dbus_object_path)
+{
+	return g_object_new(NETWORK_TYPE, "DBusObjectPath", dbus_object_path, NULL);
+}
+
+/* Private DBus proxy creation */
+static void _network_create_gdbus_proxy(Network *self, const gchar *dbus_service_name, const gchar *dbus_object_path, GError **error)
+{
+	g_assert(NETWORK_IS(self));
+	self->priv->proxy = g_dbus_proxy_new_sync(system_conn, G_DBUS_PROXY_FLAGS_NONE, NULL, dbus_service_name, dbus_object_path, NETWORK_DBUS_INTERFACE, NULL, error);
+
+	if(self->priv->proxy == NULL)
+		return;
+
+	self->priv->properties = g_object_new(PROPERTIES_TYPE, "DBusType", "system", "DBusServiceName", dbus_service_name, "DBusObjectPath", dbus_object_path, NULL);
+	g_assert(self->priv->properties != NULL);
 }
 
 /* Methods */
 
-/* string Connect(string uuid) */
-gchar *network_connect(Network *self, const gchar *uuid, GError **error)
+/* Get DBus object path */
+const gchar *network_get_dbus_object_path(Network *self)
 {
 	g_assert(NETWORK_IS(self));
+	g_assert(self->priv->proxy != NULL);
+	return g_dbus_proxy_get_object_path(self->priv->proxy);
+}
 
-	gchar *ret = NULL;
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Connect", error, G_TYPE_STRING, uuid, G_TYPE_INVALID, G_TYPE_STRING, &ret, G_TYPE_INVALID);
-
+/* string Connect(string uuid) */
+const gchar *network_connect(Network *self, const gchar *uuid, GError **error)
+{
+	g_assert(NETWORK_IS(self));
+	const gchar *ret = NULL;
+	GVariant *proxy_ret = g_dbus_proxy_call_sync(self->priv->proxy, "Connect", g_variant_new ("(s)", uuid), G_DBUS_CALL_FLAGS_NONE, -1, NULL, error);
+	if (proxy_ret != NULL)
+		return NULL;
+	proxy_ret = g_variant_get_child_value(proxy_ret, 0);
+	ret = g_variant_get_string(proxy_ret, NULL);
+	g_variant_unref(proxy_ret);
 	return ret;
 }
 
@@ -272,65 +185,57 @@ gchar *network_connect(Network *self, const gchar *uuid, GError **error)
 void network_disconnect(Network *self, GError **error)
 {
 	g_assert(NETWORK_IS(self));
-
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Disconnect", error, G_TYPE_INVALID, G_TYPE_INVALID);
-}
-
-/* dict GetProperties() */
-GHashTable *network_get_properties(Network *self, GError **error)
-{
-	g_assert(NETWORK_IS(self));
-
-	GHashTable *ret = NULL;
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "GetProperties", error, G_TYPE_INVALID, DBUS_TYPE_G_STRING_VARIANT_HASHTABLE, &ret, G_TYPE_INVALID);
-
-	return ret;
+	g_dbus_proxy_call_sync(self->priv->proxy, "Disconnect", NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, error);
 }
 
 /* Properties access methods */
-const gchar *network_get_dbus_object_path(Network *self)
+GVariant *network_get_properties(Network *self, GError **error)
 {
 	g_assert(NETWORK_IS(self));
-
-	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
+	g_assert(self->priv->properties != NULL);
+	return properties_get_all(self->priv->properties, NETWORK_DBUS_INTERFACE, error);
 }
 
-const gboolean network_get_connected(Network *self)
+void network_set_property(Network *self, const gchar *name, const GVariant *value, GError **error)
 {
 	g_assert(NETWORK_IS(self));
-
-	return self->priv->connected;
+	g_assert(self->priv->properties != NULL);
+	properties_set(self->priv->properties, NETWORK_DBUS_INTERFACE, name, value, error);
 }
 
-const gchar *network_get_interface(Network *self)
+gboolean network_get_connected(Network *self, GError **error)
 {
 	g_assert(NETWORK_IS(self));
-
-	return self->priv->interface;
+	g_assert(self->priv->properties != NULL);
+	GVariant *prop = properties_get(self->priv->properties, NETWORK_DBUS_INTERFACE, "Connected", error);
+	if(prop == NULL)
+		return FALSE;
+	gboolean ret = g_variant_get_boolean(prop);
+	g_variant_unref(prop);
+	return ret;
 }
 
-const gchar *network_get_uuid(Network *self)
+const gchar *network_get_interface(Network *self, GError **error)
 {
 	g_assert(NETWORK_IS(self));
-
-	return self->priv->uuid;
+	g_assert(self->priv->properties != NULL);
+	GVariant *prop = properties_get(self->priv->properties, NETWORK_DBUS_INTERFACE, "Interface", error);
+	if(prop == NULL)
+		return NULL;
+	const gchar *ret = g_variant_get_string(prop, NULL);
+	g_variant_unref(prop);
+	return ret;
 }
 
-/* Signals handlers */
-static void property_changed_handler(DBusGProxy *dbus_g_proxy, const gchar *name, const GValue *value, gpointer data)
+const gchar *network_get_uuid(Network *self, GError **error)
 {
-	Network *self = NETWORK(data);
-
-	if (g_strcmp0(name, "Connected") == 0) {
-		self->priv->connected = g_value_get_boolean(value);
-	} else if (g_strcmp0(name, "Interface") == 0) {
-		g_free(self->priv->interface);
-		self->priv->interface = g_value_dup_string(value);
-	} else if (g_strcmp0(name, "UUID") == 0) {
-		g_free(self->priv->uuid);
-		self->priv->uuid = g_value_dup_string(value);
-	}
-
-	g_signal_emit(self, signals[PROPERTY_CHANGED], 0, name, value);
+	g_assert(NETWORK_IS(self));
+	g_assert(self->priv->properties != NULL);
+	GVariant *prop = properties_get(self->priv->properties, NETWORK_DBUS_INTERFACE, "UUID", error);
+	if(prop == NULL)
+		return NULL;
+	const gchar *ret = g_variant_get_string(prop, NULL);
+	g_variant_unref(prop);
+	return ret;
 }
 

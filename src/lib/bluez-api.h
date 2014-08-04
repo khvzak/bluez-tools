@@ -1,49 +1,55 @@
-/*
- *
- *  bluez-tools - a set of tools to manage bluetooth devices for linux
- *
- *  Copyright (C) 2010  Alexander Orlenko <zxteam@gmail.com>
- *
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
- */
+#ifndef BLUEZ_API_H
+#define	BLUEZ_API_H
 
-#ifndef __BLUEZ_API_H
-#define __BLUEZ_API_H
-
-#ifdef HAVE_CONFIG_H
-#include <config.h>
+#ifdef	__cplusplus
+extern "C" {
 #endif
 
-/* Global includes */
-#include <glib.h>
-#include <dbus/dbus-glib.h>
+#define BLUEZ_DBUS_SERVICE_NAME "org.bluez"
+#define BLUEZ_OBEX_DBUS_SERVICE_NAME "org.bluez.obex"
+#define BLUEZ_DBUS_BASE_PATH "/org/bluez"
+#define BLUEZ_OBEX_DBUS_BASE_PATH "/org/bluez/obex"
 
-#define BLUEZ_DBUS_NAME "org.bluez"
+#include "manager.h"
+#include "obex_agent.h"
 
-/* BlueZ DBus API */
 #include "bluez/adapter.h"
-#include "bluez/agent.h"
-#include "bluez/audio.h"
+#include "bluez/agent_manager.h"
+#include "bluez/alert.h"
+#include "bluez/alert_agent.h"
+#include "bluez/cycling_speed.h"
+#include "bluez/cycling_speed_manager.h"
 #include "bluez/device.h"
-#include "bluez/input.h"
-#include "bluez/manager.h"
+#include "bluez/health_channel.h"
+#include "bluez/health_device.h"
+#include "bluez/health_manager.h"
+#include "bluez/heart_rate.h"
+#include "bluez/heart_rate_manager.h"
+#include "bluez/media.h"
+#include "bluez/media_control.h"
+#include "bluez/media_player.h"
 #include "bluez/network.h"
 #include "bluez/network_server.h"
-#include "bluez/serial.h"
+#include "bluez/obex/obex_agent_manager.h"
+#include "bluez/obex/obex_client.h"
+#include "bluez/obex/obex_file_transfer.h"
+#include "bluez/obex/obex_message.h"
+#include "bluez/obex/obex_message_access.h"
+#include "bluez/obex/obex_object_push.h"
+#include "bluez/obex/obex_phonebook_access.h"
+#include "bluez/obex/obex_session.h"
+#include "bluez/obex/obex_synchronization.h"
+#include "bluez/obex/obex_transfer.h"
+#include "bluez/profile_manager.h"
+#include "bluez/proximity_monitor.h"
+#include "bluez/proximity_reporter.h"
+#include "bluez/sim_access.h"
+#include "bluez/thermometer.h"
+#include "bluez/thermometer_manager.h"
+    
+#ifdef	__cplusplus
+}
+#endif
 
-#endif /* __BLUEZ_API_H */
+#endif	/* BLUEZ_H */
 

@@ -41,11 +41,17 @@ sub parse_doc_api {
         s/\s+$//;
 
         if ($n == 1) {
-            if (/^BlueZ D-Bus \S+ API description$/) {
+            if (/^BlueZ D-Bus (\S+\s{1})+API description$/) {
+            	$data{'api'} = 'BlueZ';
                 $data{'dbus_conn'} = 'system_conn';
             } elsif (/^obex.*?API description$/i) {
+            	$data{'api'} = 'Obex';
                 $data{'dbus_conn'} = 'session_conn';
-            } elsif (/^ODS API description$/) {
+            } elsif (/^Cycling Speed and Cadence API description$/) {
+            	$data{'api'} = 'Cycling Speed';
+                $data{'dbus_conn'} = 'system_conn';
+            } elsif (/^Heart Rate API description$/) {
+            	$data{'api'} = 'Heart Rate';
                 $data{'dbus_conn'} = 'system_conn';
             } else {
                 die "invalid file format (1)\n";
@@ -67,13 +73,28 @@ sub parse_doc_api {
             $data{'dbus_conn'} = $dbus_conn;
         } elsif (/^Service\s*(.+)$/) {
             my $service = $1;
+            
+            # Remove strings surrounded by brackets and parentheses
+            $service =~ s/\s*((\(|\[|\{).*(\)|\]|\}))\s*//;
+            
             die "invalid file format (2)\n" unless $section eq 'hierarchy';
-            die "invalid service: $service\n" unless $service eq 'org.bluez' || $service eq 'org.openobex' || $service eq 'org.openobex.client';
-            $data{'serviceName'} = $service;
+            
+            if($service eq 'org.bluez' || $service eq 'org.bluez.obex') {
+            	$data{'serviceName'} = $service;
+            } elsif ($service eq 'unique name') {
+            	# $data{'serviceName'} = undef;
+            	die "invalid service: User defined DBus object. Please create manually.\n";
+            } else {
+            	die "invalid service: $service\n";
+            }
         } elsif (/^Interface\s*(.+)$/) {
             my $intf = $1;
+            
+            # Remove everything after the whitespace
+            $intf =~ s/\s+.*//;
+            
             die "invalid file format (3)\n" unless $section eq 'hierarchy';
-            die "invalid interface: $intf\n" unless $intf =~ /^org\.(bluez|openobex)/;
+            die "invalid interface: $intf\n" unless $intf =~ /^org\.bluez\./;
             $data{'intf'} = $intf;
 
             $data{$intf} = undef;
@@ -82,8 +103,14 @@ sub parse_doc_api {
             $data{$intf}{'properties'} = undef;
         } elsif (/^Object path\s*(.+)/) {
             my $obj_path = $1;
+            
             die "invalid file format (4)\n" unless $section eq 'hierarchy';
-            $data{'objectPath'} = $obj_path if $obj_path =~ /^[A-Za-z0-9\/]+$/;
+
+            if($obj_path =~ /^freely definable/ || $obj_path =~ /^\[.*\]/ || $obj_path =~ /\{.*\}/ || $obj_path =~ /dev_XX_XX_XX_XX_XX_XX/) {
+            	$data{'objectPath'} = undef;
+            } else {
+            	$data{'objectPath'} = $obj_path if $obj_path =~ /^[A-Za-z0-9\/]+$/;
+            }
         } elsif (/^Object name\s*(.+)/) {
             my $obj_name = $1;
             die "invalid file format (4)\n" unless $section eq 'hierarchy';
@@ -93,13 +120,18 @@ sub parse_doc_api {
             $section = 'methods';
             s/Methods/       /;
         } elsif (/^Signals/) {
-            die "invalid file format (6)\n" unless $section eq 'methods';
+        	# Disabled for now. Some APIs do not have methods.
+            # die "invalid file format (6)\n" unless $section eq 'methods';
             $section = 'signals';
             s/Signals/       /;
         } elsif(/^Properties/) {
-            die "invalid file format (7)\n" unless $section eq 'signals' || $section eq 'methods';
+        	# Disabled for now. Some APIs do not have methods or signals.
+            # die "invalid file format (7)\n" unless $section eq 'signals' || $section eq 'methods';
             $section = 'properties';
             s/Properties/          /;
+        } elsif(/^Filter/) {
+            $section = 'filter';
+            s/Filter/          /;
         }
 
         if (defined $section && $section eq 'methods' && /^\s+((\S+) (\w+)\((.*)\)( \[(\w+)\])?)$/) {
@@ -108,6 +140,11 @@ sub parse_doc_api {
             my $name = $3;
             my $args = $4;
             my $flag = $6;
+            
+            # Check for void parameters
+            if(lc($args) eq 'void') {
+            	$args = '';
+            }
 
             $data{$data{'intf'}}{'methods'}{$name}{'decl'} = $decl;
             $data{$data{'intf'}}{'methods'}{$name}{'ret'} = $ret;
@@ -120,18 +157,27 @@ sub parse_doc_api {
 
             $data{$data{'intf'}}{'signals'}{$name}{'decl'} = $decl;
             @{$data{$data{'intf'}}{'signals'}{$name}{'args'}} = map {type => (split / /, $_)[0], name => (split / /, $_)[1]}, (split /, /, $args);
-        } elsif (defined $section && $section eq 'properties' && /^\s+((\S+) (\w+) \[(readonly|readwrite)\])$/) {
+        } elsif (defined $section && $section eq 'properties' && /^\s+((\S+) (\w+) \[(readonly|writeonly|readwrite|read\/write).*\])$/) {
             my $decl = $1;
             my $type = $2;
             my $name = $3;
             my $mode = $4;
-
+            my $optional = 0;
+            if ($decl =~ /\(optional\)/i or $decl =~ /\[.*optional\]/i) {
+            	$optional = 1;
+            }
+            
             $data{$data{'intf'}}{'properties'}{$name}{'decl'} = $decl;
             $data{$data{'intf'}}{'properties'}{$name}{'type'} = $type;
             $data{$data{'intf'}}{'properties'}{$name}{'mode'} = $mode;
+            $data{$data{'intf'}}{'properties'}{$name}{'optional'} = $optional;
+        } elsif (defined $section && $section eq 'filter' && /^\s+((\S+) (\w+)):$/) {
+            my $decl = $1;
+            my $type = $2;
+            my $name = $3;
 
-            die "can't find method 'GetProperties'\n" unless defined $data{$data{'intf'}}{'methods'}{'GetProperties'};
-            die "can't find method 'SetProperty'" if $mode eq 'readwrite' && !defined $data{$data{'intf'}}{'methods'}{'SetProperty'};
+            $data{$data{'intf'}}{'filter'}{$name}{'decl'} = $decl;
+            $data{$data{'intf'}}{'filter'}{$name}{'type'} = $type;
         }
     }
 
@@ -169,50 +215,32 @@ sub get_g_type {
 
     $g_type = 'void ' if $obj_type eq 'void';
     $g_type = 'gchar *' if $obj_type eq 'object' || $obj_type eq 'string';
-    $g_type = 'GHashTable *' if $obj_type =~ /^dict/;
-    $g_type = 'GValue *' if $obj_type eq 'variant';
-    $g_type = 'guint8 ' if $obj_type eq 'uint8';
+    # $g_type = 'GHashTable *' if $obj_type =~ /^dict/; # May be used later...
+    $g_type = 'GVariant *' if $obj_type =~ /^dict/; # GVariant dictionary
+    $g_type = 'GVariant *' if $obj_type eq 'variant';
+    $g_type = 'guint8 ' if $obj_type eq 'uint8' || $obj_type eq 'byte';
     $g_type = 'gboolean ' if $obj_type eq 'boolean';
+    $g_type = 'gint16 ' if $obj_type eq 'int16';
+    $g_type = 'guint16 ' if $obj_type eq 'uint16';
     $g_type = 'gint32 ' if $obj_type eq 'int32';
-    $g_type = 'guint32 ' if $obj_type eq 'uint32';
+    $g_type = 'guint32 ' if $obj_type eq 'uint32' || $obj_type eq 'fd';
     $g_type = 'guint64 ' if $obj_type eq 'uint64';
-    $g_type = 'GPtrArray *' if $obj_type eq 'array{object}' || $obj_type eq 'array{dict}';
+    # $g_type = 'GPtrArray *' if $obj_type eq 'array{object}' || $obj_type eq 'array{dict}';
+    $g_type = 'gchar **' if $obj_type eq 'array{object}';
+    $g_type = 'GVariant *' if $obj_type eq 'array{dict}';
     $g_type = 'gchar **' if $obj_type eq 'array{string}';
-    $g_type = 'guchar ' if $obj_type eq 'byte';
+    $g_type = 'guint8 *' if $obj_type eq 'array{byte}';
 
     die "unknown object type (1): $obj_type\n" unless defined $g_type;
 
     return $g_type;
 }
 
-sub get_g_type_name {
-    my $obj_type = shift;
-    my $g_type_name;
-
-    $g_type_name = 'DBUS_TYPE_G_OBJECT_PATH' if $obj_type eq 'object';
-    $g_type_name = 'G_TYPE_STRING' if $obj_type eq 'string';
-    $g_type_name = 'G_TYPE_VALUE' if $obj_type eq 'variant';
-    $g_type_name = 'G_TYPE_BOOLEAN' if $obj_type eq 'boolean';
-    $g_type_name = 'G_TYPE_INT' if $obj_type eq 'int32';
-    $g_type_name = 'G_TYPE_UINT' if $obj_type eq 'uint32';
-    $g_type_name = 'G_TYPE_UINT64' if $obj_type eq 'uint64';
-    $g_type_name = 'DBUS_TYPE_G_STRING_VARIANT_HASHTABLE' if $obj_type eq 'dict';
-    $g_type_name = 'DBUS_TYPE_G_UINT_STRING_HASHTABLE' if $obj_type eq 'dict{u,s}';
-    $g_type_name = 'DBUS_TYPE_G_STRING_STRING_HASHTABLE' if $obj_type eq 'dict{s,s}';
-    $g_type_name = 'DBUS_TYPE_G_OBJECT_ARRAY' if $obj_type eq 'array{object}';
-    $g_type_name = 'G_TYPE_STRV' if $obj_type eq 'array{string}';
-    $g_type_name = 'G_TYPE_UCHAR' if $obj_type eq 'byte';
-    $g_type_name = 'DBUS_TYPE_G_HASH_TABLE_ARRAY' if $obj_type eq 'array{dict}';
-
-    die "unknown object type (2): $obj_type\n" unless defined $g_type_name;
-
-    return $g_type_name;
-}
-
 sub get_default_value {
     my $c_type = shift;
     my $default_value;
 
+	$default_value = '0x0';
     $default_value = 'NULL' if $c_type =~ /\*$/;
     $default_value = 'FALSE' if $c_type =~ /boolean/;
     $default_value = '0' if $c_type =~ /int/;
@@ -222,6 +250,66 @@ sub get_default_value {
     return $default_value;
 }
 
+sub is_const_type {
+	my $obj_type = shift;
+
+	if($obj_type eq 'object' || $obj_type eq 'string' || $obj_type eq 'array{object}' || $obj_type eq 'array{string}') {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+sub get_g_variant_format_char {
+	my $obj_type = shift;
+    my $g_variant_type;
+
+    $g_variant_type = 'o' if $obj_type eq 'object';
+    $g_variant_type = 's' if $obj_type eq 'string';
+    $g_variant_type = '@a{sv}' if $obj_type =~ /^dict/;
+    $g_variant_type = 'v' if $obj_type eq 'variant';
+    $g_variant_type = 'y' if $obj_type eq 'uint8' || $obj_type eq 'byte';
+    $g_variant_type = 'b' if $obj_type eq 'boolean';
+    $g_variant_type = 'n' if $obj_type eq 'int16';
+    $g_variant_type = 'q' if $obj_type eq 'uint16';
+    $g_variant_type = 'h' if $obj_type eq 'int32' || $obj_type eq 'fd';
+    $g_variant_type = 'u' if $obj_type eq 'uint32';
+    $g_variant_type = 't' if $obj_type eq 'uint64';
+    $g_variant_type = '@ao' if $obj_type eq 'array{object}';
+    # $g_variant_type = 'a&v' if $obj_type eq 'array{dict}';
+    $g_variant_type = '@as' if $obj_type eq 'array{string}';
+    $g_variant_type = '@ay' if $obj_type eq 'array{byte}';
+
+    die "unknown object type (1): $obj_type\n" unless defined $g_variant_type;
+
+    return $g_variant_type;
+}
+
+sub generate_g_variant_params {
+	my @params = @{$_[0]};
+	my $variant;
+	
+	# Size greater than 0?
+	die "Too few arguments\n" unless @params > 0;
+	
+	$variant = 'g_variant_new (';
+	$variant .= '"(';
+	foreach(@params) {
+		$variant .= get_g_variant_format_char($_->{'type'});
+	}
+	$variant .= ')", ';
+	
+	for (my $i=0; $i < @params; $i++) {
+		$variant .= '(guint64) ' if $params[$i]{'type'} eq 'uint64';
+		$variant .= '(gint64) ' if $params[$i]{'type'} eq 'int64';
+		$variant .= $params[$i]{'name'};
+		$variant .= ', ' unless $i == (@params - 1);
+	}
+	$variant .= ')';
+	
+	return $variant;
+}
+
 sub generate_header {
     my $node = shift;
 
@@ -229,10 +317,13 @@ sub generate_header {
 #ifndef __{\$OBJECT}_H
 #define __{\$OBJECT}_H
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include <glib-object.h>
 
 {DBUS_OBJECT_DEFS}
-
 /*
  * Type macros
  */
@@ -262,55 +353,116 @@ struct _{\$Object}Class {
 GType {\$object}_get_type(void) G_GNUC_CONST;
 
 /*
+ * Constructor
+ */
+{CONSTRUCTOR_DEFS}
+{IF_METHODS}
+/*
  * Method definitions
  */
+{FI_METHODS}
 {METHOD_DEFS}
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif /* __{\$OBJECT}_H */
 EOT
 
     my $intf = $node->{'intf'};
     my $obj = exists $node->{'objectName'} ? $node->{'objectName'} : (split /\./, $intf)[-1];
+    
+    # Because the BlueZ 5 API uses version numbers at the end of the interfaces, trim off the version number 
+    $obj =~ s/\d+$//;
+    # TODO: In the future, when BlueZ 5 includes mutiple versions of the same interface, we should distinguish them.
+    
+    # Prefix the Obex API calls to avoid conflicts with the BlueZ API
+	$obj = "Obex".$obj if $intf =~ /obex/i;
+    
+    # TODO: In the future, when BlueZ 5 includes mutiple versions of the same interface, we should distinguish them.
     my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
+    
+    # Prefix the Obex API calls to avoid conflicts with the BlueZ API
+     
 
     my $dbus_object_defs = "";
+    $dbus_object_defs .= "#define {\$OBJECT}_DBUS_SERVICE \"$node->{'serviceName'}\"\n"  if defined $node->{'serviceName'};
+    $dbus_object_defs .= "#define {\$OBJECT}_DBUS_INTERFACE \"$node->{'intf'}\"\n";
     $dbus_object_defs .= "#define {\$OBJECT}_DBUS_PATH \"$node->{'objectPath'}\"\n"  if defined $node->{'objectPath'};
-    $dbus_object_defs .= "#define {\$OBJECT}_DBUS_INTERFACE \"$node->{'intf'}\"";
+
+	my $constructor_defs = "{\$Object} *{\$object}_new(";
+	my $constructor_args = "";
+	
+	if(not exists $node->{'objectPath'} or not defined $node->{'objectPath'}) {
+		$constructor_args .= ", " if length($constructor_args) > 0;
+		$constructor_args .= "const gchar *dbus_object_path"
+	}
+	
+	$constructor_defs .= $constructor_args;
+	$constructor_defs .= ");\n";
 
     my $method_defs = "";
 
+    $method_defs .= "const gchar *{\$object}_get_dbus_object_path({\$Object} *self);\n" unless defined $node->{'objectPath'};
+    $method_defs .= "\n" if length($method_defs) > 0;
+    
     for my $method (sort keys %{$node->{$intf}{'methods'}}) {
         my @a = $method =~ /([A-Z]+[a-z]*)/g;
         my %m = %{$node->{$intf}{'methods'}{$method}};
 
         my $in_args = join ', ', (map "const ".get_g_type($_->{'type'}).$_->{'name'}, @{$m{'args'}});
-        if (defined $m{'flag'} && $m{'flag'} eq 'async') {
-            $method_defs .=
-            "void {\$object}_".(join '_', (map lc $_, @a))."_begin({\$Object} *self, void (*AsyncNotifyFunc)(gpointer data), gpointer data".
-            ($in_args eq '' ? "" : ", $in_args").");\n".
-            get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."_end({\$Object} *self, GError **error);\n";
-        } else {
-            $method_defs .=
-            get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."({\$Object} *self, ".
-            ($in_args eq '' ? "" : "$in_args, ")."GError **error);\n";
-        }
+        
+		$method_defs .=
+		(is_const_type($m{'ret'}) eq 1 ? "const " : "").get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."({\$Object} *self, ".
+		($in_args eq '' ? "" : "$in_args, ")."GError **error);\n";
     }
-    $method_defs .= "\n";
-
-    $method_defs .= "const gchar *{\$object}_get_dbus_object_path({\$Object} *self);\n" unless defined $node->{'objectPath'};
+    
+    $method_defs .= "\n" if %{$node->{$intf}{'methods'}};
+    
+    # Add Properties interface definitions
+    if(keys(%{$node->{$intf}{'properties'}}) > 0) {
+	    $method_defs .= "GVariant *{\$object}_get_properties({\$Object} *self, GError **error);\n";
+	    $method_defs .= "void {\$object}_set_property({\$Object} *self, const gchar *name, const GVariant *value, GError **error);\n";
+		$method_defs .= "\n";
+	}
+    
     for my $property (sort keys %{$node->{$intf}{'properties'}}) {
         my @a = $property =~ /([A-Z]+[a-z]*)/g;
         my %p = %{$node->{$intf}{'properties'}{$property}};
 
-        $method_defs .= "const ".get_g_type($p{'type'})."{\$object}_get_".(join '_', (map lc $_, @a))."({\$Object} *self);\n";
-        $method_defs .= "void {\$object}_set_".(join '_', (map lc $_, @a))."({\$Object} *self, const ".get_g_type($p{'type'})."value);\n" if $p{'mode'} eq 'readwrite';
+		# If the property is named 'Type', rename it to something else as it will conflict with GLib's 'Type' property
+		if($property =~ /^type$/i) {
+			my @i_name = $obj =~ /([A-Z]+[a-z]*)/g;
+			my @new_name = ($i_name[-1], @a);
+			$method_defs .= "// This has been renamed because '{\$object}_get_type' is already used by GLib\n";
+			if ($p{'mode'} eq 'readwrite' or $p{'mode'} eq 'readonly' or $p{'mode'} eq 'read/write') {
+				$method_defs .= (is_const_type($p{'type'}) eq 1 ? "const " : "").get_g_type($p{'type'})."{\$object}_get_".(join '_', (map lc $_, @new_name))."({\$Object} *self, GError **error);\n";
+			}
+			if ($p{'mode'} eq 'readwrite' or $p{'mode'} eq 'writeonly' or $p{'mode'} eq 'read/write') {
+				$method_defs .= "void {\$object}_set_".(join '_', (map lc $_, @new_name))."({\$Object} *self, const ".get_g_type($p{'type'})."value, GError **error);\n";
+			}
+		} else {
+			if ($p{'mode'} eq 'readwrite' or $p{'mode'} eq 'readonly' or $p{'mode'} eq 'read/write') {
+				$method_defs .= (is_const_type($p{'type'}) eq 1 ? "const " : "").get_g_type($p{'type'})."{\$object}_get_".(join '_', (map lc $_, @a))."({\$Object} *self, GError **error);\n";
+			}
+			if ($p{'mode'} eq 'readwrite' or $p{'mode'} eq 'writeonly' or $p{'mode'} eq 'read/write') {
+				$method_defs .= "void {\$object}_set_".(join '_', (map lc $_, @a))."({\$Object} *self, const ".get_g_type($p{'type'})."value, GError **error);\n";
+			}
+		}
     }
 
     $method_defs =~ s/\s+$//s;
 
     my $output = "$HEADER\n$HEADER_TEMPLATE\n";
     $output =~ s/{DBUS_OBJECT_DEFS}/$dbus_object_defs/;
+    $output =~ s/{CONSTRUCTOR_DEFS}/$constructor_defs/;
+    if (scalar keys %{$node->{$intf}{'methods'}} > 0 or scalar keys %{$node->{$intf}{'properties'}} > 0) {
+        $output =~ s/\{IF_METHODS\}\s+(.+?)\s+\{FI_METHODS\}/$1/gs;
+    } else {
+        $output =~ s/\s+\{IF_METHODS\}.+?\{FI_METHODS\}//gs;
+    }
     $output =~ s/{METHOD_DEFS}/$method_defs/;
     $output =~ s/{\$OBJECT}/$obj_uc/g;
     $output =~ s/{\$Object}/$obj/g;
@@ -326,85 +478,61 @@ sub generate_source {
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-
+#include <gio/gio.h>
+#include <glib.h>
 #include <string.h>
 
-#include <glib.h>
-#include <dbus/dbus-glib.h>
-
 #include "../dbus-common.h"
-#include "../marshallers.h"
+#include "../properties.h"
 
 #include "{\$object}.h"
 
 #define {\$OBJECT}_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), {\$OBJECT}_TYPE, {\$Object}Private))
 
 struct _{\$Object}Private {
-	DBusGProxy *dbus_g_proxy;
-
-	/* Introspection data */
-	DBusGProxy *introspection_g_proxy;
-	gchar *introspection_xml;
-
-	{IF_PROPERTIES_EXT}
-	/* Properties */
-	{PRIV_PROPERTIES}
-	{FI_PROPERTIES_EXT}
-
-	{IF_ASYNC_CALLS}
-	/* Async calls */
-	{PRIV_ASYNC_CALLS}
-	{FI_ASYNC_CALLS}
+	GDBusProxy *proxy;
+	{IF_PROPERTIES}
+	Properties *properties;
+	{FI_PROPERTIES}
+	{IF_NO_OBJECT_PATH}
+	gchar *object_path;
+	{FI_NO_OBJECT_PATH}
 };
 
-G_DEFINE_TYPE({\$Object}, {\$object}, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE({\$Object}, {\$object}, G_TYPE_OBJECT);
 
-{IF_PROPERTIES}
 enum {
 	PROP_0,
-
-	{ENUM_PROPERTIES}
+{CONSTRUCTOR_PROPERTIES}
 };
 
 static void _{\$object}_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
 static void _{\$object}_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
-{FI_PROPERTIES}
 
-{IF_SIGNALS}
-enum {
-	{ENUM_SIGNALS},
-
-	LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
-
-{SIGNALS_HANDLERS_DEF}
-{FI_SIGNALS}
+static void _{\$object}_create_gdbus_proxy({\$Object} *self, const gchar *dbus_service_name, const gchar *dbus_object_path, GError **error);
 
 static void {\$object}_dispose(GObject *gobject)
 {
 	{\$Object} *self = {\$OBJECT}(gobject);
 
-	{IF_SIGNALS}
-	/* DBus signals disconnection */
-	{SIGNALS_DISCONNECTION}
-	{FI_SIGNALS}
-
+	/* Proxy free */
+	g_clear_object (&self->priv->proxy);
 	{IF_PROPERTIES_EXT}
 	/* Properties free */
-	{PROPERTIES_FREE}
+	g_clear_object(&self->priv->properties);
 	{FI_PROPERTIES_EXT}
-
-	/* Proxy free */
-	g_object_unref(self->priv->dbus_g_proxy);
-
-	/* Introspection data free */
-	g_free(self->priv->introspection_xml);
-	g_object_unref(self->priv->introspection_g_proxy);
-
+	{IF_NO_OBJECT_PATH}
+	/* Object path free */
+	g_free(self->priv->object_path);
+	{FI_NO_OBJECT_PATH}
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS({\$object}_parent_class)->dispose(gobject);
+}
+
+static void {\$object}_finalize (GObject *gobject)
+{
+	{\$Object} *self = {\$OBJECT}(gobject);
+	G_OBJECT_CLASS({\$object}_parent_class)->finalize(gobject);
 }
 
 static void {\$object}_class_init({\$Object}Class *klass)
@@ -413,117 +541,41 @@ static void {\$object}_class_init({\$Object}Class *klass)
 
 	gobject_class->dispose = {\$object}_dispose;
 
-	g_type_class_add_private(klass, sizeof({\$Object}Private));
-
-	{IF_PROPERTIES}
 	/* Properties registration */
-	GParamSpec *pspec;
+	GParamSpec *pspec = NULL;
 
 	gobject_class->get_property = _{\$object}_get_property;
 	gobject_class->set_property = _{\$object}_set_property;
-
-	{PROPERTIES_REGISTRATION}
-	{FI_PROPERTIES}
-
-	{IF_SIGNALS}
-	/* Signals registation */
-	{SIGNALS_REGISTRATION}
-	{FI_SIGNALS}
+	
+	{IF_NO_OBJECT_PATH}
+	/* object DBusObjectPath [readwrite, construct only] */
+	pspec = g_param_spec_string("DBusObjectPath", "dbus_object_path", "{\$Object} D-Bus object path", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	g_object_class_install_property(gobject_class, PROP_DBUS_OBJECT_PATH, pspec);
+	{FI_NO_OBJECT_PATH}
+	if (pspec)
+		g_param_spec_unref(pspec);
 }
 
 static void {\$object}_init({\$Object} *self)
 {
-	self->priv = {\$OBJECT}_GET_PRIVATE(self);
-
-	/* DBusGProxy init */
-	self->priv->dbus_g_proxy = NULL;
-
-	{IF_ASYNC_CALLS}
-	/* Async calls init */
-	{PRIV_ASYNC_CALLS_INIT}
-	{FI_ASYNC_CALLS}
-
+	self->priv = {\$object}_get_instance_private (self);
+	self->priv->proxy = NULL;
+	{IF_PROPERTIES}
+	self->priv->properties = NULL;
+	{FI_PROPERTIES}
+	{IF_NO_OBJECT_PATH}
+	self->priv->object_path = NULL;
+	{FI_NO_OBJECT_PATH}
 	g_assert({\$conn} != NULL);
-
-	{IF_INIT}
-	GError *error = NULL;
-
-	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name({\$conn}, {DBUS_SERVICE_NAME}, {\$OBJECT}_DBUS_PATH, "org.freedesktop.DBus.Introspectable");
-	self->priv->introspection_xml = NULL;
-	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
-		g_critical("%s", error->message);
-	}
-	g_assert(error == NULL);
-
-	gchar *check_intf_regex_str = g_strconcat("<interface name=\\"", {\$OBJECT}_DBUS_INTERFACE, "\\">", NULL);
-	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
-		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", {\$OBJECT}_DBUS_INTERFACE, {\$OBJECT}_DBUS_PATH);
-		g_assert(FALSE);
-	}
-	g_free(check_intf_regex_str);
-
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name({\$conn}, {DBUS_SERVICE_NAME}, {\$OBJECT}_DBUS_PATH, {\$OBJECT}_DBUS_INTERFACE);
-
-	{IF_SIGNALS}
-	/* DBus signals connection */
-
-	{SIGNALS_CONNECTION}
-	{FI_SIGNALS}
-
-	{IF_PROPERTIES_EXT}
-	/* Properties init */
-	{PROPERTIES_INIT}
-	{FI_PROPERTIES_EXT}
-	{FI_INIT}
+{CONSTRUCTOR_CALL}
 }
 
-{IF_POST_INIT}
-static void {\$object}_post_init({\$Object} *self, const gchar *dbus_object_path)
-{
-	g_assert(dbus_object_path != NULL);
-	g_assert(strlen(dbus_object_path) > 0);
-	g_assert(self->priv->dbus_g_proxy == NULL);
-
-	GError *error = NULL;
-
-	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name({\$conn}, {DBUS_SERVICE_NAME}, dbus_object_path, "org.freedesktop.DBus.Introspectable");
-	self->priv->introspection_xml = NULL;
-	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
-		g_critical("%s", error->message);
-	}
-	g_assert(error == NULL);
-
-	gchar *check_intf_regex_str = g_strconcat("<interface name=\\"", {\$OBJECT}_DBUS_INTERFACE, "\\">", NULL);
-	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
-		g_critical("Interface \\"%s\\" does not exist in \\"%s\\"", {\$OBJECT}_DBUS_INTERFACE, dbus_object_path);
-		g_assert(FALSE);
-	}
-	g_free(check_intf_regex_str);
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name({\$conn}, {DBUS_SERVICE_NAME}, dbus_object_path, {\$OBJECT}_DBUS_INTERFACE);
-
-	{IF_SIGNALS}
-	/* DBus signals connection */
-
-	{SIGNALS_CONNECTION}
-	{FI_SIGNALS}
-
-	{IF_PROPERTIES_EXT}
-	/* Properties init */
-	{PROPERTIES_INIT}
-	{FI_PROPERTIES_EXT}
-}
-{FI_POST_INIT}
-
-{IF_PROPERTIES}
 static void _{\$object}_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
 {
 	{\$Object} *self = {\$OBJECT}(object);
 
 	switch (property_id) {
-	{GET_PROPERTIES}
-
+{CONSTRUCTOR_GETTERS}
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
 		break;
@@ -536,31 +588,48 @@ static void _{\$object}_set_property(GObject *object, guint property_id, const G
 	GError *error = NULL;
 
 	switch (property_id) {
-	{SET_PROPERTIES}
-
+{CONSTRUCTOR_SETTERS}
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
 		break;
 	}
 
-	if (error != NULL) {
+	if (error != NULL)
 		g_critical("%s", error->message);
-	}
+
 	g_assert(error == NULL);
 }
-{FI_PROPERTIES}
 
-{IF_ASYNC_CALLS}
-static void {\$object}_async_notify_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
+/* Constructor */
+{CONSTRUCTOR}
+/* Private DBus proxy creation */
+static void _{\$object}_create_gdbus_proxy({\$Object} *self, const gchar *dbus_service_name, const gchar *dbus_object_path, GError **error)
 {
-	gpointer *p = data;
-	void (*AsyncNotifyFunc)(gpointer data) = p[0];
-	(*AsyncNotifyFunc)(p[1]);
-	g_free(p);
-}
-{FI_ASYNC_CALLS}
+	g_assert({\$OBJECT}_IS(self));
+	self->priv->proxy = g_dbus_proxy_new_sync({\$conn}, G_DBUS_PROXY_FLAGS_NONE, NULL, dbus_service_name, dbus_object_path, {\$OBJECT}_DBUS_INTERFACE, NULL, error);
 
+	if(self->priv->proxy == NULL)
+		return;
+
+	{IF_PROPERTIES}
+	self->priv->properties = g_object_new(PROPERTIES_TYPE, "DBusType", {\$dbus_type}, "DBusServiceName", dbus_service_name, "DBusObjectPath", dbus_object_path, NULL);
+	g_assert(self->priv->properties != NULL);
+	{FI_PROPERTIES}
+}
+
+{IF_METHODS}
 /* Methods */
+{FI_METHODS}
+
+{IF_NO_OBJECT_PATH}
+/* Get DBus object path */
+const gchar *{\$object}_get_dbus_object_path({\$Object} *self)
+{
+	g_assert({\$OBJECT}_IS(self));
+	g_assert(self->priv->proxy != NULL);
+	return g_dbus_proxy_get_object_path(self->priv->proxy);
+}
+{FI_NO_OBJECT_PATH}
 
 {METHODS}
 
@@ -568,399 +637,323 @@ static void {\$object}_async_notify_callback(DBusGProxy *proxy, DBusGProxyCall *
 /* Properties access methods */
 {PROPERTIES_ACCESS_METHODS}
 {FI_PROPERTIES}
-
-{IF_SIGNALS}
-/* Signals handlers */
-{SIGNALS_HANDLERS}
-{FI_SIGNALS}
 EOT
 
     my $intf = $node->{'intf'};
     my $obj = exists $node->{'objectName'} ? $node->{'objectName'} : (split /\./, $intf)[-1];
+    
+    # Prefix the Obex API calls to avoid conflicts with the BlueZ API
+	$obj = "Obex".$obj if $intf =~ /obex/i;
+    
+    # Because the BlueZ 5 API uses version numbers at the end of the interfaces, trim off the version number 
+    $obj =~ s/\d+$//;
+    # TODO: In the future, when BlueZ 5 includes mutiple versions of the same interface, we should distinguish them.
+    
     my $obj_lc = lc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
     my $obj_uc = uc join('_', $obj =~ /([A-Z]+[a-z]*)/g);
+    
+    my $constructor_properties = "";
+    if(not exists $node->{'objectPath'} or not defined $node->{'objectPath'}) {
+    	$constructor_properties .= "\tPROP_DBUS_OBJECT_PATH";
+    	$constructor_properties .= " /* readwrite, construct only */\n";
+    }
+    
+    my $constructor_call = "";
+    if(exists $node->{'serviceName'} and defined $node->{'serviceName'} and exists $node->{'objectPath'} and defined $node->{'objectPath'}) {
+    	$constructor_call .=
+    	"\tGError *error = NULL;\n".
+    	"\t_{\$object}_create_gdbus_proxy(self, {\$OBJECT}_DBUS_SERVICE, {\$OBJECT}_DBUS_PATH, &error);\n".
+    	"\tg_assert(error == NULL);\n";
+    }
+    
+    my $constructor_getters = "";
+	if(not exists $node->{'objectPath'} or not defined $node->{'objectPath'}) {
+	    $constructor_getters .= "\tcase PROP_DBUS_OBJECT_PATH:\n";
+		$constructor_getters .= "\t\tg_value_set_string(value, {\$object}_get_dbus_object_path(self));\n";
+		$constructor_getters .= "\t\tbreak;\n";
+	}
+	
+	my $constructor_setters = "";
+	if(not exists $node->{'objectPath'} or not defined $node->{'objectPath'}) {
+	    $constructor_setters .= 
+	    "\tcase PROP_DBUS_OBJECT_PATH:\n".
+		"\t\tself->priv->object_path = g_value_dup_string(value);\n";
+		$constructor_setters .=
+		"\t\t_{\$object}_create_gdbus_proxy(self, {\$OBJECT}_DBUS_SERVICE, self->priv->object_path, &error);\n";
+		$constructor_setters .= "\t\tbreak;\n";
+	}
+
+	my $constructor_def = "{\$Object} *{\$object}_new(";
+	my $constructor_args = "";
+	
+	if(not exists $node->{'objectPath'} or not defined $node->{'objectPath'}) {
+		$constructor_args .= ", " if length($constructor_args) > 0;
+		$constructor_args .= "const gchar *dbus_object_path"
+	}
+	
+	$constructor_def .= $constructor_args;
+	$constructor_def .=
+	")\n".
+	"{\n".
+	"\treturn g_object_new({\$OBJECT}_TYPE, ";
+	if(not exists $node->{'objectPath'} or not defined $node->{'objectPath'}) {
+		$constructor_def .= "\"DBusObjectPath\", dbus_object_path, ";
+	}
+	$constructor_def .=
+	"NULL);\n".
+	"}\n";
+	
+	my $dbus_type = "NULL";
+	
+	if(exists $node->{'dbus_conn'} and defined $node->{'dbus_conn'}) {
+		$dbus_type = "\"system\"" if $node->{'dbus_conn'} eq 'system_conn';
+		$dbus_type = "\"session\"" if $node->{'dbus_conn'} eq 'session_conn';
+	} else {
+		die '$node->{\'dbus_conn\'} is undefined!';
+	}
 
     my $methods = "";
-    my $async_flag = 0;
-    my $priv_async_calls = '';
-    my $priv_async_calls_init = '';
+
     for my $method (sort keys %{$node->{$intf}{'methods'}}) {
         my @a = $method =~ /([A-Z]+[a-z]*)/g;
         my %m = %{$node->{$intf}{'methods'}{$method}};
 
         my $in_args = join ', ', (map "const ".get_g_type($_->{'type'}).$_->{'name'}, @{$m{'args'}});
-        my $in_args2 = join ', ', (map get_g_type_name($_->{'type'}).", $_->{'name'}", @{$m{'args'}});
 
-        if (defined $m{'flag'} && $m{'flag'} eq 'async') {
-            $async_flag = 1;
-            $priv_async_calls .= "\tDBusGProxyCall *".(join '_', (map lc $_, @a))."_call;\n";
-            $priv_async_calls_init .= "\tself->priv->".(join '_', (map lc $_, @a))."_call = NULL;\n";
-            $methods .=
-            "/* $m{'decl'} */\n".
-            "void {\$object}_".(join '_', (map lc $_, @a))."_begin({\$Object} *self, void (*AsyncNotifyFunc)(gpointer data), gpointer data".
-            ($in_args eq '' ? "" : ", $in_args").")\n".
-            "{\n".
-            "\tg_assert({\$OBJECT}_IS(self));\n".
-            "\tg_assert(self->priv->".(join '_', (map lc $_, @a))."_call == NULL);\n\n".
-            "\tgpointer *p = g_new0(gpointer, 2);\n".
-            "\tp[0] = AsyncNotifyFunc;\n".
-            "\tp[1] = data;\n\n".
-            "\tself->priv->".(join '_', (map lc $_, @a))."_call = dbus_g_proxy_begin_call(self->priv->dbus_g_proxy, \"$method\", (DBusGProxyCallNotify) {\$object}_async_notify_callback, p, NULL, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID);\n".
-            "}\n\n".
-            get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."_end({\$Object} *self, GError **error)\n".
-            "{\n".
-            "\tg_assert({\$OBJECT}_IS(self));\n".
-            "\tg_assert(self->priv->".(join '_', (map lc $_, @a))."_call != NULL);\n\n".
-            ($m{'ret'} eq 'void' ?
-             "\tdbus_g_proxy_end_call(self->priv->dbus_g_proxy, self->priv->".(join '_', (map lc $_, @a))."_call, error, G_TYPE_INVALID);\n".
-             "\tself->priv->".(join '_', (map lc $_, @a))."_call = NULL;\n"
-             :
-             "\t".get_g_type($m{'ret'})."ret = ".get_default_value(get_g_type($m{'ret'})).";\n".
-             "\tdbus_g_proxy_end_call(self->priv->dbus_g_proxy, self->priv->".(join '_', (map lc $_, @a))."_call, error, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID);\n".
-             "\tself->priv->".(join '_', (map lc $_, @a))."_call = NULL;\n\n".
-             "\treturn ret;\n"
-            ).
-            "}\n\n";
-        } else {
-            my $method_def =
-            get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."({\$Object} *self, ".
-            ($in_args eq '' ? "" : "$in_args, ")."GError **error)";
+		my $method_def =
+		(is_const_type($m{'ret'}) eq 1 ? "const " : "").get_g_type($m{'ret'})."{\$object}_".(join '_', (map lc $_, @a))."({\$Object} *self, ".
+		($in_args eq '' ? "" : "$in_args, ")."GError **error)";
 
-            $methods .=
-            "/* $m{'decl'} */\n".
+		$methods .=
+			"/* $m{'decl'} */\n".
             "$method_def\n".
             "{\n".
-            "\tg_assert({\$OBJECT}_IS(self));\n\n".
-            ($m{'ret'} eq 'void' ?
-             "\tdbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, G_TYPE_INVALID);\n"
-             :
-             "\t".get_g_type($m{'ret'})."ret = ".get_default_value(get_g_type($m{'ret'})).";\n".
-             "\tdbus_g_proxy_call(self->priv->dbus_g_proxy, \"$method\", error, ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID, ".($m{'ret'} eq 'void' ? "" : get_g_type_name($m{'ret'}).", &ret, ")."G_TYPE_INVALID);\n\n".
-             "\treturn ret;\n"
-            ).
-            "}\n\n";
-        }
+            "\tg_assert({\$OBJECT}_IS(self));\n";
+            
+		if($m{'ret'} eq 'void') {
+			$methods .= "\tg_dbus_proxy_call_sync(self->priv->proxy, \"$method\", ".($in_args eq '' ? "NULL" : generate_g_variant_params($m{'args'})).", G_DBUS_CALL_FLAGS_NONE, -1, NULL, error);\n";
+		} else {				
+			$methods .= "\t".(is_const_type($m{'ret'}) eq 1 ? "const " : "").get_g_type($m{'ret'})."ret = ".get_default_value(get_g_type($m{'ret'})).";\n".
+				"\tGVariant *proxy_ret = g_dbus_proxy_call_sync(self->priv->proxy, \"$method\", ".($in_args eq '' ? "NULL" : generate_g_variant_params($m{'args'})).", G_DBUS_CALL_FLAGS_NONE, -1, NULL, error);\n".
+				"\tif (proxy_ret != NULL)\n".
+				"\t\treturn ".get_default_value(get_g_type($m{'ret'})).";\n".
+				"\tproxy_ret = g_variant_get_child_value(proxy_ret, 0);\n";
+				
+			if($m{'ret'} eq 'boolean') {
+				$methods .= "\tret = g_variant_get_boolean(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'byte') {
+				$methods .= "\tret = g_variant_get_byte(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'int8') {
+				$methods .= "\tret = (gint8) g_variant_get_byte(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'uint8') {
+				$methods .= "\tret = (guint8) g_variant_get_byte(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'int16') {
+				$methods .= "\tret = g_variant_get_int16(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'uint16') {
+				$methods .= "\tret = g_variant_get_uint16(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'int32') {
+				$methods .= "\tret = g_variant_get_int32(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'uint32') {
+				$methods .= "\tret = g_variant_get_uint32(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'fd') {
+				$methods .= "\tret = g_variant_get_uint32(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'int64') {
+				$methods .= "\tret = g_variant_get_int64(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'uint64') {
+				$methods .= "\tret = g_variant_get_uint64(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'float' || $m{'ret'} eq 'double') {
+				$methods .= "\tret = g_variant_get_double(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'object' || $m{'ret'} eq 'string') {
+				$methods .= "\tret = g_variant_get_string(proxy_ret, NULL);\n";
+			} elsif($m{'ret'} eq 'variant') {
+				$methods .= "\tret = g_variant_get_variant(proxy_ret);\n";
+			} elsif($m{'ret'} eq 'array{string}') {
+				$methods .= "\tret = g_variant_get_strv(proxy_ret, NULL);\n";
+			} elsif($m{'ret'} eq 'array{object}') {
+				$methods .= "\tret = g_variant_get_objv(proxy_ret, NULL);\n";
+			} elsif($m{'ret'} eq 'array{byte}') {
+				$methods .= "\tret = (guint8 *) g_variant_get_fixed_array(proxy_ret, NULL, sizeof(guint8));\n";
+			} else {
+				# die "Unknown method return type: $m{'ret'}\n";
+				
+				# Assume this is an array of variants or dictionaries or something else
+				$methods .= "\tret = g_variant_ref_sink(proxy_ret);\n";
+			}
+				
+			$methods .= "\tg_variant_unref(proxy_ret);\n".
+			"\treturn ret;\n";
+		}
+		
+		$methods .= "}\n\n";
     }
-    $priv_async_calls =~ s/^\t(.+?)\s+$/$1/s;
-    $priv_async_calls_init =~ s/^\t(.+?)\s+$/$1/s;
+
     $methods =~ s/\s+$//s;
 
-    my $enum_signals = "";
-    my $signals_handlers_def = "";
-    my $signals_registration = "";
-    my $signals_connection = "";
-    my $signals_disconnection = "";
-    my $signals_handlers = "";
-    for my $signal (sort keys %{$node->{$intf}{'signals'}}) {
-        my @a = $signal =~ /([A-Z]+[a-z]*)/g;
-        my %s = %{$node->{$intf}{'signals'}{$signal}};
-
-        my $enum = join '_', (map uc $_, @a);
-        my $handler_name = (join '_', (map lc $_, @a))."_handler";
-        my $in_args = join ', ', map(($_->{'type'} ne 'dict' ? "const " : "").get_g_type($_->{'type'}).$_->{'name'}, @{$s{'args'}});
-        my $handler = "static void $handler_name(DBusGProxy *dbus_g_proxy, ".($in_args eq '' ? "" : "$in_args, ")."gpointer data)";
-
-        $signals_registration .=
-        "\tsignals[$enum] = g_signal_new(\"$signal\",\n".
-        "\t\t\tG_TYPE_FROM_CLASS(gobject_class),\n".
-        "\t\t\tG_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,\n".
-        "\t\t\t0, NULL, NULL,\n";
-        # TODO: fix this
-        my $arg_t = join '_', map($_->{'type'}, @{$s{'args'}});
-        if ($arg_t eq '') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_marshal_VOID__VOID,\n".
-            "\t\t\tG_TYPE_NONE, 0);\n\n";
-        } elsif ($arg_t eq 'object' || $arg_t eq 'string') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_marshal_VOID__STRING,\n".
-            "\t\t\tG_TYPE_NONE, 1, G_TYPE_STRING);\n\n";
-        } elsif ($arg_t eq 'object_string_string') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_STRING_STRING,\n".
-            "\t\t\tG_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);\n\n";
-        } elsif ($arg_t eq 'string_variant') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_BOXED,\n".
-            "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_VALUE);\n\n";
-        } elsif ($arg_t eq 'string_dict') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_BOXED,\n".
-            "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_HASH_TABLE);\n\n";
-        } elsif ($arg_t eq 'object_boolean') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_BOOLEAN,\n".
-            "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_BOOLEAN);\n\n";
-        } elsif ($arg_t eq 'uint64') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_bt_marshal_VOID__UINT64,\n".
-            "\t\t\tG_TYPE_NONE, 1, G_TYPE_UINT64);\n\n";
-        } elsif ($arg_t eq 'int32_int32') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_bt_marshal_VOID__INT_INT,\n".
-            "\t\t\tG_TYPE_NONE, 2, G_TYPE_INT, G_TYPE_INT);\n\n";
-        } elsif ($arg_t eq 'string_string') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_STRING,\n".
-            "\t\t\tG_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_STRING);\n\n";
-        } elsif ($arg_t eq 'string_string_uint64') {
-            $signals_registration .=
-            "\t\t\tg_cclosure_bt_marshal_VOID__STRING_STRING_UINT64,\n".
-            "\t\t\tG_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT64);\n\n";
-        } else {
-            die "unknown signal arguments: $arg_t\n";
-        }
-
-        my $in_args2 = join ', ', (map get_g_type_name($_->{'type'}), @{$s{'args'}});
-        $signals_connection .=
-        "\t/* $s{'decl'} */\n".
-        "\tdbus_g_proxy_add_signal(self->priv->dbus_g_proxy, \"$signal\", ".($in_args2 eq '' ? "" : "$in_args2, ")."G_TYPE_INVALID);\n".
-        "\tdbus_g_proxy_connect_signal(self->priv->dbus_g_proxy, \"$signal\", G_CALLBACK($handler_name), self, NULL);\n\n";
-
-        $signals_disconnection .=
-        "\tdbus_g_proxy_disconnect_signal(self->priv->dbus_g_proxy, \"$signal\", G_CALLBACK($handler_name), self);\n";
-
-        my $args = join ', ', map($_->{'name'}, @{$s{'args'}});
-        $signals_handlers .= "$handler\n".
-        "{\n".
-        "\t{\$Object} *self = {\$OBJECT}(data);\n\n".
-        ($handler_name eq 'property_changed_handler' ? "\t{PROPERTIES_CHANGED_HANDLER}\n\n" : "").
-        "\tg_signal_emit(self, signals[$enum], 0".($args eq '' ? "" : ", $args").");\n".
-        "}\n\n";
-
-        $enum_signals .= "\t$enum,\n";
-        $signals_handlers_def .= "$handler;\n";
-    }
-    $enum_signals =~ s/^\t(.+?),\s+$/$1/s;
-    $signals_handlers_def =~ s/\s+$//s;
-    $signals_registration =~ s/^\t(.+?)\s+$/$1/s;
-    $signals_connection =~ s/^\t(.+?)\s+$/$1/s;
-    $signals_disconnection =~ s/^\t(.+?)\s+$/$1/s;
-    $signals_handlers =~ s/\s+$//s;
-
-    my $priv_properties = "";
-    my $enum_properties = "";
-    my $properties_registration = "";
-    my $get_properties = "";
-    my $set_properties = "";
     my $properties_access_methods = "";
-    my $properties_init =
-    "\tGHashTable *properties = {\$object}_get_properties(self, &error);\n".
-    "\tif (error != NULL) {\n".
-    "\t\tg_critical(\"%s\", error->message);\n".
-    "\t}\n".
-    "\tg_assert(error == NULL);\n".
-    "\tg_assert(properties != NULL);\n\n";
-    my $properties_free = "";
-    my $properties_changed_handler = "\tif (g_strcmp0(name, ";
-    unless (defined $node->{'objectPath'}) {
-        $enum_properties .= "\tPROP_DBUS_OBJECT_PATH, /* readwrite, construct only */\n";
-        $properties_registration .=
-        "\t/* object DBusObjectPath [readwrite, construct only] */\n".
-        "\tpspec = g_param_spec_string(\"DBusObjectPath\", \"dbus_object_path\", \"Adapter D-Bus object path\", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);\n".
-        "\tg_object_class_install_property(gobject_class, PROP_DBUS_OBJECT_PATH, pspec);\n\n";
-
-        $get_properties .=
-        "\tcase PROP_DBUS_OBJECT_PATH:\n".
-        "\t\tg_value_set_string(value, {\$object}_get_dbus_object_path(self));\n".
-        "\t\tbreak;\n\n";
-
-        $set_properties .=
-        "\tcase PROP_DBUS_OBJECT_PATH:\n".
-        "\t\t{\$object}_post_init(self, g_value_get_string(value));\n".
-        "\t\tbreak;\n\n";
-
-        $properties_access_methods .=
-        "const gchar *{\$object}_get_dbus_object_path({\$Object} *self)\n".
-        "{\n".
-        "\tg_assert({\$OBJECT}_IS(self));\n\n".
-        "\treturn dbus_g_proxy_get_path(self->priv->dbus_g_proxy);\n".
-        "}\n\n";
+    
+    if(keys(%{$node->{$intf}{'properties'}}) > 0) {
+    	$properties_access_methods .=
+    	"GVariant *{\$object}_get_properties({\$Object} *self, GError **error)\n".
+    	"{\n".
+    	"\tg_assert({\$OBJECT}_IS(self));\n".
+    	"\tg_assert(self->priv->properties != NULL);\n".
+    	"\treturn properties_get_all(self->priv->properties, {\$OBJECT}_DBUS_INTERFACE, error);\n".
+    	"}\n".
+    	"\n".
+    	"void {\$object}_set_property({\$Object} *self, const gchar *name, const GVariant *value, GError **error)\n".
+    	"{\n".
+    	"\tg_assert({\$OBJECT}_IS(self));\n".
+    	"\tg_assert(self->priv->properties != NULL);\n".
+    	"\tproperties_set(self->priv->properties, {\$OBJECT}_DBUS_INTERFACE, name, value, error);\n".
+    	"}\n".
+    	"\n";
     }
+    
     for my $property (sort keys %{$node->{$intf}{'properties'}}) {
         my @a = $property =~ /([A-Z]+[a-z]*)/g;
         my %p = %{$node->{$intf}{'properties'}{$property}};
 
-        my $property_var = join '_', (map lc $_, @a);
+        # my $property_var = join '_', (map lc $_, @a);
+        my $property_var = '';
+        
+        # If the property is named 'Type', rename it to something else as it will conflict with GLib's 'Type' property
+        if($property =~ /^type$/i) {
+        	my @i_name = $obj =~ /([A-Z]+[a-z]*)/g;
+			my @new_name = ($i_name[-1], @a);
+			$property_var = join '_', (map lc $_, @new_name);
+        } else {
+        	$property_var = join '_', (map lc $_, @a);
+        }
+        
         my $enum = "PROP_".(join '_', (map uc $_, @a));
         my $property_get_method = "{\$object}_get_$property_var";
         my $property_set_method = "{\$object}_set_$property_var";
 
-        $priv_properties .= "\t".get_g_type($p{'type'})."$property_var;\n";
-        $enum_properties .= "\t$enum, /* $p{'mode'} */\n";
-        $properties_registration .= "\t/* $p{'decl'} */\n";
-        $properties_init .= "\t/* $p{'decl'} */\n";
-        $properties_access_methods .=
-        "const ".get_g_type($p{'type'})."$property_get_method({\$Object} *self)\n".
-        "{\n".
-        "\tg_assert({\$OBJECT}_IS(self));\n\n".
-        "\treturn self->priv->$property_var;\n".
-        "}\n\n";
+		if ($p{'mode'} eq 'readwrite' or $p{'mode'} eq 'readonly' or $p{'mode'} eq 'read/write') {
+	        $properties_access_methods .=
+	        (is_const_type($p{'type'}) eq 1 ? "const " : "").get_g_type($p{'type'})."$property_get_method({\$Object} *self, GError **error)\n".
+	        "{\n".
+	        "\tg_assert({\$OBJECT}_IS(self));\n".
+	        "\tg_assert(self->priv->properties != NULL);\n".
+	        "\tGVariant *prop = properties_get(self->priv->properties, {\$OBJECT}_DBUS_INTERFACE, \"$property\", error);\n".
+	        "\tif(prop == NULL)\n".
+	        "\t\treturn ".get_default_value(get_g_type($p{'type'})).";\n";
+	        
+	        if($p{'type'} eq 'boolean') {
+				$properties_access_methods .= "\tgboolean ret = g_variant_get_boolean(prop);\n";
+			} elsif($p{'type'} eq 'byte') {
+				$properties_access_methods .= "\tguchar ret = g_variant_get_byte(prop);\n";
+			} elsif($p{'type'} eq 'int8') {
+				$properties_access_methods .= "\tgint8 ret = g_variant_get_byte(prop);\n";
+			} elsif($p{'type'} eq 'uint8') {
+				$properties_access_methods .= "\tguint8 ret = g_variant_get_byte(prop);\n";
+			} elsif($p{'type'} eq 'int16') {
+				$properties_access_methods .= "\tgint16 ret = g_variant_get_int16(prop);\n";
+			} elsif($p{'type'} eq 'uint16') {
+				$properties_access_methods .= "\tguint16 ret = g_variant_get_uint16(prop);\n";
+			} elsif($p{'type'} eq 'int32') {
+				$properties_access_methods .= "\tgint32 ret = g_variant_get_int32(prop);\n";
+			} elsif($p{'type'} eq 'uint32') {
+				$properties_access_methods .= "\tguint32 ret = g_variant_get_uint32(prop);\n";
+			} elsif($p{'type'} eq 'fd') {
+				$properties_access_methods .= "\tguint32 ret = g_variant_get_uint32(prop);\n";
+			} elsif($p{'type'} eq 'int64') {
+				$properties_access_methods .= "\tgint64 ret = g_variant_get_int64(prop);\n";
+			} elsif($p{'type'} eq 'uint64') {
+				$properties_access_methods .= "\tguint64 ret = g_variant_get_uint64(prop);\n";
+			} elsif($p{'type'} eq 'float' || $p{'type'} eq 'double') {
+				$properties_access_methods .= "\tgdouble ret = g_variant_get_double(prop);\n";
+			} elsif($p{'type'} eq 'object' || $p{'type'} eq 'string') {
+				$properties_access_methods .= "\tconst gchar *ret = g_variant_get_string(prop, NULL);\n";
+			} elsif($p{'type'} eq 'variant') {
+				$properties_access_methods .= "\tGVariant *ret = g_variant_get_variant(prop);\n";
+			} elsif($p{'type'} eq 'array{string}') {
+				$properties_access_methods .= "\tconst gchar **ret = g_variant_get_strv(prop, NULL);\n";
+			} elsif($p{'type'} eq 'array{object}') {
+				$properties_access_methods .= "\tconst gchar **ret = g_variant_get_objv(prop, NULL);\n";
+			} elsif($p{'type'} eq 'array{byte}') {
+				$properties_access_methods .= "\tguint8 *ret = (guint8 *) g_variant_get_fixed_array(prop, NULL, sizeof(guint8));\n";
+			} else {
+				# die "Unknown property return type: $p{'type'}\n";
+				
+				# Assume this is an array of variants or dictionaries or something else
+				$properties_access_methods .= "\tGVariant *ret = g_variant_ref_sink(prop);\n";
+			}
+	        
+	        $properties_access_methods .=
+	        "\tg_variant_unref(prop);\n".
+	        "\treturn ret;\n".
+	        "}\n\n";
+		}
 
-        $properties_changed_handler .= "\"$property\") == 0) {\n";
-        $get_properties .= "\tcase $enum:\n";
-        if ($p{'type'} eq 'string') {
-            $properties_registration .= "\tpspec = g_param_spec_string(\"$property\", NULL, NULL, NULL, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-            $properties_init .=
-            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
-            "\t\tself->priv->$property_var = g_value_dup_string(g_hash_table_lookup(properties, \"$property\"));\n".
-            "\t} else {\n".
-            "\t\tself->priv->$property_var = g_strdup(\"undefined\");\n".
-            "\t}\n";
-            $get_properties .= "\t\tg_value_set_string(value, $property_get_method(self));\n";
-            $properties_free .= "\tg_free(self->priv->$property_var);\n";
-            $properties_changed_handler .=
-            "\t\tg_free(self->priv->$property_var);\n".
-            "\t\tself->priv->$property_var = g_value_dup_string(value);\n";
-        } elsif ($p{'type'} eq 'object') {
-            $properties_registration .= "\tpspec = g_param_spec_string(\"$property\", NULL, NULL, NULL, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-            $properties_init .=
-            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
-            "\t\tself->priv->$property_var = (gchar *) g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
-            "\t} else {\n".
-            "\t\tself->priv->$property_var = g_strdup(\"undefined\");\n".
-            "\t}\n";
-            $get_properties .= "\t\tg_value_set_string(value, $property_get_method(self));\n";
-            $properties_free .= "\tg_free(self->priv->$property_var);\n";
-            $properties_changed_handler .=
-            "\t\tg_free(self->priv->$property_var);\n".
-            "\t\tself->priv->$property_var = (gchar *) g_value_dup_boxed(value);\n";
-        } elsif ($p{'type'} eq 'array{object}') {
-            $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_PTR_ARRAY, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-            $properties_init .=
-            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
-            "\t\tself->priv->$property_var = g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
-            "\t} else {\n".
-            "\t\tself->priv->$property_var = g_ptr_array_new();\n".
-            "\t}\n";
-            $get_properties .= "\t\tg_value_set_boxed(value, $property_get_method(self));\n";
-            $properties_free .= "\tg_ptr_array_unref(self->priv->$property_var);\n";
-            $properties_changed_handler .=
-            "\t\tg_ptr_array_unref(self->priv->$property_var);\n".
-            "\t\tself->priv->$property_var = g_value_dup_boxed(value);\n";
-        } elsif ($p{'type'} eq 'array{string}') {
-            $properties_registration .= "\tpspec = g_param_spec_boxed(\"$property\", NULL, NULL, G_TYPE_STRV, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-            $properties_init .=
-            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
-            "\t\tself->priv->$property_var = (gchar **) g_value_dup_boxed(g_hash_table_lookup(properties, \"$property\"));\n".
-            "\t} else {\n".
-            "\t\tself->priv->$property_var = g_new0(char *, 1);\n".
-            "\t\tself->priv->${property_var}[0] = NULL;\n".
-            "\t}\n";
-            $get_properties .= "\t\tg_value_set_boxed(value, $property_get_method(self));\n";
-            $properties_free .= "\tg_strfreev(self->priv->$property_var);\n";
-            $properties_changed_handler .=
-            "\t\tg_strfreev(self->priv->$property_var);\n".
-            "\t\tself->priv->$property_var = (gchar **) g_value_dup_boxed(value);\n";
-        } elsif ($p{'type'} eq 'uint32') {
-            $properties_registration .= "\tpspec = g_param_spec_uint(\"$property\", NULL, NULL, 0, 0xFFFFFFFF, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-            $properties_init .=
-            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
-            "\t\tself->priv->$property_var = g_value_get_uint(g_hash_table_lookup(properties, \"$property\"));\n".
-            "\t} else {\n".
-            "\t\tself->priv->$property_var = 0;\n".
-            "\t}\n";
-            $get_properties .= "\t\tg_value_set_uint(value, $property_get_method(self));\n";
-            $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uint(value);\n";
-        } elsif ($p{'type'} eq 'uint64') {
-            $properties_registration .= "\tpspec = g_param_spec_uint64(\"$property\", NULL, NULL, 0, 0xFFFFFFFFFFFFFFFF, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-            $properties_init .=
-            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
-            "\t\tself->priv->$property_var = g_value_get_uint64(g_hash_table_lookup(properties, \"$property\"));\n".
-            "\t} else {\n".
-            "\t\tself->priv->$property_var = 0;\n".
-            "\t}\n";
-            $get_properties .= "\t\tg_value_set_uint64(value, $property_get_method(self));\n";
-            $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uint64(value);\n";
-        } elsif ($p{'type'} eq 'boolean') {
-            $properties_registration .= "\tpspec = g_param_spec_boolean(\"$property\", NULL, NULL, FALSE, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-            $properties_init .=
-            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
-            "\t\tself->priv->$property_var = g_value_get_boolean(g_hash_table_lookup(properties, \"$property\"));\n".
-            "\t} else {\n".
-            "\t\tself->priv->$property_var = FALSE;\n".
-            "\t}\n";
-            $get_properties .= "\t\tg_value_set_boolean(value, $property_get_method(self));\n";
-            $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_boolean(value);\n";
-        } elsif ($p{'type'} eq 'byte') {
-            $properties_registration .= "\tpspec = g_param_spec_uchar(\"$property\", NULL, NULL, 0, 0xFF, 0, ".($p{'mode'} eq 'readonly' ? 'G_PARAM_READABLE' : 'G_PARAM_READWRITE').");\n";
-            $properties_init .=
-            "\tif (g_hash_table_lookup(properties, \"$property\")) {\n".
-            "\t\tself->priv->$property_var = g_value_get_uchar(g_hash_table_lookup(properties, \"$property\"));\n".
-            "\t} else {\n".
-            "\t\tself->priv->$property_var = 0;\n".
-            "\t}\n";
-            $get_properties .= "\t\tg_value_set_uchar(value, $property_get_method(self));\n";
-            $properties_changed_handler .= "\t\tself->priv->$property_var = g_value_get_uchar(value);\n";
-        } else {
-            die "unknown property type: $p{'type'}\n";
-        }
-        $properties_registration .= "\tg_object_class_install_property(gobject_class, $enum, pspec);\n\n";
-        $properties_init .= "\n";
-        $get_properties .= "\t\tbreak;\n\n";
-        $properties_changed_handler .= "\t} else if (g_strcmp0(name, ";
-
-        if ($p{'mode'} eq 'readwrite') {
-            $set_properties .=
-            "\tcase $enum:\n".
-            "\t\t{\$object}_set_property(self, \"$property\", value, &error);\n".
-            "\t\tbreak;\n\n";
-
+        if ($p{'mode'} eq 'readwrite' or $p{'mode'} eq 'writeonly' or $p{'mode'} eq 'read/write') {
             $properties_access_methods .=
-            "void $property_set_method({\$Object} *self, const ".get_g_type($p{'type'})."value)\n".
+            "void $property_set_method({\$Object} *self, const ".get_g_type($p{'type'})."value, GError **error)\n".
             "{\n".
-            "\tg_assert({\$OBJECT}_IS(self));\n\n".
-            "\tGError *error = NULL;\n\n".
-            "\tGValue t = {0};\n".
-            "\tg_value_init(&t, ".get_g_type_name($p{'type'}).");\n".
-            "\tg_value_set_".
-            ($p{'type'} eq 'string' ?
-             "string" : (
-             $p{'type'} eq 'uint32' ?
-             "uint" : (
-             $p{'type'} eq 'boolean' ?
-             "boolean" :
-             die "unknown setter type: $p{'type'}\n"
-             )
-             ))."(&t, value);\n".
-            "\t{\$object}_set_property(self, \"$property\", &t, &error);\n".
-            "\tg_value_unset(&t);\n\n".
-            "\tif (error != NULL) {\n".
-            "\t\tg_critical(\"%s\", error->message);\n".
-            "\t}\n".
-            "\tg_assert(error == NULL);\n".
+            "\tg_assert({\$OBJECT}_IS(self));\n".
+            "\tg_assert(self->priv->properties != NULL);\n".
+	        "\tproperties_set(self->priv->properties, {\$OBJECT}_DBUS_INTERFACE, \"$property\", ";
+	        
+	        if($p{'type'} eq 'boolean') {
+				$properties_access_methods .= "g_variant_new_boolean(value)";
+			} elsif($p{'type'} eq 'byte') {
+				$properties_access_methods .= "g_variant_new_byte(value)";
+			} elsif($p{'type'} eq 'uint8') {
+				$properties_access_methods .= "g_variant_new_byte(value)";
+			} elsif($p{'type'} eq 'int16') {
+				$properties_access_methods .= "g_variant_new_int16(value)";
+			} elsif($p{'type'} eq 'uint16') {
+				$properties_access_methods .= "g_variant_new_uint16(value)";
+			} elsif($p{'type'} eq 'int32') {
+				$properties_access_methods .= "g_variant_new_int32(value)";
+			} elsif($p{'type'} eq 'uint32') {
+				$properties_access_methods .= "g_variant_new_uint32(value)";
+			} elsif($p{'type'} eq 'int64') {
+				$properties_access_methods .= "g_variant_new_int64(value)";
+			} elsif($p{'type'} eq 'uint64') {
+				$properties_access_methods .= "g_variant_new_uint64(value)";
+			} elsif($p{'type'} eq 'double') {
+				$properties_access_methods .= "g_variant_new_double(value)";
+			} elsif($p{'type'} eq 'object') {
+				$properties_access_methods .= "g_variant_new_object_path(value)";
+			} elsif($p{'type'} eq 'string') {
+				$properties_access_methods .= "g_variant_new_string(value)";
+			} elsif($p{'type'} eq 'variant') {
+				$properties_access_methods .= "g_variant_new_variant(value)";
+			} elsif($p{'type'} eq 'array{string}') {
+				$properties_access_methods .= "g_variant_new_strv(value, -1)";
+			} elsif($p{'type'} eq 'array{object}') {
+				$properties_access_methods .= "g_variant_new_objv(value, -1)";
+			} elsif($p{'type'} =~ /^dict/) {
+				$properties_access_methods .= "value";
+			} else {
+				die "Unknown object type for access property: $p{'type'}\n";
+			}
+			
+	        $properties_access_methods .= 
+	        ", error);\n".
             "}\n\n";
         }
     }
-    $properties_init .=
-    "\tg_hash_table_unref(properties);\n\n";
 
-    $priv_properties =~ s/^\t(.+?)\s+$/$1/s;
-    $enum_properties =~ s/^\t(.+), (\/\* .+? \*\/)\s+$/$1 $2/s;
-    $properties_registration =~ s/^\t(.+?)\s+$/$1/s;
-    $properties_init =~ s/^\t(.+?)\s+$/$1/s;
-    $get_properties =~ s/^\t(.+?)\s+$/$1/s;
-    $set_properties =~ s/^\t(.+?)\s+$/$1/s;
     $properties_access_methods =~ s/\s+$//s;
-    $properties_free =~ s/^\t(.+?)\s+$/$1/s;
-    $properties_changed_handler =~ s/^\t(.+?) else if \(g_strcmp0\(name, $/$1/s;
-
-    $properties_free ="/* none */" if $properties_free eq '';
 
     my $output = "$HEADER\n$SOURCE_TEMPLATE";
     if (defined $node->{'objectPath'}) {
         $output =~ s/\{IF_INIT\}\s+(.+?)\s+\{FI_INIT\}/$1/gs;
         $output =~ s/\s+\{IF_POST_INIT\}.+?\{FI_POST_INIT\}\s+/\n\n/gs;
+        $output =~ s/\s+\{IF_NO_OBJECT_PATH\}.+?\{FI_NO_OBJECT_PATH\}//gs;
     } else {
         $output =~ s/\{IF_POST_INIT\}\s+(.+?)\s+\{FI_POST_INIT\}/$1/gs;
         $output =~ s/\s+\{IF_INIT\}.+?\{FI_INIT\}\s+/\n/gs;
+        $output =~ s/\{IF_NO_OBJECT_PATH\}\s+(.+?)\s+\{FI_NO_OBJECT_PATH\}/$1/gs;
     }
     if (scalar keys %{$node->{$intf}{'signals'}} > 0) {
         $output =~ s/\{IF_SIGNALS\}\s+(.+?)\s+\{FI_SIGNALS\}/$1/gs;
     } else {
         $output =~ s/\s+\{IF_SIGNALS\}.+?\{FI_SIGNALS\}//gs;
     }
-    if (scalar keys %{$node->{$intf}{'properties'}} > 0 || !defined $node->{'objectPath'}) {
+    if (scalar keys %{$node->{$intf}{'properties'}} > 0) {
         $output =~ s/\{IF_PROPERTIES\}\s+(.+?)\s+\{FI_PROPERTIES\}/$1/gs;
     } else {
         $output =~ s/\s+\{IF_PROPERTIES\}.+?\{FI_PROPERTIES\}//gs;
@@ -970,30 +963,19 @@ EOT
     } else {
         $output =~ s/\s+\{IF_PROPERTIES_EXT\}.+?\{FI_PROPERTIES_EXT\}//gs;
     }
-    if ($async_flag == 1) {
-        $output =~ s/\{IF_ASYNC_CALLS\}\s+(.+?)\s+\{FI_ASYNC_CALLS\}/$1/gs;
+    if (scalar keys %{$node->{$intf}{'methods'}} > 0 or not defined $node->{'serviceName'} or not defined $node->{'objectPath'}) {
+        $output =~ s/\{IF_METHODS\}\s+(.+?)\s+\{FI_METHODS\}/$1/gs;
     } else {
-        $output =~ s/\s+\{IF_ASYNC_CALLS\}.+?\{FI_ASYNC_CALLS\}//gs;
+        $output =~ s/\s+\{IF_METHODS\}.+?\{FI_METHODS\}\n//gs;
     }
-    $output =~ s/{DBUS_SERVICE_NAME}/"$node->{'serviceName'}"/g;
     $output =~ s/{\$conn}/$node->{'dbus_conn'}/g;
-    $output =~ s/{ENUM_SIGNALS}/$enum_signals/;
-    $output =~ s/{SIGNALS_HANDLERS_DEF}/$signals_handlers_def/;
-    $output =~ s/{SIGNALS_REGISTRATION}/$signals_registration/;
-    $output =~ s/{SIGNALS_CONNECTION}/$signals_connection/;
-    $output =~ s/{SIGNALS_DISCONNECTION}/$signals_disconnection/;
-    $output =~ s/{SIGNALS_HANDLERS}/$signals_handlers/;
-    $output =~ s/{PRIV_PROPERTIES}/$priv_properties/;
-    $output =~ s/{ENUM_PROPERTIES}/$enum_properties/;
-    $output =~ s/{PROPERTIES_REGISTRATION}/$properties_registration/;
-    $output =~ s/{PROPERTIES_INIT}/$properties_init/;
-    $output =~ s/{PROPERTIES_FREE}/$properties_free/;
-    $output =~ s/{GET_PROPERTIES}/$get_properties/;
-    $output =~ s/{SET_PROPERTIES}/$set_properties/;
+    $output =~ s/{CONSTRUCTOR_PROPERTIES}/$constructor_properties/;
+    $output =~ s/{CONSTRUCTOR_CALL}/$constructor_call/;
+    $output =~ s/{CONSTRUCTOR_GETTERS}/$constructor_getters/;
+    $output =~ s/{CONSTRUCTOR_SETTERS}/$constructor_setters/;
+    $output =~ s/{CONSTRUCTOR}/$constructor_def/;
+    $output =~ s/{\$dbus_type}/$dbus_type/;
     $output =~ s/{PROPERTIES_ACCESS_METHODS}/$properties_access_methods/;
-    $output =~ s/{PROPERTIES_CHANGED_HANDLER}/$properties_changed_handler/;
-    $output =~ s/{PRIV_ASYNC_CALLS}/$priv_async_calls/;
-    $output =~ s/{PRIV_ASYNC_CALLS_INIT}/$priv_async_calls_init/;
     $output =~ s/{METHODS}/$methods/;
     $output =~ s/{\$OBJECT}/$obj_uc/g;
     $output =~ s/{\$Object}/$obj/g;

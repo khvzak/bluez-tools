@@ -48,7 +48,7 @@ B<--set E<lt>propertyE<gt> E<lt>valueE<gt>>
 string  Address [ro]
         The Bluetooth adapter address (MAC).
 
-string  Name [rw]
+string  Alias [rw]
         The Bluetooth adapter friendly name.
 
 uint32  Class [ro]
@@ -101,4 +101,4 @@ Alexander Orlenko <zxteam@gmail.com>.
 
 =head1 SEE ALSO
 
-bt-agent(1) bt-audio(1) bt-device(1) bt-input(1) bt-monitor(1) bt-network(1) bt-serial(1)
+bt-agent(1) bt-device(1) bt-network(1)

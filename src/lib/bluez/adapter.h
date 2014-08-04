@@ -24,9 +24,14 @@
 #ifndef __ADAPTER_H
 #define __ADAPTER_H
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include <glib-object.h>
 
-#define ADAPTER_DBUS_INTERFACE "org.bluez.Adapter"
+#define ADAPTER_DBUS_SERVICE "org.bluez"
+#define ADAPTER_DBUS_INTERFACE "org.bluez.Adapter1"
 
 /*
  * Type macros
@@ -57,39 +62,44 @@ struct _AdapterClass {
 GType adapter_get_type(void) G_GNUC_CONST;
 
 /*
+ * Constructor
+ */
+Adapter *adapter_new(const gchar *dbus_object_path);
+
+/*
  * Method definitions
  */
-void adapter_cancel_device_creation(Adapter *self, const gchar *address, GError **error);
-gchar *adapter_create_device(Adapter *self, const gchar *address, GError **error);
-void adapter_create_paired_device_begin(Adapter *self, void (*AsyncNotifyFunc)(gpointer data), gpointer data, const gchar *address, const gchar *agent, const gchar *capability);
-gchar *adapter_create_paired_device_end(Adapter *self, GError **error);
-gchar *adapter_find_device(Adapter *self, const gchar *address, GError **error);
-GHashTable *adapter_get_properties(Adapter *self, GError **error);
-void adapter_register_agent(Adapter *self, const gchar *agent, const gchar *capability, GError **error);
+const gchar *adapter_get_dbus_object_path(Adapter *self);
+
 void adapter_remove_device(Adapter *self, const gchar *device, GError **error);
-void adapter_set_property(Adapter *self, const gchar *name, const GValue *value, GError **error);
 void adapter_start_discovery(Adapter *self, GError **error);
 void adapter_stop_discovery(Adapter *self, GError **error);
-void adapter_unregister_agent(Adapter *self, const gchar *agent, GError **error);
 
-const gchar *adapter_get_dbus_object_path(Adapter *self);
-const gchar *adapter_get_address(Adapter *self);
-const guint32 adapter_get_class(Adapter *self);
-const GPtrArray *adapter_get_devices(Adapter *self);
-const gboolean adapter_get_discoverable(Adapter *self);
-void adapter_set_discoverable(Adapter *self, const gboolean value);
-const guint32 adapter_get_discoverable_timeout(Adapter *self);
-void adapter_set_discoverable_timeout(Adapter *self, const guint32 value);
-const gboolean adapter_get_discovering(Adapter *self);
-const gchar *adapter_get_name(Adapter *self);
-void adapter_set_name(Adapter *self, const gchar *value);
-const gboolean adapter_get_pairable(Adapter *self);
-void adapter_set_pairable(Adapter *self, const gboolean value);
-const guint32 adapter_get_pairable_timeout(Adapter *self);
-void adapter_set_pairable_timeout(Adapter *self, const guint32 value);
-const gboolean adapter_get_powered(Adapter *self);
-void adapter_set_powered(Adapter *self, const gboolean value);
-const gchar **adapter_get_uuids(Adapter *self);
+GVariant *adapter_get_properties(Adapter *self, GError **error);
+void adapter_set_property(Adapter *self, const gchar *name, const GVariant *value, GError **error);
+
+const gchar *adapter_get_address(Adapter *self, GError **error);
+const gchar *adapter_get_alias(Adapter *self, GError **error);
+void adapter_set_alias(Adapter *self, const gchar *value, GError **error);
+guint32 adapter_get_class(Adapter *self, GError **error);
+gboolean adapter_get_discoverable(Adapter *self, GError **error);
+void adapter_set_discoverable(Adapter *self, const gboolean value, GError **error);
+guint32 adapter_get_discoverable_timeout(Adapter *self, GError **error);
+void adapter_set_discoverable_timeout(Adapter *self, const guint32 value, GError **error);
+gboolean adapter_get_discovering(Adapter *self, GError **error);
+const gchar *adapter_get_modalias(Adapter *self, GError **error);
+const gchar *adapter_get_name(Adapter *self, GError **error);
+gboolean adapter_get_pairable(Adapter *self, GError **error);
+void adapter_set_pairable(Adapter *self, const gboolean value, GError **error);
+guint32 adapter_get_pairable_timeout(Adapter *self, GError **error);
+void adapter_set_pairable_timeout(Adapter *self, const guint32 value, GError **error);
+gboolean adapter_get_powered(Adapter *self, GError **error);
+void adapter_set_powered(Adapter *self, const gboolean value, GError **error);
+const gchar **adapter_get_uuids(Adapter *self, GError **error);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif /* __ADAPTER_H */
 

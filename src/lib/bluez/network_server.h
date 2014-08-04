@@ -24,9 +24,14 @@
 #ifndef __NETWORK_SERVER_H
 #define __NETWORK_SERVER_H
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include <glib-object.h>
 
-#define NETWORK_SERVER_DBUS_INTERFACE "org.bluez.NetworkServer"
+#define NETWORK_SERVER_DBUS_SERVICE "org.bluez"
+#define NETWORK_SERVER_DBUS_INTERFACE "org.bluez.NetworkServer1"
 
 /*
  * Type macros
@@ -57,12 +62,21 @@ struct _NetworkServerClass {
 GType network_server_get_type(void) G_GNUC_CONST;
 
 /*
+ * Constructor
+ */
+NetworkServer *network_server_new(const gchar *dbus_object_path);
+
+/*
  * Method definitions
  */
+const gchar *network_server_get_dbus_object_path(NetworkServer *self);
+
 void network_server_register(NetworkServer *self, const gchar *uuid, const gchar *bridge, GError **error);
 void network_server_unregister(NetworkServer *self, const gchar *uuid, GError **error);
 
-const gchar *network_server_get_dbus_object_path(NetworkServer *self);
+#ifdef	__cplusplus
+}
+#endif
 
 #endif /* __NETWORK_SERVER_H */
 

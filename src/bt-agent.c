@@ -34,9 +34,11 @@
 
 #include <glib.h>
 #include <glib/gstdio.h>
+#include <gio/gio.h>
 
 #include "lib/dbus-common.h"
 #include "lib/helpers.h"
+#include "lib/agent-helper.h"
 #include "lib/bluez-api.h"
 
 static gboolean need_unregister = TRUE;
@@ -45,7 +47,8 @@ static GMainLoop *mainloop = NULL;
 static GHashTable *pin_hash_table = NULL;
 static gchar *pin_arg = NULL;
 
-static void read_pin_file(const gchar *filename, GHashTable *pin_hash_table, gboolean first_run)
+// Not touching this for now. It seems to work.
+static void _read_pin_file(const gchar *filename, GHashTable *pin_hash_table, gboolean first_run)
 {
 	g_assert(filename != NULL && strlen(filename) > 0);
 	g_assert(pin_hash_table != NULL);
@@ -127,37 +130,23 @@ static void signal_handler(int sig)
 {
 	g_message("%s received", sig == SIGTERM ? "SIGTERM" : (sig == SIGUSR1 ? "SIGUSR1" : "SIGINT"));
 
-	if (sig == SIGUSR1 && pin_arg) {
-		/* Re-read PIN's file */
-		g_print("Re-reading PIN's file\n");
-		read_pin_file(pin_arg, pin_hash_table, FALSE);
-	} else if (sig == SIGTERM || sig == SIGINT) {
-
-
-		if (g_main_loop_is_running(mainloop))
-			g_main_loop_quit(mainloop);
+	if (sig == SIGUSR1 && pin_arg)
+        {
+            /* Re-read PIN's file */
+            g_print("Re-reading PIN's file\n");
+            _read_pin_file(pin_arg, pin_hash_table, FALSE);
+	}
+        else if (sig == SIGTERM || sig == SIGINT)
+        {
+            if (g_main_loop_is_running(mainloop))
+                g_main_loop_quit(mainloop);
 	}
 }
 
-static void agent_released(Agent *agent, gpointer data)
-{
-	g_assert(data != NULL);
-	GMainLoop *mainloop = data;
-
-	need_unregister = FALSE;
-
-	if (g_main_loop_is_running(mainloop))
-		g_main_loop_quit(mainloop);
-
-	g_print("Agent released\n");
-}
-
-static gchar *adapter_arg = NULL;
 static gchar *capability_arg = NULL;
 static gboolean daemon_arg = FALSE;
 
 static GOptionEntry entries[] = {
-	{"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter Name or MAC", "<name|mac>"},
 	{"capability", 'c', 0, G_OPTION_ARG_STRING, &capability_arg, "Agent capability", "<capability>"},
 	{"pin", 'p', 0, G_OPTION_ARG_STRING, &pin_arg, "Path to the PIN's file"},
 	{"daemon", 'd', 0, G_OPTION_ARG_NONE, &daemon_arg, "Run in background (as daemon)"},
@@ -172,7 +161,8 @@ int main(int argc, char *argv[])
 	/* Query current locale */
 	setlocale(LC_CTYPE, "");
 
-	g_type_init();
+        // Deprecated
+	// g_type_init();
 	dbus_init();
 
 	context = g_option_context_new(" - a bluetooth agent");
@@ -184,7 +174,7 @@ int main(int argc, char *argv[])
 			"   DisplayYesNo (default)\n"
 			"   KeyboardOnly\n"
 			"   NoInputNoOutput\n\n"
-			//"Report bugs to <"PACKAGE_BUGREPORT">."
+			"Report bugs to <"PACKAGE_BUGREPORT">."
 			"Project home page <"PACKAGE_URL">."
 			);
 
@@ -211,38 +201,47 @@ int main(int argc, char *argv[])
 
 	g_option_context_free(context);
 
-	if (!dbus_system_connect(&error)) {
+	if (!dbus_system_connect(&error))
+        {
 		g_printerr("Couldn't connect to DBus system bus: %s\n", error->message);
 		exit(EXIT_FAILURE);
 	}
 
 	/* Check, that bluetooth daemon is running */
-	if (!intf_supported(BLUEZ_DBUS_NAME, MANAGER_DBUS_PATH, MANAGER_DBUS_INTERFACE)) {
+	if (!intf_supported(BLUEZ_DBUS_SERVICE_NAME, MANAGER_DBUS_PATH, MANAGER_DBUS_INTERFACE))
+        {
 		g_printerr("%s: bluez service is not found\n", g_get_prgname());
 		g_printerr("Did you forget to run bluetoothd?\n");
 		exit(EXIT_FAILURE);
 	}
-
+        
 	/* Read PIN's file */
-	if (pin_arg) {
+	if (pin_arg)
+        {
 		pin_hash_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-		read_pin_file(pin_arg, pin_hash_table, TRUE);
+		_read_pin_file(pin_arg, pin_hash_table, TRUE);
 	}
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
 	Manager *manager = g_object_new(MANAGER_TYPE, NULL);
+        
+        AgentManager *agent_manager = agent_manager_new();
 
-	Adapter *adapter = find_adapter(adapter_arg, &error);
-	exit_if_error(error);
-
-	Agent *agent = g_object_new(AGENT_TYPE, "PinHashTable", pin_hash_table, "Interactive", !daemon_arg, NULL);
-
-	adapter_register_agent(adapter, AGENT_DBUS_PATH, capability_arg, &error);
+        if(daemon_arg)
+            register_agent_callbacks(FALSE, pin_hash_table, mainloop, &error);
+        else
+            register_agent_callbacks(TRUE, pin_hash_table, mainloop, &error);
+        
+        exit_if_error(error);
+        
+        agent_manager_register_agent(agent_manager, AGENT_PATH, capability_arg, &error);
 	exit_if_error(error);
 	g_print("Agent registered\n");
-
-	g_signal_connect(agent, "AgentReleased", G_CALLBACK(agent_released), mainloop);
+        
+        agent_manager_request_default_agent(agent_manager, AGENT_PATH, &error);
+	exit_if_error(error);
+        g_print("Default agent requested\n");
 
 	if (daemon_arg) {
 		pid_t pid, sid;
@@ -277,7 +276,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(mainloop);
 
 	if (need_unregister) {
-		adapter_unregister_agent(adapter, AGENT_DBUS_PATH, &error);
+                g_print("unregistering agent...\n");
+                agent_manager_unregister_agent(agent_manager, AGENT_PATH, &error);
 		exit_if_error(error);
 
 		/* Waiting for AgentReleased signal */
@@ -286,12 +286,11 @@ int main(int argc, char *argv[])
 
 	g_main_loop_unref(mainloop);
 
-	g_object_unref(agent);
-	g_object_unref(adapter);
+        unregister_agent_callbacks(NULL);
+        g_object_unref(agent_manager);
 	g_object_unref(manager);
 
 	dbus_disconnect();
 
 	exit(EXIT_SUCCESS);
 }
-

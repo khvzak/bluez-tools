@@ -24,9 +24,14 @@
 #ifndef __NETWORK_H
 #define __NETWORK_H
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include <glib-object.h>
 
-#define NETWORK_DBUS_INTERFACE "org.bluez.Network"
+#define NETWORK_DBUS_SERVICE "org.bluez"
+#define NETWORK_DBUS_INTERFACE "org.bluez.Network1"
 
 /*
  * Type macros
@@ -57,16 +62,28 @@ struct _NetworkClass {
 GType network_get_type(void) G_GNUC_CONST;
 
 /*
+ * Constructor
+ */
+Network *network_new(const gchar *dbus_object_path);
+
+/*
  * Method definitions
  */
-gchar *network_connect(Network *self, const gchar *uuid, GError **error);
-void network_disconnect(Network *self, GError **error);
-GHashTable *network_get_properties(Network *self, GError **error);
-
 const gchar *network_get_dbus_object_path(Network *self);
-const gboolean network_get_connected(Network *self);
-const gchar *network_get_interface(Network *self);
-const gchar *network_get_uuid(Network *self);
+
+const gchar *network_connect(Network *self, const gchar *uuid, GError **error);
+void network_disconnect(Network *self, GError **error);
+
+GVariant *network_get_properties(Network *self, GError **error);
+void network_set_property(Network *self, const gchar *name, const GVariant *value, GError **error);
+
+gboolean network_get_connected(Network *self, GError **error);
+const gchar *network_get_interface(Network *self, GError **error);
+const gchar *network_get_uuid(Network *self, GError **error);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif /* __NETWORK_H */
 

@@ -24,51 +24,50 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-
+#include <gio/gio.h>
+#include <glib.h>
 #include <string.h>
 
-#include <glib.h>
-#include <dbus/dbus-glib.h>
-
 #include "../dbus-common.h"
-#include "../marshallers.h"
+#include "../properties.h"
 
 #include "network_server.h"
 
 #define NETWORK_SERVER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), NETWORK_SERVER_TYPE, NetworkServerPrivate))
 
 struct _NetworkServerPrivate {
-	DBusGProxy *dbus_g_proxy;
-
-	/* Introspection data */
-	DBusGProxy *introspection_g_proxy;
-	gchar *introspection_xml;
+	GDBusProxy *proxy;
+	gchar *object_path;
 };
 
-G_DEFINE_TYPE(NetworkServer, network_server, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(NetworkServer, network_server, G_TYPE_OBJECT);
 
 enum {
 	PROP_0,
-
 	PROP_DBUS_OBJECT_PATH /* readwrite, construct only */
 };
 
 static void _network_server_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
 static void _network_server_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 
+static void _network_server_create_gdbus_proxy(NetworkServer *self, const gchar *dbus_service_name, const gchar *dbus_object_path, GError **error);
+
 static void network_server_dispose(GObject *gobject)
 {
 	NetworkServer *self = NETWORK_SERVER(gobject);
 
 	/* Proxy free */
-	g_object_unref(self->priv->dbus_g_proxy);
-
-	/* Introspection data free */
-	g_free(self->priv->introspection_xml);
-	g_object_unref(self->priv->introspection_g_proxy);
-
+	g_clear_object (&self->priv->proxy);
+	/* Object path free */
+	g_free(self->priv->object_path);
 	/* Chain up to the parent class */
 	G_OBJECT_CLASS(network_server_parent_class)->dispose(gobject);
+}
+
+static void network_server_finalize (GObject *gobject)
+{
+	NetworkServer *self = NETWORK_SERVER(gobject);
+	G_OBJECT_CLASS(network_server_parent_class)->finalize(gobject);
 }
 
 static void network_server_class_init(NetworkServerClass *klass)
@@ -77,52 +76,25 @@ static void network_server_class_init(NetworkServerClass *klass)
 
 	gobject_class->dispose = network_server_dispose;
 
-	g_type_class_add_private(klass, sizeof(NetworkServerPrivate));
-
 	/* Properties registration */
-	GParamSpec *pspec;
+	GParamSpec *pspec = NULL;
 
 	gobject_class->get_property = _network_server_get_property;
 	gobject_class->set_property = _network_server_set_property;
-
+	
 	/* object DBusObjectPath [readwrite, construct only] */
-	pspec = g_param_spec_string("DBusObjectPath", "dbus_object_path", "Adapter D-Bus object path", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	pspec = g_param_spec_string("DBusObjectPath", "dbus_object_path", "NetworkServer D-Bus object path", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 	g_object_class_install_property(gobject_class, PROP_DBUS_OBJECT_PATH, pspec);
+	if (pspec)
+		g_param_spec_unref(pspec);
 }
 
 static void network_server_init(NetworkServer *self)
 {
-	self->priv = NETWORK_SERVER_GET_PRIVATE(self);
-
-	/* DBusGProxy init */
-	self->priv->dbus_g_proxy = NULL;
-
+	self->priv = network_server_get_instance_private (self);
+	self->priv->proxy = NULL;
+	self->priv->object_path = NULL;
 	g_assert(system_conn != NULL);
-}
-
-static void network_server_post_init(NetworkServer *self, const gchar *dbus_object_path)
-{
-	g_assert(dbus_object_path != NULL);
-	g_assert(strlen(dbus_object_path) > 0);
-	g_assert(self->priv->dbus_g_proxy == NULL);
-
-	GError *error = NULL;
-
-	/* Getting introspection XML */
-	self->priv->introspection_g_proxy = dbus_g_proxy_new_for_name(system_conn, "org.bluez", dbus_object_path, "org.freedesktop.DBus.Introspectable");
-	self->priv->introspection_xml = NULL;
-	if (!dbus_g_proxy_call(self->priv->introspection_g_proxy, "Introspect", &error, G_TYPE_INVALID, G_TYPE_STRING, &self->priv->introspection_xml, G_TYPE_INVALID)) {
-		g_critical("%s", error->message);
-	}
-	g_assert(error == NULL);
-
-	gchar *check_intf_regex_str = g_strconcat("<interface name=\"", NETWORK_SERVER_DBUS_INTERFACE, "\">", NULL);
-	if (!g_regex_match_simple(check_intf_regex_str, self->priv->introspection_xml, 0, 0)) {
-		g_critical("Interface \"%s\" does not exist in \"%s\"", NETWORK_SERVER_DBUS_INTERFACE, dbus_object_path);
-		g_assert(FALSE);
-	}
-	g_free(check_intf_regex_str);
-	self->priv->dbus_g_proxy = dbus_g_proxy_new_for_name(system_conn, "org.bluez", dbus_object_path, NETWORK_SERVER_DBUS_INTERFACE);
 }
 
 static void _network_server_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
@@ -147,7 +119,8 @@ static void _network_server_set_property(GObject *object, guint property_id, con
 
 	switch (property_id) {
 	case PROP_DBUS_OBJECT_PATH:
-		network_server_post_init(self, g_value_get_string(value));
+		self->priv->object_path = g_value_dup_string(value);
+		_network_server_create_gdbus_proxy(self, NETWORK_SERVER_DBUS_SERVICE, self->priv->object_path, &error);
 		break;
 
 	default:
@@ -155,35 +128,49 @@ static void _network_server_set_property(GObject *object, guint property_id, con
 		break;
 	}
 
-	if (error != NULL) {
+	if (error != NULL)
 		g_critical("%s", error->message);
-	}
+
 	g_assert(error == NULL);
 }
 
+/* Constructor */
+NetworkServer *network_server_new(const gchar *dbus_object_path)
+{
+	return g_object_new(NETWORK_SERVER_TYPE, "DBusObjectPath", dbus_object_path, NULL);
+}
+
+/* Private DBus proxy creation */
+static void _network_server_create_gdbus_proxy(NetworkServer *self, const gchar *dbus_service_name, const gchar *dbus_object_path, GError **error)
+{
+	g_assert(NETWORK_SERVER_IS(self));
+	self->priv->proxy = g_dbus_proxy_new_sync(system_conn, G_DBUS_PROXY_FLAGS_NONE, NULL, dbus_service_name, dbus_object_path, NETWORK_SERVER_DBUS_INTERFACE, NULL, error);
+
+	if(self->priv->proxy == NULL)
+		return;
+}
+
 /* Methods */
+
+/* Get DBus object path */
+const gchar *network_server_get_dbus_object_path(NetworkServer *self)
+{
+	g_assert(NETWORK_SERVER_IS(self));
+	g_assert(self->priv->proxy != NULL);
+	return g_dbus_proxy_get_object_path(self->priv->proxy);
+}
 
 /* void Register(string uuid, string bridge) */
 void network_server_register(NetworkServer *self, const gchar *uuid, const gchar *bridge, GError **error)
 {
 	g_assert(NETWORK_SERVER_IS(self));
-
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Register", error, G_TYPE_STRING, uuid, G_TYPE_STRING, bridge, G_TYPE_INVALID, G_TYPE_INVALID);
+	g_dbus_proxy_call_sync(self->priv->proxy, "Register", g_variant_new ("(ss)", uuid, bridge), G_DBUS_CALL_FLAGS_NONE, -1, NULL, error);
 }
 
 /* void Unregister(string uuid) */
 void network_server_unregister(NetworkServer *self, const gchar *uuid, GError **error)
 {
 	g_assert(NETWORK_SERVER_IS(self));
-
-	dbus_g_proxy_call(self->priv->dbus_g_proxy, "Unregister", error, G_TYPE_STRING, uuid, G_TYPE_INVALID, G_TYPE_INVALID);
-}
-
-/* Properties access methods */
-const gchar *network_server_get_dbus_object_path(NetworkServer *self)
-{
-	g_assert(NETWORK_SERVER_IS(self));
-
-	return dbus_g_proxy_get_path(self->priv->dbus_g_proxy);
+	g_dbus_proxy_call_sync(self->priv->proxy, "Unregister", g_variant_new ("(s)", uuid), G_DBUS_CALL_FLAGS_NONE, -1, NULL, error);
 }
 

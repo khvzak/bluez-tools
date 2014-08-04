@@ -24,9 +24,14 @@
 #ifndef __DEVICE_H
 #define __DEVICE_H
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include <glib-object.h>
 
-#define DEVICE_DBUS_INTERFACE "org.bluez.Device"
+#define DEVICE_DBUS_SERVICE "org.bluez"
+#define DEVICE_DBUS_INTERFACE "org.bluez.Device1"
 
 /*
  * Type macros
@@ -57,31 +62,49 @@ struct _DeviceClass {
 GType device_get_type(void) G_GNUC_CONST;
 
 /*
+ * Constructor
+ */
+Device *device_new(const gchar *dbus_object_path);
+
+/*
  * Method definitions
  */
-void device_cancel_discovery(Device *self, GError **error);
-void device_disconnect(Device *self, GError **error);
-GHashTable *device_discover_services(Device *self, const gchar *pattern, GError **error);
-GHashTable *device_get_properties(Device *self, GError **error);
-void device_set_property(Device *self, const gchar *name, const GValue *value, GError **error);
-
 const gchar *device_get_dbus_object_path(Device *self);
-const gchar *device_get_adapter(Device *self);
-const gchar *device_get_address(Device *self);
-const gchar *device_get_alias(Device *self);
-void device_set_alias(Device *self, const gchar *value);
-const gboolean device_get_blocked(Device *self);
-void device_set_blocked(Device *self, const gboolean value);
-const guint32 device_get_class(Device *self);
-const gboolean device_get_connected(Device *self);
-const gchar *device_get_icon(Device *self);
-const gboolean device_get_legacy_pairing(Device *self);
-const gchar *device_get_name(Device *self);
-const gboolean device_get_paired(Device *self);
-const GPtrArray *device_get_services(Device *self);
-const gboolean device_get_trusted(Device *self);
-void device_set_trusted(Device *self, const gboolean value);
-const gchar **device_get_uuids(Device *self);
+
+void device_cancel_pairing(Device *self, GError **error);
+void device_connect(Device *self, GError **error);
+void device_connect_profile(Device *self, const gchar *uuid, GError **error);
+void device_disconnect(Device *self, GError **error);
+void device_disconnect_profile(Device *self, const gchar *uuid, GError **error);
+void device_pair(Device *self, GError **error);
+void device_pair_async(Device *self, GAsyncReadyCallback callback, gpointer user_data);
+void device_pair_finish(Device *self, GAsyncResult *res, GError **error);
+
+GVariant *device_get_properties(Device *self, GError **error);
+void device_set_property(Device *self, const gchar *name, const GVariant *value, GError **error);
+
+const gchar *device_get_adapter(Device *self, GError **error);
+const gchar *device_get_address(Device *self, GError **error);
+const gchar *device_get_alias(Device *self, GError **error);
+void device_set_alias(Device *self, const gchar *value, GError **error);
+guint16 device_get_appearance(Device *self, GError **error);
+gboolean device_get_blocked(Device *self, GError **error);
+void device_set_blocked(Device *self, const gboolean value, GError **error);
+guint32 device_get_class(Device *self, GError **error);
+gboolean device_get_connected(Device *self, GError **error);
+const gchar *device_get_icon(Device *self, GError **error);
+gboolean device_get_legacy_pairing(Device *self, GError **error);
+const gchar *device_get_modalias(Device *self, GError **error);
+const gchar *device_get_name(Device *self, GError **error);
+gboolean device_get_paired(Device *self, GError **error);
+gint16 device_get_rssi(Device *self, GError **error);
+gboolean device_get_trusted(Device *self, GError **error);
+void device_set_trusted(Device *self, const gboolean value, GError **error);
+const gchar **device_get_uuids(Device *self, GError **error);
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif /* __DEVICE_H */
 

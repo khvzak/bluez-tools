@@ -31,7 +31,7 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include <glib.h>
+#include <gio/gio.h>
 
 #include "lib/dbus-common.h"
 #include "lib/helpers.h"
@@ -55,22 +55,32 @@ static void trap_signals()
 	sigaction(SIGINT, &sa, NULL);
 }
 
-static void network_property_changed(Network *network, const gchar *name, const GValue *value, gpointer data)
+static void _bt_network_property_changed(GDBusConnection *connection, const gchar *sender_name, const gchar *object_path, const gchar *interface_name, const gchar *signal_name, GVariant *parameters, gpointer user_data)
 {
-	g_assert(data != NULL);
-	GMainLoop *mainloop = data;
+        g_assert(user_data != NULL);
+	GMainLoop *mainloop = user_data;
 
-	if (g_strcmp0(name, "Connected") == 0) {
-		if (g_value_get_boolean(value) == TRUE) {
+        GVariant *changed_properties = g_variant_get_child_value(parameters, 1);
+        g_variant_lookup_value(changed_properties, "UUID", NULL);
+	if (g_variant_lookup_value(changed_properties, "Connected", NULL))
+        {
+		if (g_variant_get_boolean(g_variant_lookup_value(changed_properties, "Connected", NULL)) == TRUE)
+                {
 			g_print("Network service is connected\n");
-		} else {
+		}
+                else
+                {
 			g_print("Network service is disconnected\n");
 			g_main_loop_quit(mainloop);
 		}
-	} else if (g_strcmp0(name, "Interface") == 0) {
-		g_print("Interface: %s\n", g_value_get_string(value));
-	} else if (g_strcmp0(name, "UUID") == 0) {
-		g_print("UUID: %s (%s)\n", uuid2name(g_value_get_string(value)), g_value_get_string(value));
+	}
+        else if (g_variant_lookup_value(changed_properties, "Interface", NULL))
+        {
+		g_print("Interface: %s\n", g_variant_get_string(g_variant_lookup_value(changed_properties, "Interface", NULL), NULL));
+	}
+        else if (g_variant_lookup_value(changed_properties, "UUID", NULL))
+        {
+		g_print("UUID: %s (%s)\n", uuid2name(g_variant_get_string(g_variant_lookup_value(changed_properties, "UUID", NULL), NULL)), g_variant_get_string(g_variant_lookup_value(changed_properties, "UUID", NULL), NULL));
 	}
 }
 
@@ -99,7 +109,6 @@ int main(int argc, char *argv[])
 	/* Query current locale */
 	setlocale(LC_CTYPE, "");
 
-	g_type_init();
 	dbus_init();
 
 	context = g_option_context_new("- a bluetooth network manager");
@@ -115,7 +124,7 @@ int main(int argc, char *argv[])
 			"Server Options:\n"
 			"  -s, --server <gn|panu|nap> <brige>\n"
 			"  Every new connection to this server will be added the `bridge` interface\n\n"
-			//"Report bugs to <"PACKAGE_BUGREPORT">."
+			"Report bugs to <"PACKAGE_BUGREPORT">."
 			"Project home page <"PACKAGE_URL">."
 			);
 
@@ -144,7 +153,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Check, that bluetooth daemon is running */
-	if (!intf_supported(BLUEZ_DBUS_NAME, MANAGER_DBUS_PATH, MANAGER_DBUS_INTERFACE)) {
+	if (!intf_supported(BLUEZ_DBUS_SERVICE_NAME, MANAGER_DBUS_PATH, MANAGER_DBUS_INTERFACE)) {
 		g_printerr("%s: bluez service is not found\n", g_get_prgname());
 		g_printerr("Did you forget to run bluetoothd?\n");
 		exit(EXIT_FAILURE);
@@ -160,31 +169,32 @@ int main(int argc, char *argv[])
 		Device *device = find_device(adapter, connect_device_arg, &error);
 		exit_if_error(error);
 
-		if (!intf_supported(BLUEZ_DBUS_NAME, device_get_dbus_object_path(device), NETWORK_DBUS_INTERFACE)) {
+		if (!intf_supported(BLUEZ_DBUS_SERVICE_NAME, device_get_dbus_object_path(device), NETWORK_DBUS_INTERFACE)) {
 			g_printerr("Network service is not supported by this device\n");
 			exit(EXIT_FAILURE);
 		}
 
 		mainloop = g_main_loop_new(NULL, FALSE);
 
-		Network *network = g_object_new(NETWORK_TYPE, "DBusObjectPath", device_get_dbus_object_path(device), NULL);
-		g_signal_connect(network, "PropertyChanged", G_CALLBACK(network_property_changed), mainloop);
+                Network *network = network_new(device_get_dbus_object_path(device));
+                guint prop_sig_sub_id = g_dbus_connection_signal_subscribe(system_conn, "org.bluez", "org.freedesktop.DBus.Properties", "PropertiesChanged", network_get_dbus_object_path(network), NULL, G_DBUS_SIGNAL_FLAGS_NONE, _bt_network_property_changed, mainloop, NULL);
 
-		if (network_get_connected(network) == TRUE) {
+		if (network_get_connected(network, NULL) == TRUE) {
 			g_print("Network service is already connected\n");
 		} else {
-			gchar *intf = network_connect(network, connect_uuid_arg, &error);
+			gchar *intf = (gchar *) network_connect(network, connect_uuid_arg, &error);
 			exit_if_error(error);
 			trap_signals();
 			g_main_loop_run(mainloop);
 
 			/* Force disconnect the network device */
-			if (network_get_connected(network) == TRUE) {
+			if (network_get_connected(network, NULL) == TRUE) {
 				network_disconnect(network, NULL);
 			}
 			g_free(intf);
 		}
 
+                g_dbus_connection_signal_unsubscribe(system_conn, prop_sig_sub_id);
 		g_main_loop_unref(mainloop);
 		g_object_unref(network);
 		g_object_unref(device);
@@ -198,14 +208,14 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		if (!intf_supported(BLUEZ_DBUS_NAME, adapter_get_dbus_object_path(adapter), NETWORK_SERVER_DBUS_INTERFACE)) {
+		if (!intf_supported(BLUEZ_DBUS_SERVICE_NAME, adapter_get_dbus_object_path(adapter), NETWORK_SERVER_DBUS_INTERFACE)) {
 			g_printerr("Network server is not supported by this adapter\n");
 			exit(EXIT_FAILURE);
 		}
 
 		gchar *server_uuid_upper = g_ascii_strup(server_uuid_arg, -1);
 
-		NetworkServer *network_server = g_object_new(NETWORK_SERVER_TYPE, "DBusObjectPath", adapter_get_dbus_object_path(adapter), NULL);
+                NetworkServer *network_server = network_server_new(adapter_get_dbus_object_path(adapter));
 		network_server_register(network_server, server_uuid_arg, server_brige_arg, &error);
 		exit_if_error(error);
 		g_print("%s server registered\n", server_uuid_upper);
@@ -252,4 +262,3 @@ int main(int argc, char *argv[])
 
 	exit(EXIT_SUCCESS);
 }
-
