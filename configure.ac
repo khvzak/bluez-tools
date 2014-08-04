@@ -20,23 +20,17 @@ AC_PROG_CC_C99
 
 if test "x$remember_set_CFLAGS" = "x"
 then
-  if test "$CFLAGS" = "-g -O2"
-  then
-    CFLAGS="-O2"
-  elif test "$CFLAGS" = "-g"
-  then
-    CFLAGS=""
-  fi
+	if test "$CFLAGS" = "-g -O2"
+	then
+		CFLAGS="-O2"
+	elif test "$CFLAGS" = "-g"
+	then
+		CFLAGS=""
+	fi
 fi
 
 AC_PROG_INSTALL
 AM_PROG_CC_C_O
-
-# Handle --disable-obex
-AC_ARG_ENABLE(obex,
-              AS_HELP_STRING([--disable-obex],
-                             [disable obex support]),
-              , enable_obex=yes)
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -45,30 +39,24 @@ AC_HEADER_STDC
 PKG_PROG_PKG_CONFIG
 
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0])
-PKG_CHECK_MODULES([DBUS_GLIB], [dbus-glib-1 >= 0.84])
+PKG_CHECK_MODULES([GIO], [gio-2.0 >= 2.26.0])
 
 # Check for the availability of libreadline
 AC_CHECK_HEADERS([readline/readline.h], [HAVE_READLINE_H=1])
 AC_CHECK_HEADERS([readline/history.h], [HAVE_HISTORY_H=1])
 AC_CHECK_LIB([readline], [readline], [HAVE_LIB_READLINE=1])
 
-if test "$enable_obex" = "yes"; then
-  AC_DEFINE([OBEX_SUPPORT], [], [
-    Define to allow bluez-tools to be compiled with obex support.])
-
-  if test "$HAVE_READLINE_H" != "1"; then
-    echo "** readline/readline.h was not found."
-    exit 1
-  fi
-  if test "$HAVE_HISTORY_H" != "1"; then
-    echo "** readline/history.h was not found."
-    exit 1
-  fi
-  LIBREADLINE="-lreadline"
+if test "$HAVE_READLINE_H" != "1"; then
+	echo "** readline/readline.h was not found."
+	exit 1
 fi
-AC_SUBST(LIBREADLINE)
+if test "$HAVE_HISTORY_H" != "1"; then
+	echo "** readline/history.h was not found."
+	exit 1
+fi
+LIBREADLINE="-lreadline"
 
-AM_CONDITIONAL(OBEX, test "$enable_obex" = "yes")
+AC_SUBST(LIBREADLINE)
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
