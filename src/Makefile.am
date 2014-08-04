@@ -1,5 +1,5 @@
-AM_CPPFLAGS = $(GLIB_CFLAGS) $(DBUS_GLIB_CFLAGS)
-AM_LDFLAGS = $(GLIB_LIBS) $(DBUS_GLIB_LIBS)
+AM_CPPFLAGS = $(GLIB_CFLAGS) $(GIO_LIBS)
+AM_LDFLAGS = $(GLIB_LIBS) $(GIO_LIBS)
 
 bluez_sources =	lib/bluez/adapter.c lib/bluez/adapter.h \
 		lib/bluez/agent_manager.c lib/bluez/agent_manager.h \
