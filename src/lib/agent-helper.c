@@ -279,7 +279,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         GError *error = NULL;
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
-        const gchar *ret = NULL;
+        const gchar ret[16];
         
         if (_interactive)
             g_print("Device: %s (%s)\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error));
@@ -307,7 +307,9 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
             errno = 0;
             if (scanf("%s", &ret) == EOF && errno)
                 g_warning("%s\n", strerror(errno));
-            g_dbus_method_invocation_return_value(invocation, g_variant_new_string(ret));
+            GVariant* vars[1];
+            vars[0] = g_variant_new_string(ret);
+            g_dbus_method_invocation_return_value(invocation, g_variant_new_tuple(vars, 1));
             return;
 	}
         
