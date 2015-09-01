@@ -1,5 +1,5 @@
 AM_CPPFLAGS = $(GLIB_CFLAGS) $(GIO_CFLAGS)
-AM_LDFLAGS = $(GLIB_LIBS) $(GIO_LIBS)
+LDADD = $(GLIB_LIBS) $(GIO_LIBS)
 
 bluez_sources =	lib/bluez/adapter.c lib/bluez/adapter.h \
 		lib/bluez/agent_manager.c lib/bluez/agent_manager.h \
@@ -50,6 +50,6 @@ bt_agent_SOURCES = $(lib_sources) $(bluez_sources) bt-agent.c
 bt_device_SOURCES = $(lib_sources) $(bluez_sources) bt-device.c
 bt_network_SOURCES = $(lib_sources) $(bluez_sources) bt-network.c
 bt_obex_SOURCES = $(lib_sources) $(bluez_sources) bt-obex.c
-bt_obex_LDADD = $(LIBREADLINE)
+bt_obex_LDADD = $(LDADD) $(LIBREADLINE)
 
 dist_man_MANS = bt-adapter.1 bt-agent.1 bt-device.1 bt-network.1 bt-obex.1
