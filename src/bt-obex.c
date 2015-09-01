@@ -377,6 +377,7 @@ void _agent_approved_callback(ObexAgent *obex_agent, const gchar* obex_transfer_
 /* Main arguments */
 static gchar *adapter_arg = NULL;
 static gboolean server_arg = FALSE;
+static gboolean auto_accept = FALSE;
 static gchar *server_path_arg = NULL;
 static gboolean opp_arg = FALSE;
 static gchar *opp_device_arg = NULL;
@@ -386,6 +387,7 @@ static gchar *ftp_arg = NULL;
 static GOptionEntry entries[] = {
     {"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
     {"server", 's', 0, G_OPTION_ARG_NONE, &server_arg, "Register self at OBEX server", NULL},
+    {"auto-accept", 'y', 0, G_OPTION_ARG_NONE, &auto_accept, "Automatically accept incoming files", NULL},
     {"opp", 'p', 0, G_OPTION_ARG_NONE, &opp_arg, "Send file to remote device", NULL},
     {"ftp", 'f', 0, G_OPTION_ARG_STRING, &ftp_arg, "Start FTP session with remote device", "<name|mac>"},
     {NULL}
@@ -496,7 +498,7 @@ int main(int argc, char *argv[])
         guint obex_server_object_id = g_dbus_connection_signal_subscribe(session_conn, "org.bluez.obex", "org.freedesktop.DBus.ObjectManager", NULL, NULL, NULL, G_DBUS_SIGNAL_FLAGS_NONE, _obex_server_object_manager_handler, NULL, NULL);
         guint obex_server_properties_id = g_dbus_connection_signal_subscribe(session_conn, "org.bluez.obex", "org.freedesktop.DBus.Properties", "PropertiesChanged", NULL, NULL, G_DBUS_SIGNAL_FLAGS_NONE, _obex_server_properties_handler, NULL, NULL);
         
-        ObexAgent *agent = obex_agent_new(root_folder);
+        ObexAgent *agent = obex_agent_new(root_folder, auto_accept);
         _root_path = g_strdup(root_folder);
         g_free(root_folder);
         obex_agent_set_approved_callback(agent, _agent_approved_callback, NULL);

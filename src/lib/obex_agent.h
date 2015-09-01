@@ -71,7 +71,7 @@ typedef void (*ObexAgentApprovedCallback)(ObexAgent *obex_agent, const gchar* ob
 /*
  * Constructor
  */
-ObexAgent *obex_agent_new(const gchar *root_folder);
+ObexAgent *obex_agent_new(const gchar *root_folder, const gboolean auto_accept);
 
 /*
  * Method definitions
