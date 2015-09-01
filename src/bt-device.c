@@ -32,6 +32,7 @@
 
 #include <glib.h>
 #include <gio/gio.h>
+#include <gio/gunixinputstream.h>
 
 #include "lib/dbus-common.h"
 #include "lib/helpers.h"

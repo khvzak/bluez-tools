@@ -39,7 +39,7 @@ AC_HEADER_STDC
 PKG_PROG_PKG_CONFIG
 
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.24.0])
-PKG_CHECK_MODULES([GIO], [gio-2.0 >= 2.26.0])
+PKG_CHECK_MODULES([GIO], [gio-2.0 >= 2.26.0 gio-unix-2.0 >= 2.26.0])
 
 # Check for the availability of libreadline
 AC_CHECK_HEADERS([readline/readline.h], [HAVE_READLINE_H=1])
