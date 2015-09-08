@@ -45,7 +45,7 @@ static const gchar *_find_device_pin(const gchar *device_path);
 static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar *sender, const gchar *object_path, const gchar *interface_name, const gchar *method_name, GVariant *parameters, GDBusMethodInvocation *invocation, gpointer user_data)
 {
     // g_print("%s%s\n", method_name, g_variant_print(parameters, FALSE));
-    
+
     if (g_strcmp0(method_name, "AuthorizeService") == 0)
     {
         // Return void
@@ -63,18 +63,18 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         GError *error = NULL;
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
-        
+
         if (_interactive)
             g_print("Device: %s (%s)\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error));
-        
+
         if (error)
         {
             g_critical("Failed to get remote device's MAC address: %s", error->message);
             g_error_free(error);
         }
-        
+
         g_object_unref(device_obj);
-        
+
         if (_interactive)
         {
             g_print("Passkey: %u, entered: %u\n", g_variant_get_uint32(g_variant_get_child_value(parameters, 1)), g_variant_get_uint16(g_variant_get_child_value(parameters, 2)));
@@ -87,7 +87,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
             g_dbus_method_invocation_return_value(invocation, NULL);
             return;
         }
-        
+
         g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Pairing rejected");
     }
     else if (g_strcmp0(method_name, "DisplayPinCode") == 0)
@@ -96,20 +96,20 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
         const gchar *pincode = g_variant_get_string(g_variant_get_child_value(parameters, 1), NULL);
-        
+
         if (_interactive)
             g_print("Device: %s (%s)\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error));
-        
+
         if (error)
         {
             g_critical("Failed to get remote device's MAC address: %s", error->message);
             g_error_free(error);
         }
-        
+
         g_object_unref(device_obj);
-        
+
         /* Try to use found PIN */
-	if (pin != NULL)
+        if (pin != NULL)
         {
             if (g_strcmp0(pin, "*") == 0 || g_strcmp0(pin, pincode) == 0)
             {
@@ -119,13 +119,13 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
             }
             else
                 g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Passkey does not match");
-            
+
             return;
         }
         else if (_interactive)
         {
             g_print("Confirm pin code: %s (yes/no)? ", pincode);
-            
+
             gchar yn[4] = {0,};
             errno = 0;
             if (scanf("%3s", yn) == EOF && errno)
@@ -136,19 +136,19 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
                 g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Passkey does not match");
             return;
         }
-        
+
         g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Pairing rejected");
     }
     else if (g_strcmp0(method_name, "Release") == 0)
     {
         agent_need_unregister = FALSE;
-        
+
         if(_mainloop)
             if (g_main_loop_is_running(_mainloop))
                 g_main_loop_quit(_mainloop);
-        
-	g_print("Agent released\n");
-        
+
+        g_print("Agent released\n");
+
         // Return void
         g_dbus_method_invocation_return_value(invocation, NULL);
     }
@@ -156,18 +156,18 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
     {
         GError *error = NULL;
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
-        
+
         if (_interactive)
             g_print("Device: %s (%s)\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error));
-        
+
         if(error)
         {
             g_critical("Failed to get remote device's MAC address: %s", error->message);
             g_error_free(error);
         }
-        
+
         g_object_unref(device_obj);
-        
+
         if (_interactive)
         {
             g_print("Authorize this device pairing (yes/no)? ");
@@ -181,7 +181,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
                 g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Pairing rejected");
             return;
         }
-        
+
         g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Pairing rejected");
     }
     else if (g_strcmp0(method_name, "RequestConfirmation") == 0)
@@ -190,24 +190,24 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         guint32 passkey = g_variant_get_uint32(g_variant_get_child_value(parameters, 1));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
-        
+
         if (_interactive)
             g_print("Device: %s (%s)\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error));
-        
+
         if(error)
         {
             g_critical("Failed to get remote device's MAC address: %s", error->message);
             g_error_free(error);
         }
-        
+
         g_object_unref(device_obj);
-        
+
         /* Try to use found PIN */
-	if (pin != NULL)
+        if (pin != NULL)
         {
             guint32 passkey_t;
             sscanf(pin, "%u", &passkey_t);
-            
+
             if (g_strcmp0(pin, "*") == 0 || passkey_t == passkey)
             {
                 if (_interactive)
@@ -216,7 +216,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
             }
             else
                 g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Passkey does not match");
-            
+
             return;
         }
         else if (_interactive)
@@ -232,7 +232,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
                 g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Passkey does not match");
             return;
         }
-        
+
         g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Passkey does not match");
     }
     else if (g_strcmp0(method_name, "RequestPasskey") == 0)
@@ -241,27 +241,27 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
         guint32 ret = 0;
-        
+
         if (_interactive)
             g_print("Device: %s (%s)\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error));
-        
+
         if(error)
         {
             g_critical("Failed to get remote device's MAC address: %s", error->message);
             g_error_free(error);
         }
-        
+
         g_object_unref(device_obj);
-        
+
         /* Try to use found PIN */
-	if (pin != NULL)
+        if (pin != NULL)
         {
             if (_interactive)
                 g_print("Passkey found\n");
             sscanf(pin, "%u", &ret);
             g_dbus_method_invocation_return_value(invocation, g_variant_new_uint32(ret));
             return;
-	}
+        }
         else if (_interactive)
         {
             g_print("Enter passkey: ");
@@ -270,8 +270,8 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
                 g_warning("%s\n", strerror(errno));
             g_dbus_method_invocation_return_value(invocation, g_variant_new_uint32(ret));
             return;
-	}
-        
+        }
+
         g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "No passkey inputted");
     }
     else if (g_strcmp0(method_name, "RequestPinCode") == 0)
@@ -280,27 +280,27 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
         const gchar ret[16];
-        
+
         if (_interactive)
             g_print("Device: %s (%s)\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error));
-        
+
         if(error)
         {
             g_critical("Failed to get remote device's MAC address: %s", error->message);
             g_error_free(error);
         }
-        
+
         g_object_unref(device_obj);
-        
+
         /* Try to use found PIN */
-	if (pin != NULL)
+        if (pin != NULL)
         {
             if (_interactive)
                 g_print("Passkey found\n");
             sscanf(pin, "%s", &ret);
             g_dbus_method_invocation_return_value(invocation, g_variant_new_string(ret));
             return;
-	}
+        }
         else if (_interactive)
         {
             g_print("Enter passkey: ");
@@ -311,8 +311,8 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
             vars[0] = g_variant_new_string(ret);
             g_dbus_method_invocation_return_value(invocation, g_variant_new_tuple(vars, 1));
             return;
-	}
-        
+        }
+
         g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "No passkey inputted");
     }
 }
@@ -351,14 +351,14 @@ void register_agent_callbacks(gboolean interactive_console, GHashTable *pin_dict
 {
     GDBusInterfaceVTable bt_agent_table;
     memset(&bt_agent_table, 0x0, sizeof(bt_agent_table));
-    
+
     if(pin_dictonary)
         _pin_hash_table = pin_dictonary;
     if(main_loop_object)
         _mainloop = (GMainLoop *) main_loop_object;
-    
+
     _interactive = interactive_console;
-    
+
     GDBusNodeInfo *bt_agent_node_info = g_dbus_node_info_new_for_xml(_bt_agent_introspect_xml, error);
     GDBusInterfaceInfo *bt_agent_interface_info = g_dbus_node_info_lookup_interface(bt_agent_node_info, AGENT_DBUS_INTERFACE);
     bt_agent_table.method_call = _bt_agent_method_call_func;
