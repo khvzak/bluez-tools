@@ -241,6 +241,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
         guint32 ret = 0;
+        gboolean invoke = FALSE;
 
         if (_interactive)
             g_print("Device: %s (%s)\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error));
@@ -259,8 +260,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
             if (_interactive)
                 g_print("Passkey found\n");
             sscanf(pin, "%u", &ret);
-            g_dbus_method_invocation_return_value(invocation, g_variant_new_uint32(ret));
-            return;
+            invoke = TRUE;
         }
         else if (_interactive)
         {
@@ -268,11 +268,19 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
             errno = 0;
             if (scanf("%u", &ret) == EOF && errno)
                 g_warning("%s\n", strerror(errno));
-            g_dbus_method_invocation_return_value(invocation, g_variant_new_uint32(ret));
-            return;
+            invoke = TRUE;
         }
 
-        g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "No passkey inputted");
+        if (invoke)
+        {
+            GVariant* vars[1];
+            vars[0] = g_variant_new_uint32(ret);
+            g_dbus_method_invocation_return_value(invocation, g_variant_new_tuple(vars, 1));
+        }
+        else
+        {
+            g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "No passkey inputted");
+        }
     }
     else if (g_strcmp0(method_name, "RequestPinCode") == 0)
     {
@@ -280,6 +288,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
         const gchar ret[16];
+        gboolean invoke = FALSE;
 
         if (_interactive)
             g_print("Device: %s (%s)\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error));
@@ -298,8 +307,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
             if (_interactive)
                 g_print("Passkey found\n");
             sscanf(pin, "%s", &ret);
-            g_dbus_method_invocation_return_value(invocation, g_variant_new_string(ret));
-            return;
+            invoke = TRUE;
         }
         else if (_interactive)
         {
@@ -307,13 +315,19 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
             errno = 0;
             if (scanf("%s", &ret) == EOF && errno)
                 g_warning("%s\n", strerror(errno));
+            invoke = TRUE;
+        }
+
+        if (invoke)
+        {
             GVariant* vars[1];
             vars[0] = g_variant_new_string(ret);
             g_dbus_method_invocation_return_value(invocation, g_variant_new_tuple(vars, 1));
-            return;
         }
-
-        g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "No passkey inputted");
+        else
+        {
+            g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "No passkey inputted");
+        }
     }
 }
 
