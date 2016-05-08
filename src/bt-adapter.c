@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
                                      "Set Options:\n"
                                      "  --set <property> <value>\n"
                                      "  Where `property` is one of:\n"
-                                     "     Name\n"
+                                     "     Alias\n"
                                      "     Discoverable\n"
                                      "     DiscoverableTimeout\n"
                                      "     Pairable\n"
