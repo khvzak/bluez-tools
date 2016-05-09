@@ -803,7 +803,7 @@ int main(int argc, char *argv[])
                             // DO NOT FREE THIS
                             GVariant *el = g_ptr_array_index(folders, i);
                             g_print(
-                                    "%s\t%llu\t%s\n",
+                                    "%s\t%" G_GINT64_FORMAT"\t%s\n",
                                     g_variant_get_string(g_variant_lookup_value(el, "Type", G_VARIANT_TYPE("s")), NULL),
                                     g_variant_get_uint64(g_variant_lookup_value(el, "Size", G_VARIANT_TYPE("t"))),
                                     g_variant_get_string(g_variant_lookup_value(el, "Name", G_VARIANT_TYPE("s")), NULL)
