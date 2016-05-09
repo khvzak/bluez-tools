@@ -29,6 +29,7 @@
 #include <gio/gio.h>
 #include <glib.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "agent-helper.h"
 
@@ -287,7 +288,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         GError *error = NULL;
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
-        const gchar ret[16];
+        gchar *ret = NULL;
         gboolean invoke = FALSE;
 
         if (_interactive)
@@ -306,14 +307,14 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         {
             if (_interactive)
                 g_print("Passkey found\n");
-            sscanf(pin, "%s", &ret);
+            sscanf(pin, "%ms", &ret);
             invoke = TRUE;
         }
         else if (_interactive)
         {
             g_print("Enter passkey: ");
             errno = 0;
-            if (scanf("%s", &ret) == EOF && errno)
+            if (scanf("%ms", &ret) == EOF && errno)
                 g_warning("%s\n", strerror(errno));
             invoke = TRUE;
         }
@@ -328,6 +329,9 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         {
             g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "No passkey inputted");
         }
+
+        if (ret)
+            free(ret);
     }
 }
 
