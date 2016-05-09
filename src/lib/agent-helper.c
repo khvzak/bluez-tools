@@ -49,8 +49,34 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
 
     if (g_strcmp0(method_name, "AuthorizeService") == 0)
     {
-        // Return void
-        g_dbus_method_invocation_return_value(invocation, NULL);
+        GError *error = NULL;
+        Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
+        const char *uuid = g_variant_get_string(g_variant_get_child_value(parameters, 1), NULL);
+
+        if (_interactive)
+          g_print("Device: %s (%s) for UUID %s\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error), uuid);
+
+        if (error)
+        {
+            g_critical("Failed to get remote device's MAC address: %s", error->message);
+            g_error_free(error);
+            g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Internal error occurred");
+            return;
+        }
+
+        if (device_get_paired (device_obj, &error))
+        {
+            g_dbus_method_invocation_return_value(invocation, NULL);
+        }
+        else if (error)
+        {
+            g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Internal error occurred");
+            g_error_free (error);
+        }
+        else
+        {
+            g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Service authorization rejected");
+        }
     }
     else if (g_strcmp0(method_name, "Cancel") == 0)
     {
