@@ -121,7 +121,7 @@ static void obex_agent_class_init(ObexAgentClass *klass)
 	}
 
 	/* boolean AutoAccept [readwrite, construct only] */
-	pspec = g_param_spec_boolean("AutoAccept", "auto_accept", "Automatically accept incoming files", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	pspec = g_param_spec_boolean("AutoAccept", "auto_accept", "Automatically accept incoming files", FALSE, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 	g_object_class_install_property(gobject_class, PROP_AUTO_ACCPET, pspec);
 
 	if (pspec)
