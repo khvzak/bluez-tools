@@ -284,9 +284,6 @@ int main(int argc, char *argv[])
                 g_print("unregistering agent...\n");
                 agent_manager_unregister_agent(agent_manager, AGENT_PATH, &error);
 		exit_if_error(error);
-
-		/* Waiting for AgentReleased signal */
-		g_main_loop_run(mainloop);
 	}
 
 	g_main_loop_unref(mainloop);
