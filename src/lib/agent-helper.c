@@ -300,9 +300,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
 
         if (invoke)
         {
-            GVariant* vars[1];
-            vars[0] = g_variant_new_uint32(ret);
-            g_dbus_method_invocation_return_value(invocation, g_variant_new_tuple(vars, 1));
+            g_dbus_method_invocation_return_value(invocation, g_variant_new ("(u)", ret));
         }
         else
         {
@@ -347,9 +345,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
 
         if (invoke)
         {
-            GVariant* vars[1];
-            vars[0] = g_variant_new_string(ret);
-            g_dbus_method_invocation_return_value(invocation, g_variant_new_tuple(vars, 1));
+            g_dbus_method_invocation_return_value(invocation, g_variant_new ("(s)", ret));
         }
         else
         {
