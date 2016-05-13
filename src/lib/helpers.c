@@ -33,6 +33,7 @@
 
 #include <gio/gio.h>
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include "dbus-common.h"
 #include "helpers.h"
