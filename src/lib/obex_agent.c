@@ -121,7 +121,7 @@ static void obex_agent_class_init(ObexAgentClass *klass)
 	}
 
 	/* boolean AutoAccept [readwrite, construct only] */
-	pspec = g_param_spec_boolean("AutoAccept", "auto_accept", "Automatically accept incoming files", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	pspec = g_param_spec_boolean("AutoAccept", "auto_accept", "Automatically accept incoming files", FALSE, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 	g_object_class_install_property(gobject_class, PROP_AUTO_ACCPET, pspec);
 
 	if (pspec)
@@ -211,7 +211,7 @@ static void _obex_agent_method_call_func(GDBusConnection *connection, const gcha
             ObexTransfer *transfer_t = obex_transfer_new(transfer);
             g_print("[Transfer Request]\n");
             g_print("  Name: %s\n", obex_transfer_get_name(transfer_t, NULL));
-            g_print("  Size: %llu bytes\n", obex_transfer_get_size(transfer_t, NULL));
+            g_print("  Size: %" G_GINT64_FORMAT " bytes\n", obex_transfer_get_size(transfer_t, NULL));
             // Filename seems to be always NULL
             // g_print("  Filename: %s\n", obex_transfer_get_filename(transfer_t, NULL));
             const gchar *filename = obex_transfer_get_name(transfer_t, NULL);

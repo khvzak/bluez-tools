@@ -29,6 +29,7 @@
 #include <gio/gio.h>
 #include <glib.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "agent-helper.h"
 
@@ -48,8 +49,34 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
 
     if (g_strcmp0(method_name, "AuthorizeService") == 0)
     {
-        // Return void
-        g_dbus_method_invocation_return_value(invocation, NULL);
+        GError *error = NULL;
+        Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
+        const char *uuid = g_variant_get_string(g_variant_get_child_value(parameters, 1), NULL);
+
+        if (_interactive)
+          g_print("Device: %s (%s) for UUID %s\n", device_get_alias(device_obj, &error), device_get_address(device_obj, &error), uuid);
+
+        if (error)
+        {
+            g_critical("Failed to get remote device's MAC address: %s", error->message);
+            g_error_free(error);
+            g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Internal error occurred");
+            return;
+        }
+
+        if (device_get_paired (device_obj, &error))
+        {
+            g_dbus_method_invocation_return_value(invocation, NULL);
+        }
+        else if (error)
+        {
+            g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Internal error occurred");
+            g_error_free (error);
+        }
+        else
+        {
+            g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "Service authorization rejected");
+        }
     }
     else if (g_strcmp0(method_name, "Cancel") == 0)
     {
@@ -273,9 +300,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
 
         if (invoke)
         {
-            GVariant* vars[1];
-            vars[0] = g_variant_new_uint32(ret);
-            g_dbus_method_invocation_return_value(invocation, g_variant_new_tuple(vars, 1));
+            g_dbus_method_invocation_return_value(invocation, g_variant_new ("(u)", ret));
         }
         else
         {
@@ -287,7 +312,7 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         GError *error = NULL;
         Device *device_obj = device_new(g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL));
         const gchar *pin = _find_device_pin(device_get_dbus_object_path(device_obj));
-        const gchar ret[16];
+        gchar *ret = NULL;
         gboolean invoke = FALSE;
 
         if (_interactive)
@@ -306,28 +331,29 @@ static void _bt_agent_method_call_func(GDBusConnection *connection, const gchar 
         {
             if (_interactive)
                 g_print("Passkey found\n");
-            sscanf(pin, "%s", &ret);
+            sscanf(pin, "%ms", &ret);
             invoke = TRUE;
         }
         else if (_interactive)
         {
             g_print("Enter passkey: ");
             errno = 0;
-            if (scanf("%s", &ret) == EOF && errno)
+            if (scanf("%ms", &ret) == EOF && errno)
                 g_warning("%s\n", strerror(errno));
             invoke = TRUE;
         }
 
         if (invoke)
         {
-            GVariant* vars[1];
-            vars[0] = g_variant_new_string(ret);
-            g_dbus_method_invocation_return_value(invocation, g_variant_new_tuple(vars, 1));
+            g_dbus_method_invocation_return_value(invocation, g_variant_new ("(s)", ret));
         }
         else
         {
             g_dbus_method_invocation_return_dbus_error(invocation, "org.bluez.Error.Rejected", "No passkey inputted");
         }
+
+        if (ret)
+            free(ret);
     }
 }
 

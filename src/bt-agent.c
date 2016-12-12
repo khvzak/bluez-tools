@@ -35,6 +35,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <glib-unix.h>
 
 #include "lib/dbus-common.h"
 #include "lib/helpers.h"
@@ -126,21 +127,28 @@ static void _read_pin_file(const gchar *filename, GHashTable *pin_hash_table, gb
 	return;
 }
 
-static void signal_handler(int sig)
+static gboolean
+usr1_signal_handler(gpointer data)
 {
-	g_message("%s received", sig == SIGTERM ? "SIGTERM" : (sig == SIGUSR1 ? "SIGUSR1" : "SIGINT"));
+	g_message("SIGUSR1 received");
 
-	if (sig == SIGUSR1 && pin_arg)
-        {
-            /* Re-read PIN's file */
-            g_print("Re-reading PIN's file\n");
-            _read_pin_file(pin_arg, pin_hash_table, FALSE);
-	}
-        else if (sig == SIGTERM || sig == SIGINT)
-        {
-            if (g_main_loop_is_running(mainloop))
-                g_main_loop_quit(mainloop);
-	}
+	if (!pin_arg)
+		return G_SOURCE_CONTINUE;
+
+        /* Re-read PIN's file */
+        g_print("Re-reading PIN's file\n");
+        _read_pin_file(pin_arg, pin_hash_table, FALSE);
+
+        return G_SOURCE_CONTINUE;
+}
+
+static gboolean
+term_signal_handler(gpointer data)
+{
+	if (g_main_loop_is_running(mainloop))
+		g_main_loop_quit(mainloop);
+
+	return G_SOURCE_REMOVE;
 }
 
 static gchar *capability_arg = NULL;
@@ -266,12 +274,9 @@ int main(int argc, char *argv[])
 	}
 
 	/* Add SIGTERM/SIGINT/SIGUSR1 handlers */
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = signal_handler;
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGUSR1, &sa, NULL);
+	g_unix_signal_add (SIGTERM, usr1_signal_handler, NULL);
+	g_unix_signal_add (SIGINT, term_signal_handler, NULL);
+	g_unix_signal_add (SIGUSR1, term_signal_handler, NULL);
 
 	g_main_loop_run(mainloop);
 
@@ -279,9 +284,6 @@ int main(int argc, char *argv[])
                 g_print("unregistering agent...\n");
                 agent_manager_unregister_agent(agent_manager, AGENT_PATH, &error);
 		exit_if_error(error);
-
-		/* Waiting for AgentReleased signal */
-		g_main_loop_run(mainloop);
 	}
 
 	g_main_loop_unref(mainloop);
