@@ -144,7 +144,7 @@ const gchar *obex_client_create_session(ObexClient *self, const gchar *destinati
 	g_assert(OBEX_CLIENT_IS(self));
 	const gchar *ret = NULL;
 	GVariant *proxy_ret = g_dbus_proxy_call_sync(self->priv->proxy, "CreateSession", g_variant_new ("(s@a{sv})", destination, args), G_DBUS_CALL_FLAGS_NONE, -1, NULL, error);
-	if (proxy_ret != NULL)
+	if (proxy_ret == NULL)
 		return NULL;
 	proxy_ret = g_variant_get_child_value(proxy_ret, 0);
 	ret = g_variant_get_string(proxy_ret, NULL);
