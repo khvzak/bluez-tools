@@ -386,7 +386,7 @@ static gchar *ftp_arg = NULL;
 
 static GOptionEntry entries[] = {
     {"adapter", 'a', 0, G_OPTION_ARG_STRING, &adapter_arg, "Adapter name or MAC", "<name|mac>"},
-    {"server", 's', 0, G_OPTION_ARG_NONE, &server_arg, "Register self at OBEX server", NULL},
+    {"server", 's', 0, G_OPTION_ARG_NONE, &server_arg, "Register self as OBEX server", NULL},
     {"auto-accept", 'y', 0, G_OPTION_ARG_NONE, &auto_accept, "Automatically accept incoming files", NULL},
     {"opp", 'p', 0, G_OPTION_ARG_NONE, &opp_arg, "Send file to remote device", NULL},
     {"ftp", 'f', 0, G_OPTION_ARG_STRING, &ftp_arg, "Start FTP session with remote device", "<name|mac>"},
