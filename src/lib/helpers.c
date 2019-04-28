@@ -104,6 +104,7 @@ static uuid_name_lookup_table_t uuid_name_lookup_table[] = {
     {"00001300-0000-1000-8000-00805F9B34FB", "ESdpUPnPIpPan", NULL},
     {"00001301-0000-1000-8000-00805F9B34FB", "ESdpUPnPIpLap", NULL},
     {"00001302-0000-1000-8000-00805F9B34FB", "EdpUPnpIpL2CAP", NULL},
+    {"0000112D-0000-1000-8000-00805F9B34FB", "SIMAccess", "SAP"},
 
     // Custom:
     {"0000112F-0000-1000-8000-00805F9B34FB", "PhoneBookAccess", NULL},
