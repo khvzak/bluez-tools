@@ -35,7 +35,7 @@ extern "C" {
 #define AGENT_DBUS_INTERFACE "org.bluez.Agent1"
 #define AGENT_PATH "/org/blueztools"
 
-gboolean agent_need_unregister;
+extern gboolean agent_need_unregister;
 
 void register_agent_callbacks(gboolean interactive_console, GHashTable *pin_dictonary, gpointer main_loop_object, GError **error);
 void unregister_agent_callbacks(GError **error);
