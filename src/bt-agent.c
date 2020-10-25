@@ -274,9 +274,9 @@ int main(int argc, char *argv[])
 	}
 
 	/* Add SIGTERM/SIGINT/SIGUSR1 handlers */
-	g_unix_signal_add (SIGTERM, usr1_signal_handler, NULL);
+	g_unix_signal_add (SIGTERM, term_signal_handler, NULL);
 	g_unix_signal_add (SIGINT, term_signal_handler, NULL);
-	g_unix_signal_add (SIGUSR1, term_signal_handler, NULL);
+	g_unix_signal_add (SIGUSR1, usr1_signal_handler, NULL);
 
 	g_main_loop_run(mainloop);
 
