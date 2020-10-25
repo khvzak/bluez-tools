@@ -610,18 +610,18 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
 
-        g_print("[%s]\n", device_get_address(device, &error));
-        g_print("  Name: %s\n", device_get_name(device, &error));
-        g_print("  Alias: %s [rw]\n", device_get_alias(device, &error));
-        g_print("  Address: %s\n", device_get_address(device, &error));
-        g_print("  Icon: %s\n", device_get_icon(device, &error));
-        g_print("  Class: 0x%x\n", device_get_class(device, &error));
-        g_print("  Paired: %d\n", device_get_paired(device, &error));
-        g_print("  Trusted: %d [rw]\n", device_get_trusted(device, &error));
-        g_print("  Blocked: %d [rw]\n", device_get_blocked(device, &error));
-        g_print("  Connected: %d\n", device_get_connected(device, &error));
+        g_print("[%s]\n", device_get_address(device, NULL));
+        g_print("  Name: %s\n", device_get_name(device, NULL));
+        g_print("  Alias: %s [rw]\n", device_get_alias(device, NULL));
+        g_print("  Address: %s\n", device_get_address(device, NULL));
+        g_print("  Icon: %s\n", device_get_icon(device, NULL));
+        g_print("  Class: 0x%x\n", device_get_class(device, NULL));
+        g_print("  Paired: %d\n", device_get_paired(device, NULL));
+        g_print("  Trusted: %d [rw]\n", device_get_trusted(device, NULL));
+        g_print("  Blocked: %d [rw]\n", device_get_blocked(device, NULL));
+        g_print("  Connected: %d\n", device_get_connected(device, NULL));
         g_print("  UUIDs: [");
-        const gchar **uuids = device_get_uuids(device, &error);
+        const gchar **uuids = device_get_uuids(device, NULL);
         for (int j = 0; uuids[j] != NULL; j++)
         {
             if (j > 0) g_print(", ");
