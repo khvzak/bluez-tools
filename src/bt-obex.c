@@ -770,14 +770,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    // GPtrArray *folders = obex_file_transfer_list_folder(ftp_session, &error);
-                    GVariant *folder_list = obex_file_transfer_list_folder(ftp_session, &error);
-                    GPtrArray *folders = g_ptr_array_new();
-                    gsize arr_size = 0;
-                    // Pass the pointer
-                    folders->pdata = (gpointer) g_variant_get_fixed_array(folder_list, &arr_size, sizeof(gpointer));
-                    folders->len = arr_size;
-                    
+                    GVariant *folder_list_object = obex_file_transfer_list_folder(ftp_session, &error);
                     if (error)
                     {
                         g_print("%s\n", error->message);
@@ -786,46 +779,28 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
-                        for (int i = 0; i < folders->len; i++)
+                        GVariantIter *folder_list_object_iter = g_variant_iter_new(folder_list_object);
+                        GVariant *folder_list = NULL;
+                        while ((folder_list = g_variant_iter_next_value(folder_list_object_iter)))
                         {
-                            /*
-                            GHashTable *el = g_ptr_array_index(folders, i);
-                            g_print(
-                                    "%s\t%llu\t%s\n",
-                                    g_value_get_string(g_hash_table_lookup(el, "Type")),
-                                    G_VALUE_HOLDS_UINT64(g_hash_table_lookup(el, "Size")) ?
-                                    g_value_get_uint64(g_hash_table_lookup(el, "Size")) :
-                                    0,
-                                    g_value_get_string(g_hash_table_lookup(el, "Name"))
-                                    );
-                            */
-                            
-                            // DO NOT FREE THIS
-                            GVariant *el = g_ptr_array_index(folders, i);
-                            g_print(
-                                    "%s\t%" G_GINT64_FORMAT"\t%s\n",
-                                    g_variant_get_string(g_variant_lookup_value(el, "Type", G_VARIANT_TYPE("s")), NULL),
-                                    g_variant_get_uint64(g_variant_lookup_value(el, "Size", G_VARIANT_TYPE("t"))),
-                                    g_variant_get_string(g_variant_lookup_value(el, "Name", G_VARIANT_TYPE("s")), NULL)
-                                    );
+                            GVariantIter *iter = g_variant_iter_new(folder_list);
+                            GVariant *item = NULL;
+                            while ((item = g_variant_iter_next_value(iter)))
+                            {
+                                g_print(
+                                        "%s\t%" G_GINT64_FORMAT"\t%s\n",
+                                        g_variant_get_string(g_variant_lookup_value(item, "Type", G_VARIANT_TYPE("s")), NULL),
+                                        g_variant_get_uint64(g_variant_lookup_value(item, "Size", G_VARIANT_TYPE("t"))),
+                                        g_variant_get_string(g_variant_lookup_value(item, "Name", G_VARIANT_TYPE("s")), NULL)
+                                        );
+                                g_variant_unref(item);
+                            }
+                            g_variant_iter_free(iter);
+                            g_variant_unref(folder_list);
                         }
+                        g_variant_iter_free(folder_list_object_iter);
+                        g_variant_unref(folder_list_object);
                     }
-                    
-                    // Do not free the contents of the array. g_variant_unref will free contents
-                    if (folders)
-                        g_ptr_array_free(folders, FALSE);
-                    
-                    if (folder_list)
-                        g_variant_unref(folder_list);
-
-                    /*obexclient_remove_session(client, obexclient_file_transfer_get_dbus_object_path(ftp_session), &error);
-                    exit_if_error(error);
-                    g_object_unref(ftp_session);
-                    session_path = obexclient_create_session(client, device_dict, &error);
-                    exit_if_error(error);
-                    ftp_session = g_object_new(OBEXCLIENT_FILE_TRANSFER_TYPE, "DBusObjectPath", session_path, NULL);
-                    g_free(session_path);*/
-
                 }
             }
             else if (g_strcmp0(f_argv[0], "get") == 0)
