@@ -213,15 +213,24 @@ static void _obex_opp_client_object_manager_handler(GDBusConnection *connection,
             g_hash_table_insert(_transfers, g_strdup(interface_object_path), t);
 
             ObexTransferInfo *info = g_malloc0(sizeof(ObexTransferInfo));
-            info->filesize = g_variant_get_uint64(g_variant_lookup_value(properties, "Size", NULL));
-            info->filename = g_strdup(g_variant_get_string(g_variant_lookup_value(properties, "Name", NULL), NULL));
-            info->status = g_strdup(g_variant_get_string(g_variant_lookup_value(properties, "Status", NULL), NULL));
-            ObexSession *session = obex_session_new(g_variant_get_string(g_variant_lookup_value(properties, "Session", NULL), NULL));
-            
+
+            GVariant* size_variant = g_variant_lookup_value(properties, "Size", NULL);
+            GVariant* name_variant = g_variant_lookup_value(properties, "Name", NULL);
+            GVariant* status_variant = g_variant_lookup_value(properties, "Status", NULL);
+            GVariant* session_variant = g_variant_lookup_value(properties, "Session", NULL);
+
+            info->filesize = g_variant_get_uint64(size_variant);
+            info->filename = g_variant_dup_string(name_variant, NULL);
+            info->status = g_variant_dup_string(status_variant, NULL);
+            ObexSession *session = obex_session_new(g_variant_get_string(session_variant, NULL));
             info->obex_root = g_strdup(obex_session_get_root(session, NULL));
-            
+
+            g_variant_unref(size_variant);
+            g_variant_unref(name_variant);
+            g_variant_unref(status_variant);
+            g_variant_unref(session_variant);
             g_object_unref(session);
-            
+
             g_hash_table_insert(_transfer_infos, g_strdup(interface_object_path), info);
             if(g_strcmp0(info->status, "queued") == 0)
                 g_print("[Transfer#%s] Waiting...\n", info->filename);
