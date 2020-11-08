@@ -242,7 +242,7 @@ Device *find_device(Adapter *adapter, const gchar *name, GError **error)
                     
                     if(g_variant_lookup(properties, "Address", "s", &address))
                     {
-                        if(g_strcmp0(g_ascii_strdown(address, -1), g_ascii_strdown(name, -1)) == 0)
+                        if(name && address && g_ascii_strcasecmp(address, name) == 0)
                         {
                             device = device_new(object_path);
                         }
