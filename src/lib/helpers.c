@@ -171,7 +171,7 @@ Adapter *find_adapter(const gchar *name, GError **error)
     else
     {
         // Try to find by name
-        const GPtrArray *adapters_list = manager_get_adapters(manager);
+        GPtrArray *adapters_list = manager_get_adapters(manager);
         g_assert(adapters_list != NULL);
         for (int i = 0; i < adapters_list->len; i++)
         {
@@ -193,6 +193,7 @@ Adapter *find_adapter(const gchar *name, GError **error)
             g_object_unref(adapter);
             adapter = NULL;
         }
+        g_ptr_array_unref(adapters_list);
     }
 
     g_object_unref(manager);

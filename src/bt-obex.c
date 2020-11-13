@@ -70,25 +70,32 @@ static void _obex_server_object_manager_handler(GDBusConnection *connection, con
         const gchar *interface_object_path = g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL);
         GVariant *interfaces_and_properties = g_variant_get_child_value(parameters, 1);
         GVariant *properties = NULL;
-        
+
         if(g_variant_lookup(interfaces_and_properties, OBEX_TRANSFER_DBUS_INTERFACE, "@a{sv}", &properties))
         {
             g_print("[OBEX Server] Transfer started\n");
             ObexTransfer *t = obex_transfer_new(interface_object_path);
             g_hash_table_insert(_transfers, g_strdup(interface_object_path), t);
-            
+
+            GVariant* size_variant = g_variant_lookup_value(properties, "Size", NULL);
+            GVariant* status_variant = g_variant_lookup_value(properties, "Status", NULL);
+            GVariant* session_variant = g_variant_lookup_value(properties, "Session", NULL);
+
             ObexTransferInfo *info = g_malloc0(sizeof(ObexTransferInfo));
-            info->filesize = g_variant_get_uint64(g_variant_lookup_value(properties, "Size", NULL));
-            info->status = g_strdup(g_variant_get_string(g_variant_lookup_value(properties, "Status", NULL), NULL));
-            ObexSession *session = obex_session_new(g_variant_get_string(g_variant_lookup_value(properties, "Session", NULL), NULL));
-            
+            info->filesize = g_variant_get_uint64(size_variant);
+            info->status = g_strdup(g_variant_get_string(status_variant, NULL));
+
+            ObexSession *session = obex_session_new(g_variant_get_string(session_variant, NULL));
             info->obex_root = g_strdup(obex_session_get_root(session, NULL));
-            
             g_object_unref(session);
+
+            g_variant_unref(size_variant);
+            g_variant_unref(status_variant);
+            g_variant_unref(session_variant);
             
             g_hash_table_insert(_transfer_infos, g_strdup(interface_object_path), info);
         }
-        
+
         if(g_variant_lookup(interfaces_and_properties, OBEX_SESSION_DBUS_INTERFACE, "@a{sv}", &properties))
         {
             g_print("[OBEX Server] OBEX session opened\n");
@@ -177,7 +184,12 @@ static void _obex_server_properties_handler(GDBusConnection *connection, const g
             {
                 g_print("[OBEX Server] Transfer succeeded\n");
                 ObexTransferInfo *info = g_hash_table_lookup(_transfer_infos, object_path);
-                g_rename(g_build_filename(info->obex_root, info->filename, NULL), g_build_filename(_root_path, info->filename, NULL));
+
+                gchar* old_name = g_build_filename(info->obex_root, info->filename, NULL);
+                gchar* new_name = g_build_filename(_root_path, info->filename, NULL);
+                g_rename(old_name, new_name);
+                g_free(old_name);
+                g_free(new_name);
             }
             else if(g_strcmp0(status, "error") == 0)
             {
@@ -202,7 +214,8 @@ static void _obex_opp_client_object_manager_handler(GDBusConnection *connection,
 {
     if(g_strcmp0(signal_name, "InterfacesAdded") == 0)
     {
-        const gchar *interface_object_path = g_variant_get_string(g_variant_get_child_value(parameters, 0), NULL);
+        GVariant* interface_value = g_variant_get_child_value(parameters, 0);
+        const gchar *interface_object_path = g_variant_get_string(interface_value, NULL);
         GVariant *interfaces_and_properties = g_variant_get_child_value(parameters, 1);
         GVariant *properties = NULL;
         
@@ -242,6 +255,8 @@ static void _obex_opp_client_object_manager_handler(GDBusConnection *connection,
         }
         
         g_variant_unref(interfaces_and_properties);
+        g_variant_unref(interface_value);
+
         if(properties)
             g_variant_unref(properties);
     }
