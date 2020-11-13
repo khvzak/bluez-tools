@@ -90,14 +90,22 @@ static void _obex_server_object_manager_handler(GDBusConnection *connection, con
             GVariant* session_variant = g_variant_lookup_value(properties, "Session", NULL);
 
             ObexTransferInfo *info = g_malloc0(sizeof(ObexTransferInfo));
-            info->filesize = g_variant_get_uint64(size_variant);
             info->status = g_strdup(g_variant_get_string(status_variant, NULL));
 
             ObexSession *session = obex_session_new(g_variant_get_string(session_variant, NULL));
             info->obex_root = g_strdup(obex_session_get_root(session, NULL));
             g_object_unref(session);
 
-            g_variant_unref(size_variant);
+            if (size_variant != NULL)
+            {
+                info->filesize = g_variant_get_uint64(size_variant);
+                g_variant_unref(size_variant);
+            }
+            else
+            {
+                info->filesize = 0;
+            }
+
             g_variant_unref(status_variant);
             g_variant_unref(session_variant);
             
