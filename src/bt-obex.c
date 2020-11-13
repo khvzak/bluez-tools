@@ -55,6 +55,14 @@ struct _ObexTransferInfo {
     gchar *status;
 };
 
+static void obex_transfer_info_free(ObexTransferInfo* info)
+{
+    g_free(info->filename);
+    g_free(info->obex_root);
+    g_free(info->status);
+    g_free(info);
+}
+
 static void sigterm_handler(int sig)
 {
     g_message("%s received", sig == SIGTERM ? "SIGTERM" : "SIGINT");
@@ -117,10 +125,7 @@ static void _obex_server_object_manager_handler(GDBusConnection *connection, con
             if(g_strcmp0(*inf, OBEX_TRANSFER_DBUS_INTERFACE) == 0)
             {
                 g_print("[OBEX Server] OBEX transfer closed\n");
-                ObexTransfer *transfer = g_hash_table_lookup(_transfers, interface_object_path);
                 g_hash_table_remove(_transfers, interface_object_path);
-                g_object_unref(transfer);
-                g_free(g_hash_table_lookup(_transfer_infos, interface_object_path));
                 g_hash_table_remove(_transfer_infos, interface_object_path);
             }
             
@@ -272,10 +277,7 @@ static void _obex_opp_client_object_manager_handler(GDBusConnection *connection,
             if(g_strcmp0(*inf, OBEX_TRANSFER_DBUS_INTERFACE) == 0)
             {
                 // g_print("[OBEX Client] OBEX transfer closed\n");
-                ObexTransfer *transfer = g_hash_table_lookup(_transfers, interface_object_path);
                 g_hash_table_remove(_transfers, interface_object_path);
-                g_object_unref(transfer);
-                g_free(g_hash_table_lookup(_transfer_infos, interface_object_path));
                 g_hash_table_remove(_transfer_infos, interface_object_path);
                 if (g_main_loop_is_running(mainloop))
                     g_main_loop_quit(mainloop);
@@ -514,8 +516,8 @@ int main(int argc, char *argv[])
             exit_if_error(error);
         }
 
-        _transfers = g_hash_table_new(g_str_hash, g_str_equal);
-        _transfer_infos = g_hash_table_new(g_str_hash, g_str_equal);
+        _transfers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_object_unref);
+        _transfer_infos = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)obex_transfer_info_free);
 
         ObexAgentManager *manager = obex_agent_manager_new();
         
@@ -552,21 +554,10 @@ int main(int argc, char *argv[])
         g_hash_table_iter_init(&iter, _transfers);
         while (g_hash_table_iter_next(&iter, &key, &value))
         {
-            ObexTransfer *t = OBEX_TRANSFER(value);
-            obex_transfer_cancel(t, NULL); // skip errors
-            g_object_unref(t);
-            g_hash_table_iter_remove(&iter);
+            obex_transfer_cancel(OBEX_TRANSFER(value), NULL);
         }
         g_hash_table_unref(_transfers);
-        
-        // Remove transfer information
-        g_hash_table_iter_init(&iter, _transfer_infos);
-        while (g_hash_table_iter_next(&iter, &key, &value))
-        {
-            g_free(value);
-            g_hash_table_iter_remove(&iter);
-        }
-        g_hash_table_unref(_transfers);
+        g_hash_table_unref(_transfer_infos);
 
         g_dbus_connection_signal_unsubscribe(session_conn, obex_server_object_id);
         g_dbus_connection_signal_unsubscribe(session_conn, obex_server_properties_id);
@@ -588,8 +579,8 @@ int main(int argc, char *argv[])
             exit_if_error(error);
         }
         
-        _transfers = g_hash_table_new(g_str_hash, g_str_equal);
-        _transfer_infos = g_hash_table_new(g_str_hash, g_str_equal);
+        _transfers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_object_unref);
+        _transfer_infos = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
         gchar * files_to_send[] = {NULL, NULL};
         files_to_send[0] = g_path_is_absolute(opp_file_arg) ? g_strdup(opp_file_arg) : get_absolute_path(opp_file_arg);
@@ -663,24 +654,13 @@ int main(int argc, char *argv[])
         g_hash_table_iter_init(&iter, _transfers);
         while (g_hash_table_iter_next(&iter, &key, &value))
         {
-            ObexTransfer *t = OBEX_TRANSFER(value);
-            obex_transfer_cancel(t, NULL); // skip errors
-            g_object_unref(t);
-            g_hash_table_iter_remove(&iter);
+            obex_transfer_cancel(OBEX_TRANSFER(value), NULL);
         }
         g_hash_table_unref(_transfers);
-        
-        // Remove transfer information objects
-        g_hash_table_iter_init(&iter, _transfer_infos);
-        while (g_hash_table_iter_next(&iter, &key, &value))
-        {
-            g_free(value);
-            g_hash_table_iter_remove(&iter);
-        }
-        g_hash_table_unref(_transfers);
-        
-        g_object_unref(client);
 
+        g_hash_table_unref(_transfer_infos);
+        g_object_unref(client);
+        g_object_unref(session);
         g_variant_unref(device_dict);
 
         g_free(src_address);
