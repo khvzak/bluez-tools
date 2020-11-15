@@ -626,7 +626,7 @@ int main(int argc, char *argv[])
         mainloop = g_main_loop_new(NULL, FALSE);
 
         ObexClient *client = obex_client_new();
-        const gchar *session_path = obex_client_create_session(client, dst_address, device_dict, &error);
+        const gchar *session_path = obex_client_create_session(client, dst_address, g_variant_ref(device_dict), &error);
         exit_if_error(error);
         ObexSession *session = obex_session_new(session_path);
         ObexObjectPush *oop = obex_object_push_new(obex_session_get_dbus_object_path(session));
