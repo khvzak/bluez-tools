@@ -51,5 +51,3 @@ bt_device_SOURCES = $(lib_sources) $(bluez_sources) bt-device.c
 bt_network_SOURCES = $(lib_sources) $(bluez_sources) bt-network.c
 bt_obex_SOURCES = $(lib_sources) $(bluez_sources) bt-obex.c
 bt_obex_LDADD = $(LDADD) $(LIBREADLINE)
-
-dist_man_MANS = bt-adapter.1 bt-agent.1 bt-device.1 bt-network.1 bt-obex.1
