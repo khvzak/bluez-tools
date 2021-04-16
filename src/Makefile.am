@@ -44,9 +44,10 @@ lib_sources = 	lib/agent-helper.c lib/agent-helper.h \
 		lib/sdp.c lib/sdp.h \
 		lib/bluez-api.h
 
-bin_PROGRAMS = bt-adapter bt-agent bt-device bt-network bt-obex
+bin_PROGRAMS = bt-adapter bt-agent bt-audio bt-device bt-network bt-obex
 bt_adapter_SOURCES = $(lib_sources) $(bluez_sources) bt-adapter.c
 bt_agent_SOURCES = $(lib_sources) $(bluez_sources) bt-agent.c
+bt_audio_SOURCES = $(lib_sources) $(bluez_sources) bt-audio.c
 bt_device_SOURCES = $(lib_sources) $(bluez_sources) bt-device.c
 bt_network_SOURCES = $(lib_sources) $(bluez_sources) bt-network.c
 bt_obex_SOURCES = $(lib_sources) $(bluez_sources) bt-obex.c

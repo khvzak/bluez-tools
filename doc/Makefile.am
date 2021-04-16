@@ -1,5 +1,6 @@
 dist_man_MANS = bt-adapter.1 \
 		bt-agent.1 \
+		bt-audio.1 \
 		bt-device.1 \
 		bt-network.1 \
 		bt-obex.1
