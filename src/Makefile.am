@@ -18,16 +18,6 @@ bluez_sources =	lib/bluez/adapter.c lib/bluez/adapter.h \
 		lib/bluez/media_player.c lib/bluez/media_player.h \
 		lib/bluez/network.c lib/bluez/network.h \
 		lib/bluez/network_server.c lib/bluez/network_server.h \
-		lib/bluez/obex/obex_agent_manager.c lib/bluez/obex/obex_agent_manager.h \
-		lib/bluez/obex/obex_client.c lib/bluez/obex/obex_client.h \
-		lib/bluez/obex/obex_file_transfer.c lib/bluez/obex/obex_file_transfer.h \
-		lib/bluez/obex/obex_message_access.c lib/bluez/obex/obex_message_access.h \
-		lib/bluez/obex/obex_message.c lib/bluez/obex/obex_message.h \
-		lib/bluez/obex/obex_object_push.c lib/bluez/obex/obex_object_push.h \
-		lib/bluez/obex/obex_phonebook_access.c lib/bluez/obex/obex_phonebook_access.h \
-		lib/bluez/obex/obex_session.c lib/bluez/obex/obex_session.h \
-		lib/bluez/obex/obex_synchronization.c lib/bluez/obex/obex_synchronization.h \
-		lib/bluez/obex/obex_transfer.c lib/bluez/obex/obex_transfer.h \
 		lib/bluez/profile_manager.c lib/bluez/profile_manager.h \
 		lib/bluez/proximity_monitor.c lib/bluez/proximity_monitor.h \
 		lib/bluez/proximity_reporter.c lib/bluez/proximity_reporter.h \
@@ -39,17 +29,32 @@ lib_sources = 	lib/agent-helper.c lib/agent-helper.h \
 		lib/dbus-common.c lib/dbus-common.h \
 		lib/helpers.c lib/helpers.h \
 		lib/manager.c lib/manager.h \
-		lib/obex_agent.c lib/obex_agent.h \
 		lib/properties.c lib/properties.h \
 		lib/sdp.c lib/sdp.h \
 		lib/bluez-api.h
 
-bin_PROGRAMS = bt-adapter bt-agent bt-device bt-network bt-obex
+bin_PROGRAMS = bt-adapter bt-agent bt-device bt-network
 bt_adapter_SOURCES = $(lib_sources) $(bluez_sources) bt-adapter.c
 bt_agent_SOURCES = $(lib_sources) $(bluez_sources) bt-agent.c
 bt_device_SOURCES = $(lib_sources) $(bluez_sources) bt-device.c
 bt_network_SOURCES = $(lib_sources) $(bluez_sources) bt-network.c
-bt_obex_SOURCES = $(lib_sources) $(bluez_sources) bt-obex.c
-bt_obex_LDADD = $(LDADD) $(LIBREADLINE)
 
-dist_man_MANS = bt-adapter.1 bt-agent.1 bt-device.1 bt-network.1 bt-obex.1
+dist_man_MANS = bt-adapter.1 bt-agent.1 bt-device.1 bt-network.1
+
+if OBEX
+bluez_sources += lib/bluez/obex/obex_agent_manager.c lib/bluez/obex/obex_agent_manager.h \
+		lib/bluez/obex/obex_client.c lib/bluez/obex/obex_client.h \
+		lib/bluez/obex/obex_file_transfer.c lib/bluez/obex/obex_file_transfer.h \
+		lib/bluez/obex/obex_message_access.c lib/bluez/obex/obex_message_access.h \
+		lib/bluez/obex/obex_message.c lib/bluez/obex/obex_message.h \
+		lib/bluez/obex/obex_object_push.c lib/bluez/obex/obex_object_push.h \
+		lib/bluez/obex/obex_phonebook_access.c lib/bluez/obex/obex_phonebook_access.h \
+		lib/bluez/obex/obex_session.c lib/bluez/obex/obex_session.h \
+		lib/bluez/obex/obex_synchronization.c lib/bluez/obex/obex_synchronization.h \
+		lib/bluez/obex/obex_transfer.c lib/bluez/obex/obex_transfer.h
+lib_sources =	lib/obex_agent.c lib/obex_agent.h
+bin_PROGRAMS += bt-obex
+bt_obex_SOURCES = $(lib_sources) $(bluez_sources) bt-obex.c
+bt_obex_LDADD = $(LDADD) $(OBEX_LIBS)
+dist_man_MANS += bt-obex.1
+endif

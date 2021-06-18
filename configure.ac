@@ -41,22 +41,18 @@ PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.36.0])
 PKG_CHECK_MODULES([GIO], [gio-2.0 >= 2.26.0 gio-unix-2.0 >= 2.26.0])
 
-# Check for the availability of libreadline
-AC_CHECK_HEADERS([readline/readline.h], [HAVE_READLINE_H=1])
-AC_CHECK_HEADERS([readline/history.h], [HAVE_HISTORY_H=1])
-AC_CHECK_LIB([readline], [readline], [HAVE_LIB_READLINE=1])
-
-if test "$HAVE_READLINE_H" != "1"; then
-	echo "** readline/readline.h was not found."
-	exit 1
+AC_ARG_ENABLE(obex, AC_HELP_STRING([--disable-obex],
+              [disable obex profile support]), [enable_obex=${enableval}])
+if (test "${enable_obex}" != "no")
+then
+	AC_CHECK_HEADERS(readline/readline.h readline/history.h, enable_readline=yes,
+		AC_MSG_ERROR(readline header files are required for bt-obex support))
+	AC_CHECK_LIB([readline], [readline], [HAVE_LIB_READLINE=1],
+		AC_MSG_ERROR(readline library is required for bt-obex support))
+	OBEX_LIBS="-lreadline"
+	AC_SUBST(OBEX_LIBS)
 fi
-if test "$HAVE_HISTORY_H" != "1"; then
-	echo "** readline/history.h was not found."
-	exit 1
-fi
-LIBREADLINE="-lreadline"
-
-AC_SUBST(LIBREADLINE)
+AM_CONDITIONAL(OBEX, test "${enable_obex}" != "no")
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
