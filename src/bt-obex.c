@@ -175,9 +175,15 @@ static void _obex_server_properties_handler(GDBusConnection *connection, const g
             }
             else if(g_strcmp0(status, "complete") == 0)
             {
+                int res;
+                char *src, *dst;
                 g_print("[OBEX Server] Transfer succeeded\n");
                 ObexTransferInfo *info = g_hash_table_lookup(_transfer_infos, object_path);
-                g_rename(g_build_filename(info->obex_root, info->filename, NULL), g_build_filename(_root_path, info->filename, NULL));
+                src = g_build_filename(info->obex_root, info->filename, NULL);
+                dst = g_build_filename(_root_path, info->filename, NULL);
+                res = g_rename(src, dst);
+                if (res)
+                    printf("[OBEX Server] Error: cannot rename %s to %s\n", src, dst);
             }
             else if(g_strcmp0(status, "error") == 0)
             {
